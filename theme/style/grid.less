@@ -1,0 +1,67 @@
+.col-loop(@name, @total, @i) when (@i > 0) {
+	.col.@{name}@{i} {
+		float: left;
+		left: auto;
+		right: auto;
+		box-sizing: border-box;
+		width: @i * 100% / @total;
+	}
+
+	.col-loop(@name, @total, @i - 1);
+}
+
+.pull-loop(@name, @total, @i) when (@i > 0) {
+	.col.pull-@{name}@{i} {
+		right: @i * 100% / @total;
+		position: relative;
+	}
+
+	.pull-loop(@name, @total, @i - 1);
+}
+
+.push-loop(@name, @total, @i) when (@i > 0) {
+	.col.push-@{name}@{i} {
+		left: @i * 100% / @total;
+		position: relative;
+	}
+
+	.push-loop(@name, @total, @i - 1);
+}
+
+.row {
+	&::after {
+		content: "";
+    	display: table;
+		clear: both;
+	}
+	
+	.col-loop(s, 12, 12);
+
+	@media @mediumAndUp {
+		.col-loop(m, 12, 12);
+	}
+
+	@media @largeAndUp {
+		.col-loop(l, 12, 12);
+	}
+
+	.pull-loop(s, 12, 12);
+
+	@media @mediumAndUp {
+		.pull-loop(m, 12, 12);
+	}
+
+	@media @largeAndUp {
+		.pull-loop(l, 12, 12);
+	}
+
+	.push-loop(s, 12, 12);
+
+	@media @mediumAndUp {
+		.push-loop(m, 12, 12);
+	}
+
+	@media @largeAndUp {
+		.push-loop(l, 12, 12);
+	}
+}

@@ -1,0 +1,52 @@
+info {
+	"name": "dashboard-modules"
+}
+
+template {
+	<div style="height: 100%" class="main dashboard-config">
+		<div style="text-align: right;">
+			<button ref="rebuildBtn" class="button left" @click="rebuild()">Rebuild All</button>
+			<button class="button">Module registry</button>
+		</div>
+		
+		<div>
+			<div class="card block hover shift explode dashboard-module" style="" v-for="module in modules">
+				<div class="content" style="min-height: 100px; max-height: 100px;">
+					<div class="title" style=""><img src="/resources/dashboard/Pages.svg" class="primary-image"/> {{module.name}}</div>
+					<p class="truncate">{{module.config.description}}</p>
+				</div>
+				<div class="reveal">
+					<div v-for="(val, key) in module.config">
+						<strong>{{key}}</strong>: {{val}}
+					</div>
+				</div>
+				<div class="action">
+					<a target="_blank" :href="module.config.website">Website</a>
+					<label class="right">{{module.config.author}}</label>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+client {
+	props: ["data"],
+	data: function () {
+		return {
+			modules: []
+		};
+	},
+	methods: {
+		rebuild: function () {
+			$(this.$refs.rebuildBtn).addClass("disabled loading");
+			DashboardBridge.rebuildAll().then(() => {
+				$(this.$refs.rebuildBtn).removeClass("disabled loading");
+			});
+		}
+	},
+	mounted: function () {
+		DashboardBridge.getModules().then((data) => {
+			this.modules = data;
+		});
+	}
+}

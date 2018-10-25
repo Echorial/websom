@@ -1,0 +1,39 @@
+info {
+	"name": "nav-view"
+}
+
+template {
+	<div>
+		<button v-if="canEdit && showEdit !== false" @click="editMode = !editMode" class="success button right"><icon fa>edit</icon> {{editMode ? "Cancel" : "Edit"}}</button>
+		<div v-if="!editMode" class="nav-view"><component v-if="data !== false && view" @edit="editMode = !editMode" :is="view" :data="data"/><slot v-else-if="data !== false" :data="data"/></div>
+		<div v-else class="nav-view-edit">
+			<form :form-key="container" :data-validate="validate">
+				<component v-if="data !== false && view" @edit="editMode = !editMode" :is="view" :edit-mode="true" :data="data"/><slot v-else-if="data !== false" :data="data" :edit-mode="true"/>
+				<button v-if="showSave !== false" class="button" @success="reload()" :data-submit="editKey" data-interface="update" :data-base-query="JSON.stringify(data)">Save</button>
+			</form>
+		</div>
+	</div>
+}
+
+client {
+	props: ["container", "slashes", "view", "can-edit", "edit-key", "validate", "show-edit", "show-save"],
+	data: function () {return {data: false, editMode: false}},
+	created: function () {
+		this.load(this.parseUrl(location.href));
+	},
+	methods: {
+		reload: function () {
+			location.reload();
+		},
+		parseUrl: function (url) {
+			var base = url.match(/https?:\/\/[^\/]*\/?(.*)/)[1];
+			return base.split("/")[this.slashes || 1];
+		},
+		load: function (id) {
+			Websom.interface(this.container, "select", {publicId: id}, (data) => {
+				this.data = data[0];
+				console.log(this.data);
+			});
+		}
+	}
+}

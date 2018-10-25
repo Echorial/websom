@@ -1,0 +1,10 @@
+class Websom.DatabaseUpdate {
+	string field = "";
+	primitive value = null;
+
+	//TODO: Add field operations
+	void @construct(string field, primitive value) {
+		this.field = field;
+		this.value = value;
+	}
+}

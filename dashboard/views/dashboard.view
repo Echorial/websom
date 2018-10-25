@@ -1,0 +1,85 @@
+info {
+	"name": "dashboard"
+}
+
+template {
+	<div style="height: 100%" :class="{'dashboard-background': !info.status}">
+		<div  v-if="info.status" class="dashboard-main">
+			<nav class="dashboard-head blue-grey darken-4">
+				<img src="/resources/dashboard/Websom.svg" @click="tab = 'Home'" style="max-width: 50px; max-height: 50px;" class="logo"></img>
+				<a href="#" @click="setSub('Home', 'Account')" class="right"><icon fa>user</icon></a>
+				<a href="#" @click="setSub('Home', 'Notifications')" class="right"><icon fa>bell</icon></a>
+			</nav>
+			<div class="dashboard-column">
+				<div class="dashboard-tabs blue-grey darken-3">
+					<div v-for="(itab, key) in info.tabs" @click="setTab(key, $event)" :class="{'dashboard-tab': true, 'active': tab == key}">
+						<img v-if="itab.image" :src="itab.image" style="max-width: 50px; max-height: 50px;"></img>{{key}}
+						<div v-if="itab.sub" class="tab-sub-container">
+							<div @click="setSub(key, subKey, $event)" v-for="(sub, subKey) in itab.sub" class="tab-sub">
+								<img v-if="sub.image" :src="sub.image" style="max-width: 50px; max-height: 50px;"></img>{{subKey}}
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="dashboard-body blue-grey darken-2">
+					<component v-if="subTab === null" :dashboar-mMode="true" :is="info.tabs[tab].view" :data="info.tabs[tab]"/>
+					<component v-else :dashboard-mode="true" :is="info.tabs[tab].sub[subTab].view" :data="info.tabs[tab].sub[subTab]"/>
+				</div>
+			</div>
+		</div>
+		<div v-else style="text-align: center;">
+			<div class="white-text" style="margin-top: 17%; width: 200px; display: inline-block;">
+				<h3>Login</h3>
+				<label>Username</label>
+				<input name="username" class="input white-text" type="text"></input>
+				<br>
+				<label>Password</label>
+				<input name="password" class="input white-text" type="password"></input>
+				<button class="button ripple" @click="login()">Login</button>
+				<card v-for="error in errors" class="red">{{error}}</card>
+			</div>
+		</div>
+	</div>
+}
+
+client {
+	data: function () {
+		return {
+			info: {status: false},
+			errors: [],
+			tab: "Home",
+			subTab: null
+		};
+	},
+	methods: {
+		setSub: function (tab, sub, event) {
+			this.tab = tab;
+			this.subTab = sub;
+		},
+		setTab: function (tab, event) {
+			if (!$(event.target).is(".dashboard-tab"))
+				return;
+			this.tab = tab;
+			this.subTab = null;
+		},
+		login: function () {
+			var username = $(this.$el).find("[name=username]").val();
+			var password = $(this.$el).find("[name=password]").val();
+
+			DashboardBridge.login(username, password).then((data) => {
+				if (data.hadError)
+					this.errors.push(data.error);
+				else
+					this.info = data;
+			});
+		},
+		loadTab: function () {
+
+		}
+	},
+	created: function () {
+		DashboardBridge.awaitInfo().then((data) => {
+			this.info = data;
+		});
+	}
+}

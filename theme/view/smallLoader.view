@@ -1,0 +1,7 @@
+info {
+	"name": "small-loader"
+}
+
+template {
+	<div class="small-loader"><div></div><div></div></div>
+}

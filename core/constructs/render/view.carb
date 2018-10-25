@@ -1,0 +1,25 @@
+class Websom.Render.View {
+	Websom.View view = null;
+	Websom.Render.Element root = null;
+
+	void @construct(Websom.View view) {
+		this.view = view;
+	}
+
+	void parse() {
+		this.root = Websom.Render.Element.parse(this.view.server, this.view.template);
+	}
+
+	string render(Websom.Render.Context ctx) {
+		return this.root.render(ctx);
+	}
+
+	map serialize() {
+		return this.root.serialize();
+	}
+
+	void deserialize(map data) {
+		this.root = new Websom.Render.Element(this.view.server, data["n"]);
+		this.root.deserialize(this.view.server, data);
+	}
+}

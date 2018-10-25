@@ -1,0 +1,331 @@
+info {
+	"name": "input-image"
+}
+
+template {
+	<label class="image-input" v-if="images.length == 0">
+		<input class="input" type="file" multiple/>
+		<span class="icon-down"><icon fa>arrow-down</icon></span>
+		<span class="icon-image"><icon fa>{{(multiple ? "images" : "image")}}</icon></span>
+		<div class="info">Choose {{multiple ? "images" : "image"}}<br><span>or drag and drop</span></div>
+	</label>
+	<div v-else class="image-editor">
+		<div>
+			<div class="image-editor-view">
+				<div class="info" v-if="selected === null" style="position: absolute">Select an image below to preview.</div>
+				<div class="crop" ref="crop"><div class="handle" ref="handle"></div></div>
+				<btn v-if="changed" @click.native="save()" style="right: 0; position: absolute;" content="Save"/>
+				<canvas ref="canvas" width="100%" height="360px"></canvas>
+			</div>
+		</div>
+		<div class="image-editor-list">
+			<div v-for="(image, i) in images" @click="select(image)" :class="{'image-editor-block': true, 'selected': (image.id == ((selected === null) ? -1 : selected.id))}">
+				<span class="close" @click="remove(i, this.event)"><icon fa>times</icon></span>
+				<label>{{image.name}}</label>
+				<img :src="image.url || image.raw"/>
+			</div>
+			<label class="image-input image-add" style="width: 128px; height: 128px; padding: 0; display: inline-block;">
+				<input class="input" type="file" multiple/>
+				<span class="icon-down add"><icon fa>arrow-down</icon></span>
+				<span class="icon-image" style="margin: 1em;"><icon fa>plus</icon></span>
+				<div class="info" style="bottom: 10; width: 100%">Add {{multiple ? "images" : "image"}}<br><span>or drag and drop</span></div>
+			</label>
+		</div>
+	</div>
+}
+
+client {
+	props: {
+		value: {
+			type: Array
+		},
+		multiple: {
+			type: Boolean,
+			default: false
+		},
+		"max-width": {
+			type: Number,
+			default: 4096
+		},
+		"max-height": {
+			type: Number,
+			default: 4096
+		}
+	},
+	data: function () {
+		return {
+			images: [],
+			changed: false,
+			selected: null,
+			rect: {x: 0, y: 0, zoom: 1, crop: {width: 100, height: 100}, start: {x: 0, y: 0}},
+			mouse: {x: 0, y: 0},
+			ctx: null
+		};
+	},
+	methods: {
+		reCrop: function () {
+			var crop = this.$refs.crop;
+			var w = 100-this.rect.crop.width;
+			var h = 100-this.rect.crop.height;
+			var wMargin = (w)/2;
+			var hMargin = (h)/2;
+
+			$(crop).css({
+				top: hMargin + "%",
+				left: wMargin + "%",
+				width: "calc(" + this.rect.crop.width + "% - 4px)",
+				height: "calc(" + this.rect.crop.height + "% - 4px)"
+			})
+		},
+		remove: function (i, e) {
+			e.stopPropagation();
+			if (this.selected)
+				if (this.selected.id == this.images[i].id) {
+					this.selected = null;
+					this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+				}
+
+			this.images.splice(i, 1);
+			if (this.images.length == 0)
+				setTimeout(() => {
+					this.ctx = null;
+					this.listen();
+				}, 100);
+		},
+		resetRect: function () {
+			this.rect = {x: 0, y: 0, start: {x: 0, y: 0}, crop: {width: 100, height: 100}, zoom: 1};
+		},
+		save: function () {
+			var w = ((100-this.rect.crop.width)/2)/100;
+			var h = ((100-this.rect.crop.height)/2)/100;
+
+			var width = Math.min(this.maxWidth, this.selected.image.width);
+			var height = Math.min(this.maxHeight, this.selected.image.height);
+			var wRatio = this.selected.image.width/this.$refs.canvas.width;
+			var hRatio = this.selected.image.height/this.$refs.canvas.height;
+			var realMarginX = this.selected.image.width*w;
+			var realMarginY = this.selected.image.height*h;
+			var panX = (this.rect.x * wRatio) - realMarginX;
+			var panY = (this.rect.y * hRatio) - realMarginY;
+
+			var ow = this.$refs.canvas.width;
+			var oh = this.$refs.canvas.height;
+			this.$refs.canvas.width = this.selected.image.width*(this.rect.crop.width/100);
+			this.$refs.canvas.height = this.selected.image.height*(this.rect.crop.height/100);
+			this.ctx.clearRect(0, 0, this.$refs.canvas.width, this.$refs.canvas.height);
+			this.ctx.drawImage(this.selected.image, panX, panY, this.selected.image.width * this.rect.zoom * wRatio, this.selected.image.height * this.rect.zoom * hRatio);
+			
+			this.selected.raw = this.$refs.canvas.toDataURL("image/png");
+			this.resetRect();
+			this.$refs.canvas.width = ow;
+			this.$refs.canvas.height = oh;
+			this.selected.image = new Image();
+			this.changed = false;
+			
+			this.selected.image.onload = () => {
+				this.rect.zoom = Math.min($(this.$el).width()/this.selected.image.width, 360/this.selected.image.height);
+				this.redraw();
+				this.reCrop();
+			};
+
+			this.selected.image.src = this.selected.raw;
+			
+		},
+		loaded: function (isAdded) {
+			var that = this;
+			var canvas = this.$refs.canvas;
+			
+			that.listen();
+
+			var handle = this.$refs.handle;
+			var crop = this.$refs.crop;
+			var hDown = false;
+			var downPos = {x: 0, y: 0};
+
+			handle.onmousedown = function (e) {
+				hDown = true;
+				downPos = {
+					x: e.clientX,
+					y: e.clientY
+				};
+			};
+
+			handle.onmouseup = function (e) {
+				hDown = false;
+			};
+
+			var off = $(crop).parent().offset();
+			var cropParentWidth = $(crop).parent().width();
+			var cropParentHeight = $(crop).parent().height();
+			document.onmouseup = () => {
+				hDown = false;
+			};
+			document.onmousemove = (e) => {
+				
+				var x = e.clientX;
+				var y = e.clientY;
+				that.mouse.x = x;
+				that.mouse.y = y;
+
+				if (hDown) {
+					if(e.stopPropagation) e.stopPropagation();
+					if(e.preventDefault) e.preventDefault();
+					e.cancelBubble=true;
+					e.returnValue=false;
+
+					this.changed = true;
+					
+					var w = 100-this.rect.crop.width;
+					var h = 100-this.rect.crop.height;
+					var wMargin = (((w)/2)/100)*cropParentWidth;
+					var hMargin = (((h)/2)/100)*cropParentHeight;
+
+					var nx = (x-wMargin) - off.left;
+					var ny = (y-hMargin) - off.top;
+
+					this.rect.crop.width = Math.min(((nx / (cropParentWidth)) * 100), 100);
+					this.rect.crop.height = Math.min(((ny / (cropParentHeight)) * 100), 100);
+
+					this.reCrop();
+
+					return false;
+				}
+			}
+
+			canvas.onwheel = (e) => {
+				var factor = 0.8;
+				var factor = 0.8;
+				if (e.deltaY < 0)
+					factor = 1/factor;
+
+				this.rect.zoom *= factor;
+				var dx = (that.mouse.x - that.rect.x) * (factor - 1);
+				var dy = (that.mouse.y - that.rect.y) * (factor - 1);
+				
+				that.rect.x = (that.rect.x - dx);
+				that.rect.y = (that.rect.y - dy);
+				
+				
+				global.offset.x = that.rect.x;
+				global.offset.y = that.rect.y;
+
+				
+				this.redraw();
+				return false;
+			};
+
+			canvas.addEventListener("mousedown", startPan);
+			canvas.addEventListener("mouseleave", endPan);
+			canvas.addEventListener("mouseup", endPan);
+			
+			function ren() {
+				that.redraw();
+			}
+			
+			function startPan(e) {
+				canvas.addEventListener("mousemove", trackMouse);
+				canvas.addEventListener("mousemove", ren);
+				that.rect.start.x = e.clientX;
+				that.rect.start.y = e.clientY;
+			}
+			
+			var global = {offset: {x: 0, y: 0}};
+			
+			function endPan(e) {
+				canvas.removeEventListener("mousemove", trackMouse);
+				canvas.removeEventListener("mousemove", ren);
+				that.rect.start.x = null;
+				that.rect.start.y = null;
+				global.offset.x = that.rect.x;
+				global.offset.y = that.rect.y;
+			}
+
+			function trackMouse(e) {
+				if(e.stopPropagation) e.stopPropagation();
+				if(e.preventDefault) e.preventDefault();
+				e.cancelBubble=true;
+				e.returnValue=false;
+
+				that.mouse.x = e.clientX;
+				that.mouse.y = e.clientY;
+				
+				var offsetX  = e.clientX - that.rect.start.x;
+				var offsetY  = e.clientY - that.rect.start.y;
+				that.rect.x = global.offset.x + offsetX;
+				that.rect.y = global.offset.y + offsetY;
+				that.changed = true;
+
+				return false;
+			}
+		},
+		select: function (image) {
+			this.selected = image;
+			this.changed = false;
+			
+			this.resetRect();
+			this.rect.zoom = Math.min($(this.$el).width()/image.image.width, 360/image.image.height);
+			this.redraw();
+		},
+		redraw: function () {
+			this.$refs.canvas.width = $(this.$refs.canvas).parent().width();
+			if (this.ctx === null)
+				this.ctx = this.$refs.canvas.getContext("2d");
+			
+			if (this.selected) {
+				var w = this.selected.image.width * this.rect.zoom;
+				this.ctx.drawImage(this.selected.image, this.rect.x, this.rect.y, w, this.selected.image.height * this.rect.zoom);
+			}
+		},
+		getValue: function (value) {
+			var out = [];
+			for (var i = 0; i < this.images.length; i++)
+				out.push({caption: "", encoded: this.images[i].raw});
+				
+			value(out);
+		},
+		listen: function () {
+			var that = this;
+			$(this.$el).find("input").on("change", function (e) {
+				for (var i = 0; i < this.files.length; i++) {
+					((i) => {
+						var fr = new FileReader();
+						fr.onload = () => {
+							var img = new Image();
+							img.onload = () => {
+								that.images.push({
+									id: i,
+									name: this.files[i].name,
+									raw: fr.result,
+									image: img
+								});
+								if (i == 0) {
+									if (!$(this).parent().hasClass("image-add"))
+										setTimeout(function () {that.loaded();});
+								}
+							};
+							img.src = fr.result;
+						};
+						fr.readAsDataURL(this.files[i]);
+					})(i);
+				}
+			});
+		}
+	},
+	created: function () {
+		var that = this;
+		if (!this.value)
+			this.listen();
+		else{
+			for (var i = 0; i < this.value.length; i++) {
+				var img = new Image();
+				img.src = this.value[i].url;
+				this.images.push({id: i, url: this.value[i].url, name: this.value[i].caption, raw: "", image: img});
+			}
+
+			if (this.images.length == 0)
+				this.listen();
+			else
+				setTimeout(function () {that.loaded()});
+		}
+	}
+}

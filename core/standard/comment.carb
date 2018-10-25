@@ -1,0 +1,39 @@
+namespace Websom.Standard.Rating {}
+
+[Reroute, Component]
+header interface Websom.Standard.Rating.Likes inherits Websom.StandardData {
+	primary autoIncrement field big int id = 0;
+
+	expose field big int likes = 0;
+
+	expose field big int dislikes = 0;
+
+	[Interface = "rate"]
+	void rate(Websom.Input input, map data, <void, map>function respond);
+}
+
+[Reroute, Component]
+header interface Websom.Standard.Comments inherits Websom.StandardData {
+	primary autoIncrement field big int id = 0;
+
+	[NoLoad]
+	field linked <Websom.Standard.Comment>array comments = new <Websom.Standard.Comment>array();
+
+	[Interface = "comment"]
+	void comment(Websom.Input input, map data, <void, map>function respond);
+}
+
+[Reroute]
+header interface Websom.Standard.Comment inherits Websom.StandardData {
+	primary autoIncrement field big int id = 0;
+
+	[Length = 12]
+	expose field string publicId = "";
+
+	[Length = 4096]
+	expose edit field string body = "";
+
+	expose field Websom.Standard.UserSystem.User owner = null;
+
+	expose field uint64 timestamp = 0;
+}

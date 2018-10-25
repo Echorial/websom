@@ -1,0 +1,19 @@
+class Websom.Ini {
+	`Parses a .ini file into a map and returns.
+	@note The node js ini parser is very limited. See native/javascript/ini.js`
+
+	#if platform.header
+		native inline fixed map parse(string filePath)
+		{return "require('./ini.js').parse(Oxygen.FileSystem.readSync(" + context.arguments[0] + ", 'utf8'))";}
+	#end if
+
+	#if platform.javascript
+		native inline fixed map parse(string filePath)
+		{return "require('./ini.js').parse(Oxygen.FileSystem.readSync(" + context.arguments[0] + ", 'utf8'))";}
+	#end if
+
+	#if platform.php
+		phpNoRef native inline fixed map parse(string filePath)
+		{return "parse_ini_file(" + context.arguments[0] + ")";}
+	#end if
+}

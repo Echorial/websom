@@ -1,0 +1,88 @@
+class Websom.Services.Email inherits Websom.Service {
+	map getSender(string sender) {
+		var raw = Websom.Json.parse(FileSystem.readSync(this.server.config.root + "/email.json", "utf8"));
+		return raw["senders"][sender];
+	}
+
+	void send(string sender, Websom.Email email, <void, string>function sent) {
+		if (this.server.config.dev and this.server.config.devSendMail == false) {
+			if (FileSystem.exists(this.server.config.root + "/dev_emails") == false)
+				FileSystem.makeDir(this.server.config.root + "/dev_emails");
+			FileSystem.writeSync(this.server.config.root + "/dev_emails/" + email.subject.replace("/", "_") + ".html", "Sender: " + sender + "\n" + "\nRecipients: " + email.recipients.join(", ") + "\n\nBody:\n" + email.body.replace("\n", "\t\n"));
+		}else{
+			var rawSender = this.getSender(sender);
+
+			native javascript {
+				const nodemailer = require("nodemailer");
+				let transporter = nodemailer.createTransport({
+					host: rawSender["host"],
+					port: rawSender["port"],
+					secure: true,
+					auth: {
+						user: rawSender["username"],
+						pass: rawSender["password"]
+					}
+				});
+
+				let mailOptions = {
+					from: '"' + rawSender["fromName"] + '" <' + rawSender["from"] + '>',
+					to: email.recipients.join(", "),
+					subject: email.subject,
+					text: email.body
+				};
+
+				if (email.html)
+					mailOptions.html = email.body;
+
+				transporter.sendMail(mailOptions, (err) => {
+					if (err)
+						sent(err.toString());
+					else
+						sent("");
+				});
+			}
+
+			native php {
+				$mail = new PHPMailer\PHPMailer\PHPMailer(true);
+
+				$mail->isSMTP();
+				$mail->Host = $rawSender["host"];
+				$mail->SMTPAuth = true;
+				$mail->Username = $rawSender["username"];
+				$mail->Password = $rawSender["password"];
+				$mail->SMTPSecure = 'ssl';
+				$mail->Port = $rawSender["port"];
+
+				$mail->SetFrom($rawSender["from"], $rawSender["fromName"]);
+				foreach ($email->recipients as $res) {
+					$mail->addAddress($res);
+				}
+
+				$mail->isHTML($email->html);
+				$mail->Subject = $email->subject;
+				$mail->Body = $email->body;
+
+				$mail->send();
+
+				$sent("");
+			}
+		}
+	}
+}
+
+class Websom.Email {
+	bool html = false;
+	
+	<string>array recipients = null;
+
+	string subject = "";
+	string body = "";
+
+	void @construct(<string>array recipients, string subject, string body) {
+		this.recipients = recipients;
+		this.body = body;
+		this.subject = subject;
+	}
+
+	void attach() {}
+}

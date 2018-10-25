@@ -1,0 +1,88 @@
+class Websom.Services.Crypto inherits Websom.Service {
+	Websom.Status start() {
+
+	}
+
+	void hashPassword(string password, <void, string>function done) {
+		native javascript {
+			const argon2 = require("argon2");
+			argon2.hash(password).then((hashed) => {
+				done(hashed);
+			});
+		}
+
+		native php {
+			$algo = PASSWORD_DEFAULT; //WARN: Passwords from node js wont work for php versions less than 7.2
+			
+			if (version_compare(phpversion(), "7.2", ">="))
+				$algo = PASSWORD_ARGON2I;
+			
+			$done(password_hash($password, $algo));
+		}
+	}
+
+	void verifyPassword(string hash, string password, <void, bool>function done) {
+		native javascript {
+			try {
+				const argon2 = require("argon2");
+				argon2.verify(hash, password).then((match) => {done(match);}).catch(() => {done(false);});
+			} catch(e) {
+				console.log("Make sure your password hash is valid.");
+				console.log(e);
+			}
+		}
+
+		native php {
+			$done(password_verify($password, $hash));
+		}
+	}
+
+	`@warn This will throw an error if a problem occurred`
+	void randomHex(int length, <void, string>function done) {
+		native javascript {
+			const crypto = require("crypto");
+			crypto.randomBytes(length, (err, buffer) => {
+				if (err)
+					throw err;
+				else
+					done(buffer.toString("hex"));
+			});
+		}
+
+		native php {
+			$done(bin2hex(random_bytes($length)));
+		}
+	}
+
+	void smallId(<void, string>function done) {
+		native javascript {
+			const crypto = require("crypto");
+			crypto.randomBytes(12, (err, buffer) => {
+				if (err)
+					throw err;
+				else
+					done(buffer.toString("base64").substr(0, 12).replace(new RegExp("\/", "g"), "_").replace(/\+/g, "-"));
+			});
+		}
+
+		native php {
+			$done(str_replace("+", "-", str_replace("/", "_", substr(base64_encode(random_bytes(12)), 0, 12))));
+		}
+	}
+
+	void longId(int amount, <void, <string>array>function done) {
+		native javascript {
+			const crypto = require("crypto");
+			crypto.randomBytes(amount, (err, buffer) => {
+				if (err)
+					throw err;
+				else
+					done(buffer.toString("base64").substr(0, amount).replace(new RegExp("\/", "g"), "_").replace(/\+/g, "-"));
+			});
+		}
+
+		native php {
+			$done(str_replace("+", "-", str_replace("/", "_", substr(base64_encode(random_bytes($amount)), 0, $amount))));
+		}
+	}
+}

@@ -1,0 +1,18 @@
+info {
+	"name": "designer-page"
+}
+
+template {
+	<div/>
+}
+
+client {
+	props: ["object"],
+	render: function (createElement) {
+		if (this.object) {
+			this.object.rootObject = true;
+			this.object.el = this;
+			return this.object.render(createElement, this);
+		}
+	}
+}

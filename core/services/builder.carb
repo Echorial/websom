@@ -1,0 +1,24 @@
+class Websom.Services.Builder inherits Websom.Service {
+	Websom.Status buildAll() {
+		//If !php build vue
+		//build vieW
+		//build theme -> (less, js)
+		//build module -> (less, js)
+		//build data -> (classes)
+	}
+
+	`Builds all of the Carbon, php, and js classes for each module in the config.ini.modules dir.`
+	Websom.Status buildClass() {
+
+	}
+
+	`Builds all of the .view files from each module's config.views dir.`
+	Websom.Status buildView() {
+
+	}
+
+	`Concats each js, css file from the websom config and each module config into resource/client.js and resource/style.css.`
+	Websom.Status buildResource() {
+
+	}
+}

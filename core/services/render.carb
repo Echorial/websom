@@ -1,0 +1,33 @@
+namespace Websom.Render {}
+
+class Websom.Services.Render inherits Websom.Service {
+	override Websom.Status start() {
+		
+	}
+
+	string renderView(Websom.View view, Websom.Render.Context ctx) {
+		if (view.renderView == null) {
+			view.buildRenderView();
+		}
+
+		return view.renderView.render(ctx);
+	}
+
+	string renderView(string viewName, Websom.Render.Context ctx) {
+		var view = this.server.view.getView(viewName);
+
+		return this.renderView(view, ctx);
+	}
+
+	Websom.Render.View findView(string name) {
+		var Websom.View view = this.server.view.getView(name);
+		if (view != null) {
+			if (view.renderView == null) {
+				view.buildRenderView();
+			}
+			
+			return view.renderView;
+		}else
+			return null;
+	}
+}

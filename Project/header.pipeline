@@ -1,0 +1,9 @@
+platform = "header"
+
+output = "~/Project/header.json"
+
+entry = "websom.carb"
+
+exports = "Websom"
+
+type = "header"

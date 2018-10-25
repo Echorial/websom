@@ -1,0 +1,254 @@
+class Websom.Services.View inherits Websom.Service {
+	<Websom.View>array pages = new <Websom.View>array();
+	<Websom.View>array views = new <Websom.View>array(); //views should own each view
+	<Websom.View>array moduleViews = null;
+
+	override Websom.Status start() {
+		var status = new Websom.Status();
+		var refresh = false;
+
+		if (this.server.config.dev) {
+			refresh = true; // Always reload on dev (this causes slow php loads)
+		}
+
+		native javascript {
+			refresh = true; // Always reload on node
+		}
+
+		if (refresh == false) { // Make sure a cache exists if not make one
+			if (FileSystem.exists(this.server.config.root + "/viewCache.json") == false)
+				refresh = true;
+		}
+
+		if (refresh) { // Reloads all views and caches them into website/viewCache.json
+			if (FileSystem.isDir(this.server.config.root + "/pages"))
+				status.inherit(this.loadPages(this.server.config.root + "/pages/"));
+			
+			if (FileSystem.isDir(this.server.config.root + "/views"))
+				status.inherit(this.loadViews(this.server.config.root + "/views/"));
+			
+			this.moduleViews = this.getModuleViews(); //TODO: Fix hack.
+
+			this.buildCache();
+		}else{ // Fast cache load from website/viewCache.json
+			this.loadCache();
+		}
+
+		return status;
+	}
+
+	<map>array serializeViews(<Websom.View>array views) {
+		var vs = new <map>array();
+		
+		for (var int i in views) {
+			var view = views[i];
+
+			vs.push(view.serialize());
+		}
+
+		return vs;
+	}
+
+	<Websom.View>array loadViewCache(<map>array data) {
+		var views = new <Websom.View>array();
+
+		for (var int i in data) {
+			var d = data[i];
+
+			var v = new Websom.View(this.server);
+			v.deserialize(d);
+			v.shallow = true;
+
+			views.push(v);
+		}
+		
+		return views;
+	}
+
+	void loadCache() {
+		var map data = Websom.Json.parse(FileSystem.readSync(this.server.config.root + "/viewCache.json", "utf8"));
+
+		this.moduleViews = this.loadViewCache(data["module"]);
+		this.pages = this.loadViewCache(data["page"]);
+		this.views = this.loadViewCache(data["view"]);
+	}
+
+	void buildCache() {
+		var cache = new map();
+
+		cache["module"] = this.serializeViews(this.moduleViews);
+		cache["page"] = this.serializeViews(this.pages);
+		cache["view"] = this.serializeViews(this.views);
+
+		FileSystem.writeSync(this.server.config.root + "/viewCache.json", Websom.Json.encode(cache));
+	}
+
+	Websom.View getView(string name) {
+		for (var int i in this.views) {
+			if (this.views[i].name == name)
+				return this.views[i];
+		}
+
+		for (var int i in this.moduleViews) {
+			if (this.moduleViews[i].name == name)
+				return this.moduleViews[i];
+		}
+
+		return null;
+	}
+
+	<Websom.View>array getModuleViews() {
+		var views = new <Websom.View>array();
+
+		for (var int i in this.server.module.modules) {
+			var module = this.server.module.modules[i];
+
+			if ("resources" in module.baseConfig) {
+				var <map>array raw = module.baseConfig["resources"];
+
+				for (var int r in raw) { //WARN: TODO: Add safety checks for valid resource structure
+					var res = raw[r];
+					var string type = "";
+					var string path = res["path"];
+
+					if (("type" in res) == false) {
+						var realPath = FileSystem.resolve(module.root + "/" + path);
+						if (FileSystem.isDir(realPath)) {
+							var files = FileSystem.readDirSync(realPath);
+							for (var int f in files) {
+								var file = files[f];
+								var splits = file.split(".");
+								if (splits.length > 1)
+									if (splits[splits.length - 1] == "view") {
+										var view = new Websom.View(this.server);
+										view.owner = module;
+										var viewErr = view.loadFromFile(realPath + "/" + file);
+										
+										view.hasLocalExport = true;
+
+										views.push(view);
+									}
+							}
+						}
+					}else{
+						type = res["type"];
+						if (type == "view") {
+							var view = new Websom.View(this.server);
+							view.owner = module;
+							var viewErr = view.loadFromFile(FileSystem.resolve(module.root + "/" + path));
+							
+							view.hasLocalExport = true;
+
+							views.push(view);
+						}
+					}
+				}
+			}
+		}
+
+		return views;
+	}
+
+	void buildDev(string to) {
+		var output = "";
+		
+		for (var int i in this.views) {
+			var view = this.views[i];
+			output += view.buildDev();
+		}
+
+		FileSystem.writeSync(to, output);
+	}
+
+	string include() {
+		var file = this.server.config.resources + "/view.js";
+		if (this.server.config.dev) {
+			this.buildDev(file);
+		}else{
+			//TODO: Use vue to compile server side
+		}
+
+		/*if (this.server.config.dev == false) //Moved to router
+			vue = "local source"; //TODO: Add external resource config*/
+
+		return "<script src=\"" + this.server.config.clientResources + "/view.js\"></script>";
+	}
+
+	Websom.Status loadPage(string path) {
+		var page = new Websom.View(this.server);
+		var err = page.loadFromFile(path);
+		page.websiteView = true;
+		if (err != null)
+			return err;
+		page.isPage = true;
+		this.pages.push(page);
+		this.views.push(page);
+
+		if (this.server.config.dev) {
+			native javascript {
+				var fs = require("fs");
+				console.log("Setup watch on page view");
+				
+				fs.watch(path, (type, file) => {
+					console.log("Rebuilding " + path);
+					page.loadFromFile(path);
+				});
+			}
+		}
+	}
+
+	Websom.Status loadView(string path) {
+		var view = new Websom.View(this.server);
+		var err = view.loadFromFile(path);
+		view.websiteView = true;
+		if (err != null)
+			return err;
+		this.views.push(view);
+
+		if (this.server.config.dev) {
+			native javascript {
+				var fs = require("fs");
+				console.log("Setup watch on website view " + path);
+				
+				fs.watch(path, (type, file) => {
+					console.log("Rebuilding " + path);
+					view.loadFromFile(path);
+				});
+			}
+		}
+	}
+
+	Websom.Status loadPages(string dir) {
+		var files = FileSystem.readDirSync(dir);
+		for (var int i in files) {
+			var file = files[i];
+			if (FileSystem.isDir(dir + file))
+				continue;
+			
+			var splits = file.split(".");
+			if (splits.length > 1)
+				if (splits[splits.length - 1] == "view") {
+					var err = this.loadPage(dir + file);
+					if (err != null)
+						return err;
+				}
+		}
+	}
+
+	Websom.Status loadViews(string dir) {
+		var files = FileSystem.readDirSync(dir);
+		for (var int i in files) {
+			var file = files[i];
+			if (FileSystem.isDir(dir + file))
+				continue;
+			
+			var splits = file.split(".");
+			if (splits.length > 1)
+				if (splits[splits.length - 1] == "view") {
+					var err = this.loadView(dir + file);
+					if (err != null)
+						return err;
+				}
+		}
+	}
+}

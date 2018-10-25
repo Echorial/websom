@@ -1,0 +1,133 @@
+namespace Websom.Standard.PaymentSystem {}
+
+header relative Websom.Standard.PaymentSystem.Module inherits Websom.StandardModule {
+	const int success = 0;
+	const int paymentDenied = 1;
+	const int canceled = 2;
+	const int error = 3;
+	const int vendorError = 4;
+
+	`Registers a payment hook`
+	void register(string hookName, <void, Websom.Request, map, <void, Websom.Standard.PaymentSystem.Charge>function>function handler, <void, Websom.Request, map, <void, bool, string>function>function executed, <void, Websom.Request, map, Websom.Standard.PaymentSystem.Charge>function approved);
+}
+
+[Reroute]
+header interface Websom.Standard.PaymentSystem.Charge {
+	<Websom.Standard.PaymentSystem.Item>array items = new <Websom.Standard.PaymentSystem.Item>array();
+
+	string description = "";
+	string currency = "";
+	float price = 0;
+
+	string note = "";
+
+	float tax = 0;
+	float insurance = 0;
+	float shippingDiscount = 0;
+	float shipping = 0;
+	float handling = 0;
+	float subtotal = 0;
+
+	string custom = "";
+
+	string email = "";
+	Websom.Standard.UserSystem.User owner = null;
+
+	string firstName = "";
+	string lastName = "";
+
+	void @construct(string currency, float price, string description) {
+		this.currency = currency;
+		this.price = price;
+		this.description = description;
+	}
+
+	Websom.Standard.PaymentSystem.Charge addItem(Websom.Standard.PaymentSystem.Item item) {
+		this.items.push(item);
+		return this;
+	}
+}
+
+[Reroute]
+header interface Websom.Standard.PaymentSystem.Item {
+	string name = "";
+	string description = "";
+	string currency = "";
+	int amount = 0;
+	string sku = "";
+	float price = 0;
+
+	void @construct(string name,  string currency, float price) {
+		this.name = name;
+		this.currency = currency;
+		this.price = price;
+	}
+
+	Websom.Standard.PaymentSystem.Item setAmount(int amount) {
+		this.amount = amount;
+		return this;
+	}
+
+	Websom.Standard.PaymentSystem.Item setDescription(string description) {
+		this.description = description;
+		return this;
+	}
+
+	Websom.Standard.PaymentSystem.Item setSku(string sku) {
+		this.sku = sku;
+		return this;
+	}
+}
+
+[Linked="payments", Reroute]
+header interface Websom.Standard.PaymentSystem.Payment inherits Websom.StandardData {
+	primary autoIncrement field int id = 0;
+
+	[Length = 12]
+	expose field string publicId = "";
+
+	expose field Websom.Standard.UserSystem.User owner = null;
+
+	[Length = 512]
+	expose field string token = "";
+
+	[Length = 512]
+	expose field string email = "";
+
+	[Length = 512]
+	expose field string firstName = "";
+
+	[Length = 512]
+	expose field string lastName = "";
+
+	[Length = 512]
+	expose field string key = "";
+
+	expose field int amount = 0;
+
+	expose field float total = 0;
+
+	[Length = 12]
+	expose field string currency = "";
+
+	[Length = 512]
+	expose field string hook = "";
+
+	[Length = 512]
+	expose field string note = "";
+
+	[Length = 512]
+	expose field string custom = "";
+
+	[Length = 1]
+	expose field string status = "a";
+
+	`Custom type byte`
+	[Length = 1]
+	expose field string type = "a";
+
+	[Length = 512]
+	expose field string description = "";
+
+	expose field uint64 timestamp = 0;
+}

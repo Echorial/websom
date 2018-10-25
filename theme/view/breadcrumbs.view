@@ -1,0 +1,11 @@
+info {
+	"name": "breadcrumbs"
+}
+
+template {
+	<div class="breadcrumbs">
+		<a v-for="item in data" :href="item.href">
+			{{item.display}}
+		</a>
+	</div>
+}

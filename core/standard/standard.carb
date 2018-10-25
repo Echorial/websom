@@ -1,0 +1,109 @@
+namespace Websom.Standard {
+
+}
+
+class Websom.StandardModule inherits Websom.Module {}
+
+header class Websom.StandardData {
+	override void @construct(Websom.Server server) {
+		this.websomServer = server;
+	}
+
+	void callLoadFromMap(map raw, <void, string>function callback) {
+		native javascript {
+			return this.loadFromMap(raw, callback);
+		}
+
+		native php {
+			return $this->loadFromMap($raw, $callback);
+		}
+	}
+
+	override Websom.FieldInfo websomFieldInfo = null;
+	override Websom.Data websomParentData = null;
+	override Websom.Container websomContainer = null;
+	override Websom.Server websomServer = null;
+
+	override trust void setField(string name, everything value) {
+		native javascript {
+			this[name] = value;
+		}
+
+		native php {
+			$this->$name = $value;
+		}
+	}
+
+	fixed Websom.DataInfo getDataInfo() {
+		native javascript {
+			return this.getInfo();
+		}
+
+		native php {
+			return self::getInfo();
+		}
+	}
+
+	override fixed void spawnFromId(Websom.Server server, string table, primitive id, <void, string, Websom.Data>function done) {
+		var Websom.DataInfo dataInfo = null;
+		native javascript {
+			dataInfo = this.getInfo();
+		}
+
+		native php {
+			$dataInfo = self::getInfo();
+		}
+
+		var container = new Websom.Containers.Table(server, table, dataInfo);
+		var data = dataInfo.spawn(server);
+		data.websomContainer = container;
+		data.loadFromId(container, id, void (string err) => {
+			done(err, data);
+		});
+	}
+
+	override map exposeToClient() {
+		native javascript {
+			return this.exposeToClientBase();
+		}
+
+		native php {
+			return $this->exposeToClientBase();
+		}
+	}
+}
+
+#include "./dashboard.carb"
+#include "./userSystem.carb"
+#include "./paymentSystem.carb"
+#include "./richText.carb"
+#include "./comment.carb"
+#include "./image.carb"
+#include "./forum.carb"
+
+#script Carbon
+
+var register = void (string module) => {
+	if (typeOf(websomRegister) != "null")
+		websomRegister(module);
+};
+
+Carbon.on("inherits.Websom.StandardData", void (Carbon.Class base, Carbon.Class cls) => {
+	Carbon.on("inerhits." + cls.route, void (Carbon.Class base, Carbon.Class cls2) => {
+		cls2.reroute = cls.route;
+	});
+});
+
+Carbon.on("inherits.Websom.StandardModule", bool (Carbonite.Class base, Carbonite.Class standard) => {
+	Carbon.on("inherits." + standard.route, bool (Carbonite.Class sBase, Carbonite.Class module) => {
+		module.reroute = sBase.route;
+		register(module);
+	});
+});
+
+Carbon.on("inherits.Websom.Module", bool (Carbonite.Class base, Carbonite.Class module) => {
+	if (module.route != "Websom.StandardModule")
+		register(module);
+});
+
+#end script

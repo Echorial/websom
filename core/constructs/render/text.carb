@@ -1,0 +1,35 @@
+class Websom.Render.Text inherits Websom.Render.Node {
+	string text = "";
+
+	void @construct(string text) {
+		this.isText = true;
+		this.text = text;
+	}
+
+	override string render(Websom.Render.Context ctx) {
+		var str = this.text;
+
+		native php {
+			$str = preg_replace_callback("{{([^}]*)}}", function ($match) {
+					return $ctx->find($match[0]);
+				}, $str);
+		}
+
+		native javascript {
+			str = str.replace(new RegExp("{{([^}]*)}}", "gm"), function (match, name) {
+				return ctx.find(name);
+			});
+		}
+
+		return str; //TODO: Handle variables
+	}
+
+	map serialize() {
+		var mp = new map();
+		
+		mp["t"] = "t";
+		mp["c"] = this.text;
+
+		return mp;
+	}
+}

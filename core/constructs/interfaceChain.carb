@@ -1,0 +1,191 @@
+class Websom.InterfaceChain {
+	Websom.Container parent = null;
+	Websom.InterfaceChain upChain = null;
+	<Websom.InterfaceChain>map subs = new <Websom.InterfaceChain>map();
+
+	Websom.InterfaceOptions io = null;
+	string currentMode = "interface";
+
+	void @construct(Websom.Container parent, string route) {
+		this.parent = parent;
+		this.io = new Websom.InterfaceOptions(route);
+		this.parent.interface(this.io);
+	}
+
+	void @construct(Websom.Container parent, Websom.InterfaceChain upChain) {
+		this.parent = parent;
+		this.io = new Websom.InterfaceOptions(upChain.io.route);
+		this.upChain = upChain;
+	}
+
+	Websom.InterfaceChain select() {
+		this.currentMode = "select";
+		this.io.canSelect = true;
+		return this;
+	}
+	
+	Websom.InterfaceChain insert() {
+		this.currentMode = "insert";
+		this.io.canInsert = true;
+		return this;
+	}
+
+	Websom.InterfaceChain update() {
+		this.currentMode = "update";
+		this.io.canUpdate = true;
+		return this;
+	}
+
+	Websom.InterfaceChain interface() {
+		this.currentMode = "interface";
+		this.io.canInterface = true;
+		return this;
+	}
+
+	Websom.InterfaceChain up() {
+		return this.upChain;
+	}
+
+	Websom.InterfaceChain restrict(string field) {
+		var mode = this.currentMode;
+		if (mode == "interface")
+			mode = "global";
+		var restrict = new Websom.InputRestriction(mode, field);
+		this.io.restricts.push(restrict);
+
+		return this;
+	}
+
+	`Restricts the current field to the custom restrictor by key`
+	Websom.InterfaceChain to(string key, string value) {
+		if (this.io.restricts.length > 0) {
+			var r = this.io.restricts[this.io.restricts.length - 1];
+
+			r.simple = true;
+			r.key = key;
+			r.value = value;
+		}
+
+		return this;
+	}
+
+	Websom.InterfaceChain multipart() {
+		this.io.multipart = true;
+
+		return this;
+	}
+
+	`Restricts the current field to users with the permission`
+	Websom.InterfaceChain to(string permission) {
+		return this.to("permission", permission);
+	}
+
+	`Restricts the current field to the custom callback`
+	Websom.InterfaceChain to(<void, <void, bool>function>function callback) {
+		if (this.io.restricts.length > 0) {
+			var r = this.io.restricts[this.io.restricts.length - 1];
+
+			r.simple = false;
+			r.callback = callback;
+		}
+
+		return this;
+	}
+
+	Websom.InterfaceChain sub(string fieldName) {
+		if (this.subs[fieldName] == null) {
+			var childChain = new Websom.InterfaceChain(this.parent, this);
+			childChain.io.route = this.io.route;
+			this.subs[fieldName] = childChain;
+			this.io.subs[fieldName] = childChain.io;
+			return childChain;
+		}else{
+			var Websom.InterfaceChain cast = this.subs[fieldName];
+			return cast;
+		}
+	}
+
+	Websom.InterfaceChain mustOwn() {
+		this.io.mustOwnUpdate = true;
+		return this;
+	}
+
+	Websom.InterfaceChain mustLogin() {
+		this.io.mustLogin = true;
+		return this;
+	}
+
+	Websom.InterfaceChain unique(string key) {
+		this.io.uniqueKeys.push(key);
+		this.control(new Websom.Controls.Unique(key));
+		return this;
+	}
+
+	Websom.InterfaceChain autoPublicId() {
+		this.io.autoPublicId = true;
+		return this;
+	}
+
+	Websom.InterfaceChain timestamp() {
+		this.io.autoTimestamp = true;
+		return this;
+	}
+
+	trust Websom.InterfaceChain control(Websom.Control control) {
+		if (this.currentMode == "select") {
+			this.io.selectControls.push(control);
+		}else if (this.currentMode == "update") {
+			this.io.updateControls.push(control);
+		}else if (this.currentMode == "insert") {
+			this.io.insertControls.push(control);
+		}else if (this.currentMode == "interface") {
+			this.io.controls.push(control);
+		}
+
+		return this;
+	}
+
+	Websom.InterfaceChain success(<void, Websom.Input, Websom.Data, Websom.ClientMessage, <void, Websom.ClientMessage>function>function func) {
+		if (this.currentMode == "update") {
+			this.io.successUpdate = func;
+		}else if (this.currentMode == "insert") {
+			this.io.successInsert = func;
+		}
+
+		return this;
+	}
+
+	Websom.InterfaceChain on(<void, Websom.Input, Websom.DatabaseInterface, <void, string>function>function func) {
+		if (this.currentMode == "select") {
+			this.io.onSelect = func;
+		}else if (this.currentMode == "update") {
+			this.io.onUpdate = func;
+		}else if (this.currentMode == "insert") {
+			this.io.onInsert = func;
+		}
+
+		return this;
+	}
+
+	Websom.InterfaceChain expose(<void, map, Websom.Data, <void, map>function>function func) {
+		this.io.expose(func);
+		return this;
+	}
+
+	Websom.InterfaceChain authPermission(string perm) {
+		if (this.currentMode == "select") {
+			this.io.selectPermission = perm;
+		}else if (this.currentMode == "update") {
+			this.io.updatePermission = perm;
+		}else if (this.currentMode == "insert") {
+			this.io.insertPermission = perm;
+		}
+		this.io.hasAuth = true;
+		return this;
+	}
+
+	Websom.InterfaceChain autoControl(Websom.DataInfo info) {
+		this.io.autoControl(info);
+		return this;
+	}
+}

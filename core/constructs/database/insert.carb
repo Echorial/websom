@@ -1,0 +1,43 @@
+class Websom.DatabaseInsert inherits Websom.DatabaseInterface {
+	string table = "";
+	int number = 1;
+
+	bool isMulti = false;
+
+	array values = new array();
+
+	map multiKeys = new map();
+
+	<Websom.DatabaseUpdate>array inserts = new <Websom.DatabaseUpdate>array(); //TODO: Make DatabaseUpdate generic
+
+	<<Websom.DatabaseUpdate>array>array multiInserts = new <<Websom.DatabaseUpdate>array>array();
+
+	void @construct(Websom.Database database, string table) {
+		
+	}
+
+	bool doesSet(string field) {
+		for (var int i in this.inserts)
+			if (this.inserts[i].field == field)
+				return true;
+		
+		return false;
+	}
+
+	Websom.DatabaseInsert run(<void, string, primitive>function callback);
+
+	Websom.DatabaseInsert amount(int number) {
+		this.number = number;
+		return this;
+	}
+
+	Websom.DatabaseInsert multi() {
+		this.isMulti = true;
+		return this;
+	}
+
+	Websom.DatabaseInsert new();
+
+	Websom.DatabaseInsert set(string field, primitive value);
+	primitive get(string field);
+}

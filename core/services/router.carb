@@ -1,0 +1,253 @@
+class Websom.Services.Router inherits Websom.Service {
+	<Websom.Route>array routes = new <Websom.Route>array();
+
+	Websom.Route route(string routeString, <void, Websom.Request>function handler) {
+		var splits = this.buildSplits(routeString);
+		
+		var route = new Websom.Route(routeString, splits, handler);
+		this.routes.push(route);
+		return route;
+	}
+
+	override Websom.Status start() {
+		for (var int i in this.server.view.pages) {
+			var view = this.server.view.pages[i];
+			this.routeView(view);
+		}
+
+		var that = this;
+		if (this.server.config.dev)
+			this.route("/websom.info", void (Websom.Request req) => {
+				var info = new <string>array();
+				info.push("<tr><th>Website root</th><th>" + that.server.config.root + "</th></tr>");
+				req.send("<h1>Websom server info</h1><br><table><thead><th>Info</th><th>Value</th></thead><tbody>" + info.join("") + "</tbody></table>");
+			});
+	}
+
+	void injectSends(Websom.Request req, map clientData, <void>function readyToSend) {
+		var clientDatas = this.server.module.modules.length;
+
+		for (var int i in this.server.module.modules) {
+			var mod = this.server.module.modules[i];
+			var shouldWait = mod.clientData(req, void (string key, primitive value) => {
+				clientDatas--;
+				clientData[key] = value;
+				if (clientDatas == 0) {
+					readyToSend();
+				}
+			});
+
+			if (shouldWait == false)
+				clientDatas--;
+			
+			if (clientDatas == 0)
+				readyToSend();
+		}
+	}
+
+	string include() {
+		if (this.server.config.dev) {
+			return '<script src="https:/' + '/cdn.jsdelivr.net/npm/vue/dist/vue.js"></script><script src="' + this.server.config.clientResources + '/client.js"></script>'
+				+ this.server.view.include()
+				+ this.server.resource.include(true)
+				+ this.server.theme.include()
+				+ this.server.input.clientValidate;
+		}else{
+			return '<script src="https:/' + '/cdn.jsdelivr.net/npm/vue/dist/vue.js"></script><script src="' + this.server.config.clientResources + '/client.js"></script>'
+				+ this.server.resource.include(false)
+				+ '<script src="' + this.server.config.clientResources + '/js.js"></script>'
+				+ '<link rel="stylesheet" href="' + this.server.config.clientResources + '/css.css">';
+		}
+	}
+
+	string wrapPage(string content) {
+		var metas = "";
+
+		if (this.server.config.hasManifest)
+			metas += "<link rel='manifest' href='" + this.server.config.manifestPath + "'>";
+
+		return "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
+	}
+
+	void sendStringView(Websom.Request req, string template) {
+		var themeClass = "theme";
+
+		if (this.server.config.defaultTheme.length > 0) {
+			themeClass = "theme-" + this.server.config.defaultTheme;
+		}
+
+		req.send(this.wrapPage("<script>Websom.Client = {};</script><div id='page' class='" + themeClass + "'>" + template + "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
+	}
+
+	Websom.Route routeString(string route, string template) {
+		var that = this;
+		return this.route(route, void (Websom.Request req) => {
+			var data = new map();
+			
+			var themeClass = "theme";
+
+			if (that.server.config.defaultTheme.length > 0) {
+				themeClass = "theme-" + that.server.config.defaultTheme;
+			}
+
+			var clientData = new map();
+			var clientDatas = 0;
+
+			var readyToSend = void () => {
+				var rawClientData = Websom.Json.encode(clientData);
+				if (rawClientData == "null")
+					rawClientData = "{}";
+				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'>" + template + "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
+			};
+
+			that.injectSends(req, clientData, readyToSend);
+		});
+	}
+
+	Websom.Route navView(string routeStr, string container, string view, string validate, bool canEdit, string editKey) {
+		var canEditStr = "false";
+		if (canEdit)
+			canEditStr = "true";
+
+		var Websom.Route route = this.routeString(routeStr, "<default-body><nav-view validate='" + validate + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :can-edit='" + canEditStr + "' /></default-body>");
+		route.greedy = true;
+
+		return route;
+	}
+
+	Websom.Route quickRoute(string route, string viewName) {
+		var that = this;
+		return this.route(route, void (Websom.Request req) => {
+			var data = new map();
+			
+			var themeClass = "theme";
+
+			if (that.server.config.defaultTheme.length > 0) {
+				themeClass = "theme-" + that.server.config.defaultTheme;
+			}
+
+			var clientData = new map();
+			var clientDatas = 0;
+
+			var readyToSend = void () => {
+				var rawClientData = Websom.Json.encode(clientData);
+				if (rawClientData == "null")
+					rawClientData = "{}";
+				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'><" + viewName + " v-bind:data='data'></" + viewName + "></div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
+			};
+
+			that.injectSends(req, clientData, readyToSend);
+		});
+	}
+
+	`Handles all of the pages/view.view routing`
+	void routeView(Websom.View view) {
+		var that = this;
+		this.route(view.handles, void (Websom.Request req) => {
+			var data = new map();
+			
+			if (view.hasServerScript)
+				data = view.runServerScript(req);
+			
+			var themeClass = "theme";
+
+			if (that.server.config.defaultTheme.length > 0) {
+				themeClass = "theme-" + that.server.config.defaultTheme;
+			}
+
+			var clientData = new map();
+			var clientDatas = 0;
+
+			var readyToSend = void () => {
+				var rawClientData = Websom.Json.encode(clientData);
+				var content = "<script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: " + data.toJson() + "}}); $('#server-static').remove();</script>";
+				var serverStatic = "";
+
+				var ctx = new Websom.Render.Context();
+				if (that.server.config.forceSsr) {
+					content = that.server.render.renderView(view, ctx);
+				}else{
+					//serverStatic = "<div id='server-static' class='" + themeClass + "'>" + that.server.render.renderView(view, ctx) + "</div>";
+				}
+				if (rawClientData == "null")
+					rawClientData = "{}";
+				req.send(that.wrapPage(serverStatic + "<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'><" + view.name + " v-bind:data='data'></" + view.name + "></div>" + content));
+			};
+
+			that.injectSends(req, clientData, readyToSend);
+		});
+	}
+
+	// value flag will loosely return by value(this is for php)
+	value <string>array buildSplits(string route) {
+		return route.split("/"); //Parse out query and validate each split.
+	}
+
+	Websom.Route find(string query) {
+		var <string>array splits = this.buildSplits(query);
+		
+		for (var int i in this.routes) {
+			var route = this.routes[i];
+			if (route.match(splits)) {
+				return route;
+			}
+		}
+
+		return null;
+	}
+
+	void handle(Websom.Request req) {
+		var route = this.find(req.path);
+		if (route == null) {
+			req.code(404);
+			req.send("Error page not found."); //Setup 404 view
+		}else{
+			route.handle(req);
+		}
+	}
+}
+
+class Websom.Route {
+	`Should this route capture all sub routes` //TODO: Provide example
+	bool greedy = false;
+
+	string route = "";
+	<string>array splits = null;
+
+	<void, Websom.Request>function handler = null;
+
+	void @construct(string route, <string>array splits, <void, Websom.Request>function handler) {
+		this.route = route;
+		this.splits = splits;
+		
+		this.handler = handler;
+	}
+
+	bool match(<string>array otherSplits) { //Could use some cleaning
+		if (this.greedy == false)
+			if (this.splits.length != otherSplits.length)
+				return false;
+		
+		if (this.splits.length > otherSplits.length)
+			return false;
+
+		if (this.greedy) {
+			for (var int i in this.splits) {
+				var split = this.splits[i];
+				if (split != otherSplits[i])
+					return false;
+			}
+		}else{
+			for (var int i in otherSplits) {
+				if (otherSplits[i] != this.splits[i])
+					return false;
+			}
+		}
+
+		return true;
+	}
+
+	void handle(Websom.Request req) {
+		this.handler(req);
+	}
+}

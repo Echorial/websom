@@ -1,0 +1,55 @@
+class Websom.Services.Database inherits Websom.Service {
+	Websom.Database primary = null;
+	<Websom.Database>array databases = new <Websom.Database>array();
+
+	Websom.Status loadDatabase(map raw) {
+		if (("type" in raw) == false)
+			return Websom.Status.singleError("Services.Database", "No type provided in database config " + raw["name"]);
+
+		var string type = raw["type"];
+		var database = Websom.Database.make(this.server, type);
+
+		if (database == null)
+			return Websom.Status.singleError("Services.Database", "Unkown database type '" + type + "'");
+
+		database.load(raw);
+
+		native javascript {
+			database.connect((err) => { //Don't be lazy on node servers.
+				if (err)
+					console.log(err.display());
+			});
+		}
+
+		this.databases.push(database);
+	}
+
+	Websom.Status start() {
+		if (this.server.config.databaseFile.length > 0) {
+			var map config = Websom.Json.parse(FileSystem.readSync(this.server.config.databaseFile, "utf8"));
+
+			if ("databases" in config) {
+				var <map>array databases = config["databases"];
+				for (var int i in databases) {
+					var database = databases[i];
+					
+					native php { //Hack to tell php database is a map and not array
+						$database["_c__mapC"] = true;
+					}
+
+					var err = this.loadDatabase(database);
+
+					if (err != null)
+						return err;
+				}
+			}
+
+			if ("default" in config)
+				for (var int i in this.databases)
+					if (this.databases[i].name == config["default"]) {
+						this.primary = this.databases[i];
+						return null;
+					}
+		}
+	}
+}

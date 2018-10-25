@@ -1,0 +1,51 @@
+#include "database"
+
+namespace Websom.Databases {}
+
+class Websom.Database {
+	Websom.Server server = null;
+	map config = null;
+	string name = "";
+	bool open = false;
+	bool connecting = false;
+
+	<<void>function>array waits = new <<void>function>array();
+
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	fixed Websom.Database make(Websom.Server server, string type) {
+		if (type == "mysql") {
+			return new Websom.Databases.MySql(server);
+		}
+	}
+
+	void wait(<void>function func) {
+		this.waits.push(func);
+	}
+
+	Websom.Status load(map config) {
+		this.config = config;
+		this.name = this.config["name"];
+	}
+
+	void connected() {
+		for (var int i in this.waits) {
+			this.waits[i]();
+		}
+	}
+
+	void connect(<void, Websom.Status>function callback);
+
+	void close();
+
+	Websom.DatabaseSelect from(string table);
+	Websom.DatabaseInsert into(string table);
+
+	Websom.DatabaseStructure structure(string table) {
+		return new Websom.DatabaseStructure(this, table);
+	}
+
+	void runStructure(Websom.DatabaseStructure dbs, <void, string>function callback);
+}

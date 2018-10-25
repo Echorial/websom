@@ -1,0 +1,9 @@
+info {
+	"name": "card"
+}
+
+template {
+	<div class="card">
+		<slot/>
+	</div>
+}

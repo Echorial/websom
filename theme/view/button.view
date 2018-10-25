@@ -1,0 +1,11 @@
+info {
+	"name": "btn"
+}
+
+template {
+	<button class="button">{{$options.propsData.content ? content : "Button"}}</button>
+}
+
+client {
+	props: ["content"]
+}

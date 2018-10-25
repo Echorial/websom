@@ -1,0 +1,976 @@
+class Websom.Containers.Table inherits Websom.Container {
+	<Websom.Data, map>function load = null;
+	<Websom.Data>function create = null;
+	<Websom.DataInfo>function info = null;
+
+	<void, <map>array>function selectHook = null;
+
+	`Used in sub interfaceSelect`
+	Websom.Data subParent = null;
+	
+	string table = "";
+	string tableEntityName = "";
+
+	void @construct(string tableName, <Websom.Data>function create, <Websom.Data, map>function load, <Websom.DataInfo>function info) {
+		
+	}
+
+	void @construct(Websom.Server server, string tableName, Websom.DataInfo info) {
+		this.server = server;
+		this.table = tableName;
+		this.name = tableName;
+		this.dataInfo = info;
+		this.tableEntityName = tableName;
+	}
+
+	void realize(Websom.Database db, <void, string>function done) {
+		var str = this.dataInfo.buildStructure();
+		var subs = this.dataInfo.buildLinkedStructures(this.tableEntityName);
+		str.database = db;
+		str.table = this.table;
+		var builts = 0;
+		var errors = "";
+		var built = void (string err) => {
+			builts--;
+			
+			if (err.length > 0)
+				errors += err + "\n";
+
+			if (builts == 0)
+				done(errors);
+		};
+
+		builts++;
+		builts += subs.length;
+		str.run(built);
+
+		for (var int i in subs) {
+			var subStr = subs[i];
+			subStr.database = db;
+			subStr.table = this.table + "_" + subStr.table;
+			subStr.run(built);
+		}
+	}
+
+	fixed trust void loadArray(Websom.DatabaseSelect query, string type, <void, <Websom.Data>array>function callback) {
+		var db = query.database;
+		var table = query.table;
+		var dataInfo = Websom.DataInfo.getDataInfoFromRoute(type);
+		var container = new Websom.Containers.Table(db.server, table, dataInfo);
+		var arr = new <Websom.Data>array();
+
+		query.run(void (string err, <map>array docs) => {
+			var dones = docs.length;
+			if (docs.length == 0)
+				callback(arr);
+			
+			for (var int i in docs) {
+				var doc = docs[i];
+				var obj = dataInfo.spawn(db.server);
+				obj.websomContainer = container;
+				arr.push(obj);
+				obj.nativeLoadFromMap(doc, void (string err2) => {
+					dones--;
+					if (dones == 0)
+						callback(arr);
+				});
+			}
+		});
+	}
+
+	//We trust this method to keep it from rejecting Websom.Data when modules that have unkown data types call it.
+	override trust void insert(Websom.Data data, <void, string, primitive>function done) {
+		var insert = this.server.database.primary.into(this.table); //TODO: Add custom database refs
+		
+		for (var int i in this.dataInfo.fields) {
+			var field = this.dataInfo.fields[i];
+			var primitive value = null;
+			
+			if (field.isPrimitive) {
+				native javascript {
+					value = data[field.realName];
+				}
+				
+				native php {
+					$inter = $field->realName;
+					$value = $data->$inter;
+				}
+			}
+
+			insert.set(field.fieldName, value);
+		}
+
+		insert.run(done);
+	}
+
+	`Not used`
+	map setupSubSorts(map data) {
+		for (var int i in this.dataInfo.fields) {
+			var field = this.dataInfo.fields[i];
+			if ("NoLoad" in field.attributes) {
+				var mp = new map();
+				mp["container"] = this.table;
+				mp["sub"] = field.fieldName;
+				mp["target"] = "";
+				data[field.fieldName] = mp;
+			}
+		}
+	}
+
+	trust void handleInlineSubSelects(Websom.InterfaceOptions opts, Websom.Input input, Websom.Data parent, map docData, <Websom.FieldInfo>array subFields, <void, map>function loaded) {
+		var that = this;
+		var fields = subFields.length;
+
+		var checkDone = void () => {
+			fields--;
+
+			if (fields <= 0) {
+				loaded(docData);
+			}
+		};
+
+		for (var int si in subFields) {
+			var close = void (int i) => {
+				var field = subFields[i];
+				var Websom.InterfaceOptions subOpts = opts.subs[field.fieldName];
+				var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+				var subInfo = Websom.DataInfo.getDataInfoFromRoute(link.fieldType);
+				var tbl = new Websom.Containers.Table(that.server, that.table + "_" + field.fieldName, subInfo);
+				tbl.subParent = parent;
+				tbl.selectHook = void (<map>array subDocs) => {
+					docData[field.fieldName] = subDocs;
+					checkDone();
+				};
+
+				tbl.interfaceSelect(subOpts, new Websom.Input("", input.raw[field.fieldName], input.request), new Websom.CallContext());
+			};
+			close(si);
+		}
+
+		if (subFields.length == 0)
+			loaded(docData);
+	}
+
+	void handleSubSelect(Websom.InterfaceOptions opts, Websom.Input input, Websom.CallContext ctx) {
+		var that = this;
+
+		// Validate sub input
+		if (input.raw["parentDocument"].typeAsString() != "string") {
+			input.sendError("Invalid parentDocument input");
+			return null;
+		}
+
+		var string docPublicId = input.raw["parentDocument"];
+
+		// Load in the parent document(Allows Websom.Data to validate users sub selecting their children)
+		var Websom.Containers.Table parentTable = this.parentContainer;
+		parentTable.loadFromSelect(parentTable.from().where("publicId").equals(docPublicId), void (<Websom.Data>array docs) => {
+			if (docs.length == 0) {
+				input.sendError("Invalid document");
+				return null;
+			}
+			
+			ctx.subContainerCall = true;
+			ctx.data = docs[0];
+
+			that.interfaceSelect(opts, input, ctx);
+		});
+	}
+
+	void handleSubInsert(Websom.InterfaceOptions opts, Websom.Input input, map values, Websom.ClientMessage message, Websom.FieldInfo fieldInfo, Websom.Data parentData, <void, primitive>function callback, Websom.CallContext ctx) {
+		var that = this;
+
+		// Validate sub input
+		if (input.raw["parentDocument"].typeAsString() != "string") {
+			input.sendError("Invalid parentDocument input");
+			return null;
+		}
+
+		var string docPublicId = input.raw["parentDocument"];
+
+		// Load in the parent document(Allows Websom.Data to validate users sub selecting their children)
+		var Websom.Containers.Table parentTable = this.parentContainer;
+		parentTable.loadFromSelect(parentTable.from().where("publicId").equals(docPublicId), void (<Websom.Data>array docs) => {
+			if (docs.length == 0) {
+				input.sendError("Invalid document");
+				return null;
+			}
+			
+			ctx.subContainerCall = true;
+			ctx.data = docs[0];
+
+			that.insertFromInterfaceCallback(opts, input, values, message, fieldInfo, parentData, callback, ctx);
+		});
+	}
+
+	override void interfaceSelect(Websom.InterfaceOptions opts, Websom.Input input, Websom.CallContext ctx) {
+		var that = this;
+		if (opts.canSelect) {
+			if (opts.overrideSelect != null) {
+				opts.overrideSelect(input);
+			}else{
+				/*if ("sub" in input.raw and input.raw["sub"] != null) {
+					this.handleSubSelect(opts, input);
+
+					return null;
+				}*/
+
+				var Websom.Data subParent = null;
+
+				if ("parentDocument" in input.raw and input.raw["parentDocument"] != null and ctx.subContainerCall == false) {
+					this.handleSubSelect(opts, input, ctx);
+
+					return null;
+				}
+				
+				if (ctx.subContainerCall) {
+					subParent = ctx.data;
+				}
+
+				var subFields = new <Websom.FieldInfo>array();
+				var publicFields = new <Websom.FieldInfo>array();
+				for (var int i in this.dataInfo.fields) {
+					var field = this.dataInfo.fields[i];
+					if (field.fieldName in input.raw and input.raw[field.fieldName].typeAsString() == "map") {
+						if (opts.subs.hasKey(field.fieldName)) {
+							subFields.push(field);
+						}else{
+							if (that.server.config.dev) {
+								Exception.throw("Illegal sub query sent on field '" + field.fieldName + "' with query " + Websom.Json.encode(input.raw[field.fieldName]));
+							}
+						}
+					}else if (field.fieldName in input.raw and input.raw[field.fieldName].typeAsString() == "string") {
+						if (field.singleLink)
+							publicFields.push(field);
+					}
+				}
+
+				var select = this.server.database.primary.from(this.table);
+
+				var callingSelect = void () => {
+					if (subParent != null)
+						select.where("parentId").equals(subParent.getField("id")).and().group();
+					
+					var offset = 0;
+					if ("_w_loadMore" in input.raw)
+						if (input.raw["_w_loadMore"].typeAsString() == "string")
+							offset = opts.maxSelect * int.parse(input.raw["_w_loadMore"]);
+					
+					select.limit(offset, offset + opts.maxSelect + 1); // + 1 so we can detect if we need a load more button
+					var message = new Websom.ClientMessage();
+					var hadError = false;
+					var valids = opts.controls.length + opts.selectControls.length;
+
+					var ready = void () => {
+						if (opts.hasPublicIdSelect) {
+							if ("publicId" in input.raw and that.dataInfo.hasField("publicId") and input.raw["publicId"].typeAsString() == "string") {
+								var string publicId = input.raw["publicId"];
+								if (publicId.length > 3 and publicId.length < 255)
+									select.and().where("publicId").equals(input.raw["publicId"]);
+							}
+						}
+
+						if (hadError) {
+							input.send(message.stringify());
+						}else{
+							if (subParent != null)
+								select.endGroup();
+							
+							select.run(void (string err, <map>array docs) => {
+								var loadMore = false;
+								if (docs.length > opts.maxSelect) {
+									loadMore = true;
+								}
+
+								var sends = new <primitive>array();
+								var datas = new <Websom.Data>array();
+								var loads = 0;
+								var checkDone = void (string err3) => {
+									loads--;
+									if (loads == 0) {
+										if (that.selectHook == null) {
+											var <string>array castSends = sends;
+											if (loadMore)
+												castSends.push("{\"_w_loadMore\": true}");
+											
+											input.send('{"documents": [' + castSends.join(", ") + ']}');
+										}else{
+											that.selectHook(sends);
+										}
+									}
+								};
+								loads += docs.length;
+								if (loadMore)
+									loads--;
+
+								for (var int doc in docs) {
+									var close = void (int doci) => {
+										var data = that.dataInfo.spawn(that.server);
+										data.websomContainer = that;
+										data.websomServer = that.server;
+										datas.push(data);
+										data.nativeLoadFromMap(docs[doci], void (string err2) => {
+											data.onSend(input.request, data.exposeToClient(), void (map sendData) => {
+												if (opts.selectExpose == null) {
+													that.handleInlineSubSelects(opts, input, data, sendData, subFields, void (map outData) => {
+														if (that.selectHook == null) {
+															sends.push(Websom.Json.encode(outData));
+														}else{
+															sends.push(outData);
+														}
+
+														checkDone(err2);
+													});
+												}else{
+													opts.selectExpose(sendData, data, void (map exposeData) => {
+														that.handleInlineSubSelects(opts, input, data, exposeData, subFields, void (map outData) => {
+															if (that.selectHook == null) {
+																sends.push(Websom.Json.encode(outData));
+															}else{
+																sends.push(outData);
+															}
+
+															checkDone(err2);
+														});
+													});
+												}
+											});
+										});
+									};
+
+									var should = true;
+									if (loadMore and doc == docs.length - 1) {
+										should = false;
+									}
+									if (should)
+										close(doc);
+								}
+
+								if (docs.length == 0) {
+									loads++;
+									checkDone("");
+								}
+							});
+						}
+					};
+					var grouped = false;
+
+					var runControl = void (Websom.Control control) => {
+						control.filter(input, select, void (Websom.InputValidation val) => {
+							valids--;
+
+							if (val != null) {
+								if (val.hadError)
+									hadError = true;
+
+								message.add(val);
+							}
+
+							if (valids == 0) {
+								if (grouped)
+									select.endGroup();
+								ready();
+							}
+						});
+					};
+
+					if (opts.hasPublicIdSelect) // Sub linked public id selecting
+						if (publicFields.length > 0) {
+							valids += publicFields.length;
+
+							for (var int fi in publicFields) {
+								var close = void (int i) => {
+									var field = publicFields[i];
+									//var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+									var subInfo = Websom.DataInfo.getDataInfoFromRoute(field.typeRoute);
+									if ("Linked" in subInfo.attributes) {
+										var tbl = new Websom.Containers.Table(that.server, subInfo.attributes["Linked"], subInfo);
+
+										tbl.loadFromSelect(tbl.from().where("publicId").equals(input.raw[field.fieldName]), void (<Websom.Data>array docs) => {
+											if (docs.length > 0)
+												select.and().where(field.fieldName).equals(docs[0].getField("id")).and();
+											valids--;
+											if (valids == 0)
+												ready();
+										});
+									}else{
+										valids--;
+										if (valids == 0)
+											ready();
+									}
+								};
+								close(fi);
+							}
+						}
+
+					for (var int i in opts.controls) {
+						if (grouped == false) {
+							select.group();
+							grouped = true;
+						}
+						var control = opts.controls[i];
+						runControl(control);
+					}
+
+					for (var int i in opts.selectControls) {
+						if (grouped == false) {
+							select.group();
+							grouped = true;
+						}
+						var control = opts.selectControls[i];
+						runControl(control);
+					}
+
+					if (opts.controls.length + opts.selectControls.length == 0)
+						ready();
+				};
+
+				if (opts.onSelect != null) {
+					select.group();
+					opts.onSelect(input, select, void (string err) => {
+						select.endGroup().and();
+						if (err != null) {
+							input.send('{"error": ' + Websom.Json.encode(err) + '}');
+						}else{
+							callingSelect();
+						}
+					});
+				}else{
+					callingSelect();
+				}
+			}
+		}
+	}
+
+	trust void insertFromInterface(Websom.InterfaceOptions opts, Websom.Input input, map values, Websom.ClientMessage message, Websom.FieldInfo fieldInfo, Websom.Data parentData, Websom.CallContext ctx) {
+		this.insertFromInterfaceCallback(opts, input, values, message, fieldInfo, parentData, null, ctx);
+	}
+
+	trust void insertFromInterfaceCallback(Websom.InterfaceOptions opts, Websom.Input input, map values, Websom.ClientMessage message, Websom.FieldInfo fieldInfo, Websom.Data parentData, <void, primitive>function callback, Websom.CallContext ctx) { //TODO: Rewrite this horrendous code
+		var that = this;
+		var obj = this.dataInfo.spawn(this.server);
+		obj.websomServer = this.server;
+		obj.websomParentData = parentData;
+
+		var Websom.Data subParent = null;
+
+		if ("parentDocument" in input.raw and input.raw["parentDocument"] != null and ctx.subContainerCall == false) {
+			this.handleSubInsert(opts, input, values, message, fieldInfo, parentData, callback, ctx);
+
+			return null;
+		}
+		
+		if (ctx.subContainerCall) {
+			subParent = ctx.data;
+		}
+		
+		if (fieldInfo != null)
+			obj.websomFieldInfo = fieldInfo;
+
+		var insert = this.server.database.primary.into(this.table);
+		if (opts != null) {
+			if (opts.autoTimestamp) {
+				var now = Websom.Time.now();
+				insert.set("timestamp", now);
+				obj.setField("timestamp", now);
+			}
+		}
+
+		if (subParent != null)
+			insert.set("parentId", subParent.getField("id"));
+
+		obj.containerInsert(input, this, insert, values, void () => {
+			var call = void () => {
+				var fieldWaits = 0;
+				for (var int f in that.dataInfo.fields) {
+					var field = that.dataInfo.fields[f];
+					if (("Parent" in field.attributes) == false) {
+						if (field.onlyServer == false and field.structure.hasFlag("edit")) {
+							fieldWaits++;
+						}else{
+							if (insert.doesSet(field.fieldName) == false) {
+								fieldWaits++;
+							}
+						}
+					}
+				}
+				var insertReady = void () => {
+					fieldWaits--;
+					
+					if (fieldWaits != 0)
+						return null;
+					
+					if (values["parentId"] != null)
+						insert.set("parentId", values["parentId"]);
+
+					if (values["arrayIndex"] != null)
+						insert.set("arrayIndex", values["arrayIndex"]);
+
+					insert.run(void (string err, primitive key) => {
+						obj.setField("id", key);
+
+						if (opts != null) {
+							for (var int iControl in opts.controls) {
+								opts.controls[iControl].insert(input, obj, key);
+							}
+
+							for (var int iControl in opts.insertControls) {
+								opts.insertControls[iControl].insert(input, obj, key);
+							}
+						}
+
+						that.insertAutoFields(key, input, obj, void () => {
+							for (var int f in that.dataInfo.fields) {
+								var field = that.dataInfo.fields[f];
+								if (field.onlyServer == false and field.structure.hasFlag("edit")) {
+									if (field.structure.hasFlag("linked")) {
+										var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+
+										if (link.linkType == "array") {
+											var array value = input.raw[field.realName];
+											if (value.typeAsString() == "array") {
+												var itemDataInfo = Websom.DataInfo.getDataInfoFromRoute(link.fieldType);
+												var tempContainer = new Websom.Containers.Table(that.server, that.table + "_" + field.fieldName, itemDataInfo);
+
+												if ("Linked" in itemDataInfo.attributes) {
+													for (var int i in value) {
+														if (value[i].typeAsString() == "string") {
+															var linkedTable = link.name;
+															var Websom.Containers.Table tbl = new Websom.Containers.Table(that.server, linkedTable, itemDataInfo);
+															var sobj = itemDataInfo.spawn(that.server);
+															sobj.websomContainer = tbl;
+															sobj.websomServer = that.server;
+															sobj.loadFromPublicKey(tbl, value[i], void (string err2) => {
+																if (err2 != null and err2.length > 0) {
+																	input.send("Invalid field " + field.realName);
+																}else{
+																	var tempMap = new map();
+																	tempMap["parentId"] = key;
+																	tempMap["arrayIndex"] = i;
+																	tempMap["linkedId"] = value[i];
+																	tempContainer.insertFromInterface(null, new Websom.Input("", tempMap, input.request), tempMap, null, field, sobj, new Websom.CallContext());
+																}
+															});
+														}
+													}
+												}else{
+													for (var int i in value) {
+														value[i]["parentId"] = key;
+														value[i]["arrayIndex"] = i;
+														tempContainer.insertFromInterface(null, new Websom.Input("", value[i], input.request), value[i], null, field, obj, new Websom.CallContext()); //TODO: Inherit props from input
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						});
+
+						if (callback != null)
+							callback(key);
+
+						if (message != null) {
+							if (opts.successInsert) {
+								opts.successInsert(input, obj, message, void (Websom.ClientMessage msg) => {
+									input.send(msg.stringify());
+								});
+							}else
+								input.send(message.stringify());
+						}
+					});
+				};
+
+				for (var int ff in that.dataInfo.fields) {
+					var close = void (int f) => {
+						var field = that.dataInfo.fields[f];
+						
+						if (("Parent" in field.attributes) == false) {
+							if (field.onlyServer == false and field.structure.hasFlag("edit")) {
+								if (field.structure.hasFlag("linked")) {
+										var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+
+										if (link.linkType == "array") {
+											var array value = input.raw[field.realName];
+											if (value.typeAsString() == "array")
+												insert.set(field.fieldName, value.length);
+											else
+												insert.set(field.fieldName, 0);
+											
+											insertReady();
+										}else{
+											if (values[field.realName].typeAsString() == "string") {
+												var linkInfo = Websom.DataInfo.getDataInfoFromRoute(field.typeRoute);
+												var linkedTable = link.name;
+												var Websom.Containers.Table tbl = new Websom.Containers.Table(that.server, linkedTable, linkInfo);
+												var sobj = linkInfo.spawn(that.server);
+												sobj.websomContainer = tbl;
+												sobj.websomServer = that.server;
+												sobj.loadFromPublicKey(tbl, values[field.realName], void (string err) => {
+													if (err != null and err.length > 0) {
+														input.send("Invalid field " + field.realName);
+													}else{
+														insert.set(field.fieldName, sobj.getField("id"));
+														insertReady();
+													}
+												});
+											}else{
+												insert.set(field.fieldName, values[field.realName]);
+												insertReady();
+											}
+										}
+								}else{
+									if (field.realName in values) {
+										obj.setField(field.realName, values[field.realName]);
+									}
+									insert.set(field.fieldName, obj.getField(field.realName));
+
+									insertReady();
+								}
+							}else{
+								if (insert.doesSet(field.fieldName) == false) {
+									if (field.structure.hasFlag("linked")) {
+										var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+
+										if (link.linkType == "array")
+											insert.set(field.fieldName, 0);
+									}else
+										insert.set(field.fieldName, obj.getField(field.realName));
+									
+									insertReady();
+								}
+							}
+						}
+					};
+					close(ff);
+				}
+
+				
+			};
+			if (opts != null) {
+				var nextCall = void () => {
+					if (opts.onInsert != null) {
+						opts.onInsert(input, insert, void (string err) => {
+							if (err.length > 0)
+								input.send(err);
+							else
+								call();
+						});
+					}else{
+						call();
+					}
+				};
+
+				if (opts.autoPublicId) {
+					that.getPublicId(void (string key) => {
+						insert.set("publicId", key);
+						obj.setField("publicId", key);
+						nextCall();
+					});
+				}else{
+					nextCall();
+				}
+			}else{
+				call();
+			}
+		});
+	}
+
+	void getPublicId(<void, string>function found) {
+		var that = this;
+		this.server.crypto.smallId(void (string key) => {
+			that.from().where("publicId").equals(key).run(void (string err, <map>array docs) => {
+				if (docs.length == 0)
+					found(key);
+				else
+					that.getPublicId(found);
+			});
+		});
+	}
+
+	trust void insertAutoFields(primitive key, Websom.Input input, Websom.Data data, <void>function done) {
+		var that = this;
+
+		var autos = new <Websom.FieldInfo>array();
+		for (var int i in this.dataInfo.fields) {
+			var field = this.dataInfo.fields[i];
+
+			if (field.singleLink)
+			if ("AutoCreate" in field.attributes) {
+				autos.push(field);
+			}
+		}
+
+		if (autos.length == 0) {
+			done();
+		}else{
+			var int completed = autos.length;
+			var checkDone = void () => {
+				completed--;
+				if (completed == 0)
+					done();
+			};
+
+			for (var int ii in autos) {
+				var close = void (int i) => {
+					var auto = autos[i];
+					var autoInfo = Websom.DataInfo.getDataInfoFromRoute(auto.typeRoute);
+					var tempContainer = new Websom.Containers.Table(that.server, that.table + "_" + auto.fieldName, autoInfo);
+					var mapData = new map();
+					mapData["parentId"] = key;
+					tempContainer.insertFromInterfaceCallback(null, new Websom.Input("", input.raw, input.request), mapData, null, auto, data, void (primitive primaryKey) => {
+						checkDone();
+					}, new Websom.CallContext());
+				};
+				close(ii);
+			}
+		}
+	}
+
+	trust void updateFromInterface(Websom.InterfaceOptions opts, Websom.DatabaseSelect update, Websom.Data obj, Websom.Input input, map values, Websom.ClientMessage message) {
+		var that = this;
+		
+		obj.containerUpdate(input, that, update, values, void () => {
+			var fieldWaits = 0;
+			for (var int f in that.dataInfo.fields) {
+				var field = that.dataInfo.fields[f];
+				if (("Parent" in field.attributes) == false) {
+					fieldWaits++;
+				}
+			}
+			var updateReady = void (Websom.FieldInfo readyField, primitive readyValue) => {
+				// Ensure this passes restrictions
+
+				that.checkRestrictions(opts, input, "update", readyField, void (bool doChange) => {
+					if (doChange == true and readyValue != null)
+						update.set(readyField.fieldName, readyValue);
+
+					fieldWaits--;
+					if (fieldWaits <= 0) {
+						if (values["parentId"] != null)
+							update.set("parentId", values["parentId"]);
+
+						if (values["arrayIndex"] != null)
+							update.set("arrayIndex", values["arrayIndex"]);
+
+						update.run(void (string err, <map>array res) => {
+							if (opts != null) {
+								for (var int iControl in opts.controls) {
+									opts.controls[iControl].update(input, obj);
+								}
+
+								for (var int iControl in opts.updateControls) {
+									opts.updateControls[iControl].update(input, obj);
+								}
+							}
+
+							for (var int ff in that.dataInfo.fields) {
+								var fieldClose = void (int f) => {
+									var field = that.dataInfo.fields[f];
+									if (field.onlyServer == false and field.structure.hasFlag("edit")) {
+										if (field.structure.hasFlag("linked")) {
+											var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+
+											if (link.linkType == "array") {
+												var array value = input.raw[field.realName];
+												if (value.typeAsString() == "array") {
+													var tempContainer = new Websom.Containers.Table(that.server, that.table + "_" + field.fieldName, Websom.DataInfo.getDataInfoFromRoute(link.fieldType));
+													
+													for (var int ii in value) {
+														var close = void (int i) => {
+															value[i]["parentId"] = obj.getField("id"); //Assume parent has an id
+															value[i]["arrayIndex"] = i;
+															var subSelect = that.server.database.primary.from(that.table + "_" + field.fieldName).where("parentId").equals(value[i]["parentId"]).and().where("arrayIndex").equals(value[i]["arrayIndex"]);
+															var subObj = tempContainer.dataInfo.spawn(that.server);
+															
+															subObj.websomFieldInfo = field;
+															subObj.websomServer = that.server;
+															subObj.websomParentData = obj;
+
+															subObj.websomContainer = tempContainer;
+															subSelect.run(void (string err2, <map>array sres) => {
+																if (err2 != null) {
+																	native javascript { console.log(err2); }
+																	input.send("Internal Error");
+																}else if (sres.length == 0) {
+																	tempContainer.insertFromInterface(null, new Websom.Input("", value[i], input.request), value[i], null, field, obj, new Websom.CallContext()); //TODO: Inherit props from input
+																}else{
+																	subObj.nativeLoadFromMap(sres[0], void (string err3) => {
+																		if (err3.length > 0) {
+																			native javascript { console.log(err3); }
+																			input.send("Internal Error");
+																		}else{
+																			var subUpdate = subSelect.update();
+																			tempContainer.updateFromInterface(null, subUpdate, subObj, new Websom.Input("", value[i], input.request), value[i], null); //TODO: Inherit props from input
+																		}
+																	});
+																}
+															});
+														};
+														close(ii);
+													}
+
+													that.server.database.primary.from(tempContainer.table).where("parentId").equals(obj.getField("id")).and().where("arrayIndex").greater(value.length - 1).delete().run(void (string err2, <map>array res2) => {
+														//TODO: 
+													});
+												}
+											}
+										}
+									}
+								};
+								fieldClose(ff);
+							}
+
+							if (message != null)
+								input.send(message.stringify());
+						});
+					}
+				});
+			};
+
+			for (var int ff in that.dataInfo.fields) {
+				var close = void (int f) => {
+					var field = that.dataInfo.fields[f];
+					if (("Parent" in field.attributes) == false) {
+						if (field.onlyServer == false and field.structure.hasFlag("edit")) {
+							if (field.structure.hasFlag("linked")) {
+									var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+
+									if (link.linkType == "array") {
+										var array value = input.raw[field.realName];
+										var setValue = value.length;
+										if (value.typeAsString() != "array")
+											setValue = 0;
+
+											updateReady(field, setValue);
+									}else{
+										if (values[field.realName].typeAsString() == "string") {
+											var linkInfo = Websom.DataInfo.getDataInfoFromRoute(field.typeRoute);
+											var linkedTable = link.name;
+											var Websom.Containers.Table tbl = new Websom.Containers.Table(that.server, linkedTable, linkInfo);
+											var sobj = linkInfo.spawn(that.server);
+											sobj.websomContainer = tbl;
+											sobj.websomServer = that.server;
+											sobj.loadFromPublicKey(tbl, values[field.realName], void (string err) => {
+												if (err != null and err.length > 0) {
+													input.sendError("Invalid field " + field.realName);
+												}else{
+													updateReady(field, sobj.getField("id"));
+												}
+											});
+										}else{
+											updateReady(field, values[field.realName]);
+										}
+									}
+							}else{
+								if (field.realName in values) {
+									obj.setField(field.realName, values[field.realName]);
+								}
+								updateReady(field, obj.getField(field.realName));
+							}
+						}else{
+							if (field.singleLink) {
+								if (field.isComponent() == false) {
+									var objId = -1;
+									
+									native javascript { objId = obj.getField(field.realName).id; }
+									native php { $objId = $obj->getField($field->realName)->id; }
+
+									updateReady(field, objId);
+								}else{
+									updateReady(field, null);
+								}
+							}else{
+								updateReady(field, obj.getField(field.realName));
+							}
+						}
+					}
+				};
+				close(ff);
+			}
+		});
+	}
+
+
+	Websom.DatabaseSelect from() {
+		return this.server.database.primary.from(this.table);
+	}
+
+	Websom.DatabaseInsert into() {
+		return this.server.database.primary.into(this.table);
+	}
+
+	override void loadFromId(uint64 id, <void, Websom.Data>function callback) {
+		var select = this.from().where("id").equals(id);
+		this.loadFromSelect(select, void (<Websom.Data>array datas) => {
+			if (datas.length > 0) {
+				callback(datas[0]);
+			}else{
+				callback(null);
+			}
+		});
+	}
+
+	override void loadFromPublicId(string id, <void, Websom.Data>function callback) {
+		var select = this.from().where("publicId").equals(id);
+		this.loadFromSelect(select, void (<Websom.Data>array datas) => {
+			if (datas.length > 0) {
+				callback(datas[0]);
+			}else{
+				callback(null);
+			}
+		});
+	}
+
+	override void loadFromSelect(Websom.DatabaseSelect select, <void, <Websom.Data>array>function callback) {
+		var that = this;
+		select.run(void (string err, <map>array docs) => {
+			//var <string>array sends = new <string>array();
+			var datas = new <Websom.Data>array();
+			var loads = 0;
+			var checkDone = void (string err3) => {
+				loads--;
+				if (loads == 0) {
+					callback(datas);
+				}
+			};
+			loads += docs.length;
+
+			for (var int doc in docs) {
+				var close = void (int doci) => {
+					var data = that.dataInfo.spawn(that.server);
+					data.websomContainer = that;
+					data.websomServer = that.server;
+					datas.push(data);
+					data.nativeLoadFromMap(docs[doci], void (string err2) => {
+						checkDone(err2);
+					});
+				};
+				close(doc);
+			}
+
+			if (docs.length == 0) {
+				loads++;
+				checkDone("");
+			}
+		});
+	}
+
+	override void expose(Websom.Request req, <Websom.Data>array datas, <void, <map>array>function callback) {
+		var loads = datas.length;
+		var sends = new <map>array();
+		var checkDone = void (string err3) => {
+			loads--;
+			if (loads == 0) {
+				callback(sends);
+			}
+		};
+		for (var int i in datas) {
+			var data = datas[i];
+			data.onSend(req, data.exposeToClient(), void (map sendData) => {
+				sends.push(sendData);
+				checkDone("");
+			});
+		}
+	}
+}

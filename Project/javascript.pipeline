@@ -1,0 +1,11 @@
+platform = "javascript.source"
+
+output = "~native/javascript/websom.js"
+
+entry = "websom.carb"
+
+type = "package"
+
+javascript.module = "Websom"
+
+autoCache = true

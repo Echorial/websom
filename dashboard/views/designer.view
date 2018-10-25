@@ -1,0 +1,1647 @@
+info {
+	"name": "dashboard-designer"
+}
+
+template {
+	<div :class="'dashboard-designer ' + theme">
+		<div :class="'designer-head ' + theme">
+			<div class="designer-logo">
+				<div style="padding: 4px; display: inline-block; top: 0; position: absolute;"><img src="/resources/dashboard/designer.png" style="max-width: 40px"/></div>
+				<div class="designer-logo-bar">
+
+				</div>
+			</div>
+			<ul class="dropdown">
+				<span><icon fa>file</icon></span>
+				<li><a>New</a></li>
+				<li><a>Open</a></li>
+				<li @click="save()"><a>Save</a></li>
+				<li><a>Exit</a></li>
+			</ul>
+			<button class="button right" @click="theme = theme == 'dark' ? 'light' : 'dark'">{{theme}}</button>
+			<button class="button right" @click="mode = mode == 'simple' ? 'design' : 'simple'">{{mode}}</button>
+		</div>
+		<div class="designer-body">
+			<div :class="'designer-bar ' + theme">
+				<div :class="{'designer-tool': true, 'selected': selectedTool == 'pointer'}" @click="setTool('pointer')"><icon fa>mouse-pointer</icon></div>
+				<div :class="{'designer-tool': true, 'selected': selectedTool == 'square'}" @click="setTool('square')"><icon fa>square</icon></div>
+				<div :class="{'designer-tool': true, 'selected': selectedTool == 'circle'}" @click="setTool('circle')"><icon fa>circle</icon></div>
+				<div :class="{'designer-tool': true, 'selected': selectedTool == 'pen'}" @click="setTool('pen')"><icon fa>pen-nib</icon></div>
+				<div :class="{'designer-tool': true, 'selected': selectedTool == 'text'}" @click="setTool('text')"><icon fa>i-cursor</icon></div>
+
+				<div :class="{'designer-tab': true, 'selected': selectedTab == 'assets'}" @click="setTab('assets')"><icon fa>toolbox</icon></div>
+				<div style="bottom: 48px;" :class="{'designer-tab': true, 'selected': selectedTab == 'objects'}" @click="setTab('objects')"><icon fa>sitemap</icon></div>
+				<div style="bottom: 96px;" :class="{'designer-tab': true, 'selected': selectedTab == 'play'}" @click="play()"><icon fa>play</icon></div>
+			</div>
+
+			<div :class="'designer-toolbox ' + theme + ' object-list ' + (selectedTab == 'objects' ? 'selected' : '')">
+				<template v-if="downView != null">
+					<designer-list-object v-for="(o, i) in downView.rootBlock.children" :data="o" :select="selectObject" :key="o.id"/>
+				</template>
+			</div>
+
+			<div :class="'designer-toolbox ' + theme + ' ' + (selectedTab == 'assets' ? 'selected' : '')">
+				<div class="input-box">
+					<span class="icon"><icon fa>search</icon></span>
+					<input v-model="search" type="text" class="input" placeholder="Search"/>
+				</div>
+				<div v-for="(group, gName) in groups">
+					<label class="header">{{gName}}</label>
+					<div v-for="(block, name, index) in blocks" @mousedown="dragView(block)" v-if="typeof block.display == 'function' && block.group() == gName && (reg.test(gName) || reg.test(name) || reg.test(block.description()))" @dblclick="setRoot(block)" class="block editor-block" data-type="block" :data-node="name">
+						<img v-if="block.displayImage" :src="block.displayImage()"/>
+						<icon fa v-if="block.displayIcon">{{block.displayIcon()}}</icon>
+
+						<label>{{name}}</label>
+					</div>
+				</div>
+			</div>
+			<div ref="containMarker" class="design-contain"></div>
+			<div ref="port" :class="'designer-view ' + theme" style="position: relative; overflow: hidden;">
+				<div ref="portContainer" class="designer-port-container" style="position: absolute; width: 100%; height: 100%">
+					<div style="transform-origin: center;">
+						<div v-for="v in views" :ref="'view' + v.name" :style="'left: ' + v.viewX + 'px; top: ' + v.viewY + 'px; width: ' + v.viewWidth + 'px; height: ' + v.viewHeight + 'px; background: white; position: absolute;'" :class="{'designer-page large': true, 'selected': (downView ? downView.name == v.name : false)}">
+							<label class="designer-label">{{v.name}}</label>
+							<svg ref="svg" style="position: absolute; pointer-events: none;" :width="v.viewWidth" :height="v.viewHeight">
+								
+							</svg>
+							
+							<span ref="point" class="designer-point">x</span>
+							
+							<span :ref="'xGuide' + v.name + '1'" class="designer-guide"></span>
+							<span :ref="'xGuide' + v.name + '2'" class="designer-guide"></span>
+							<span :ref="'xGuide' + v.name + '3'" class="designer-guide"></span>
+							<span :ref="'yGuide' + v.name + '1'" class="designer-guide"></span>
+							<span :ref="'yGuide' + v.name + '2'" class="designer-guide"></span>
+							<span :ref="'yGuide' + v.name + '3'" class="designer-guide"></span>
+
+							<designer-page :object="v.rootBlock"/>
+							<div style="position: absolute; bottom: -24px; right: 0;" :class="'designer-mode ' + theme">
+								<span :class="{'selected': v.viewMode == 0}" @click="setMode(v, 0)"><icon fa>desktop</icon></span>
+								<span :class="{'selected': v.viewMode == 1}" @click="setMode(v, 1)"><icon fa>tablet</icon></span>
+								<span :class="{'selected': v.viewMode == 2}" @click="setMode(v, 2)"><icon fa>mobile</icon></span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div style="overflow: hidden; width: 100%; height: 100%">
+						<div ref="container" :style="'top: ' + realizedBounds.y + '; left: ' + realizedBounds.x + '; width: ' + (realizedBounds.w) + '; height: ' + (realizedBounds.h) + '; transform: rotate(' + (selection.length == 1 ? selection[0].rotation : 0) + 'deg)'" :class="{'designer-container': true, 'open': selection.length > 0 || selectedView, 'design-view-mode': selectedView}">
+							<div ref="grabTL" data-x="-1" data-y="-1" style="left: 0; top: 0" class="designer-grab"/>
+							<div ref="grabTM" data-x="0" data-y="-1" style="left: 50%; top: 0" class="designer-grab"/>
+							<div ref="grabTR" data-x="1" data-y="-1" style="left: 100%; top: 0" class="designer-grab"/>
+							<div ref="grabBR" data-x="1" data-y="1" style="left: 100%; top: 100%" class="designer-grab"/>
+							<div ref="grabBM" data-x="0" data-y="1" style="left: 50%; top: 100%" class="designer-grab"/>
+							<div ref="grabBL" data-x="-1" data-y="1" style="left: 0; top: 100%" class="designer-grab"/>
+							<div ref="grabML" data-x="-1" data-y="0" style="left: 0; top: 50%" class="designer-grab"/>
+							<div ref="grabMR" data-x="1" data-y="0" style="left: 100%; top: 50%" class="designer-grab"/>
+
+							<div style="bottom: -7px; right: -7px;" class="designer-rotate"/>
+							<div style="bottom: -7px; left: -7px;" class="designer-rotate"/>
+							<div style="top: -7px; right: -7px;" class="designer-rotate"/>
+							<div style="top: -7px; left: -7px;" class="designer-rotate"/>
+						</div>
+						
+						<div ref="moving" :style="'display: none; top: ' + realizedBounds.ty + '; left: ' + realizedBounds.xx + '; width: ' + (realizedBounds.ww) + '; height: ' + (realizedBounds.hh) + ';'" :class="{'designer-container': true, 'open': selection.length > 0 || selectedView, 'design-view-mode': selectedView}">
+							<div ref="grabTL" data-x="-1" data-y="-1" style="left: 0; top: 0" class="designer-grab"/>
+							<div ref="grabTM" data-x="0" data-y="-1" style="left: 50%; top: 0" class="designer-grab"/>
+							<div ref="grabTR" data-x="1" data-y="-1" style="left: 100%; top: 0" class="designer-grab"/>
+							<div ref="grabBR" data-x="1" data-y="1" style="left: 100%; top: 100%" class="designer-grab"/>
+							<div ref="grabBM" data-x="0" data-y="1" style="left: 50%; top: 100%" class="designer-grab"/>
+							<div ref="grabBL" data-x="-1" data-y="1" style="left: 0; top: 100%" class="designer-grab"/>
+							<div ref="grabML" data-x="-1" data-y="0" style="left: 0; top: 50%" class="designer-grab"/>
+							<div ref="grabMR" data-x="1" data-y="0" style="left: 100%; top: 50%" class="designer-grab"/>
+						</div>
+					</div>
+			</div>
+			<div :class="'designer-design-panel ' + theme + ' ' + (mode == 'design' ? '' : 'closed')">
+				<div v-if="selection.length > 0">
+					<div class="editor-row icon-list">
+						<icon fa>align-left</icon>
+						<icon fa>align-center</icon>
+						<icon fa>align-right</icon>
+						<icon fa>align-justify</icon>
+					</div>
+					<div class="editor-row editor-transform">
+						<label class="header">Transform</label>
+						<div class="transform-row">
+							<div class="input-group"><label>X</label> <input type="text" :value="selection.length > 0 ? selection[0].x : ''"/> <label @click="setProp('xMode', getProp('xMode') == '%' ? 'px' : '%')"><icon fa :icon="getProp('xMode') == '%' ? 'percent' : 'ruler-combined'" /></label></div>
+							<div class="input-group"><label>Y</label> <input type="text" :value="selection.length > 0 ? selection[0].y : ''"/> <label @click="setProp('yMode', getProp('yMode') == '%' ? 'px' : '%')"><icon fa :icon="getProp('yMode') == '%' ? 'percent' : 'ruler-combined'" /></label></div>
+						</div>
+						<div class="transform-row">
+							<div class="input-group"><label>W</label> <input type="text" :value="selection.length > 0 ? selection[0].width : ''"/> <label @click="setProp('widthMode', getProp('widthMode') == '%' ? 'px' : '%')"><icon fa :icon="getProp('widthMode') == '%' ? 'percent' : 'ruler-combined'" /></label></div>
+							<div class="input-group"><label>H</label> <input type="text" :value="selection.length > 0 ? selection[0].height : ''"/> <label @click="setProp('heightMode', getProp('heightMode') == '%' ? 'px' : '%')"><icon fa :icon="getProp('heightMode') == '%' ? 'percent' : 'ruler-combined'" /></label></div>
+						</div>
+						<div class="input-group"><label>R</label> <input type="text" @input="setProp('rotation', parseFloat($event.target.value))" :value="selection.length > 0 ? selection[0].rotation : ''"/></div>
+					</div>
+					<div class="editor-row editor-transform">
+						<label class="header">Appearance</label>
+						<div>
+							<div class="input-group"><input type="checkbox" :checked="getProp('displayColor')" @input="setProp('displayColor', !getProp('displayColor'))"/> <input-color :value="colorVal" @input="setProp('color', $event, false)" @change="setProp('color', arguments[1], true, arguments[0])"/> <label>Fill</label></div>
+							<div class="input-group"><input type="checkbox" :checked="getProp('displayBorder')" @input="setProp('displayBorder', !getProp('displayBorder'))"/> <input-color :value="borderVal" @input="setProp('borderColor', $event, false)" @change="setProp('borderColor', arguments[1], true, arguments[0])"/> <label>Border</label> <input type="text" :value="getProp('borderWidth')" @input="setProp('borderWidth', $event.target.value)"/></div>
+							<div class="input-group"><input type="checkbox" :checked="getProp('displayShadow')" @input="setProp('displayShadow', !getProp('displayShadow'))"/> <input-color :value="shadowVal" @input="setProp('shadowColor', $event, false)" @change="setProp('shadowColor', arguments[1], true, arguments[0])"/> <label>Shadow</label></div>
+							<div class="input-group"><input type="checkbox" :checked="getProp('scrollOverflow')" @input="setProp('scrollOverflow', !getProp('scrollOverflow'))"/> <label>Scroll overflow</label></div>
+							<div class="input-group"><input type="checkbox" :checked="getProp('hideOverflow')" @input="setProp('hideOverflow', !getProp('hideOverflow'))"/> <label>Hide overflow</label></div>
+						</div>
+					</div>
+					<div class="editor-row editor-transform" v-if="selection.length == 1">
+						<label class="header">Text</label>
+						<div class="input-group"><input type="text" @input="setProp('innerText', $event.target.value)" :value="selection[0].innerText"/> <label>Inner text</label></div>
+					</div>
+					<div class="editor-row editor-transform" v-if="selection.length == 1">
+						<label class="header">Properties</label>
+						<div>
+							<div class="input-group" v-for="(prop, i) in selection[0].props()">
+								<template v-if="prop.type == 'attribute'">
+									<input v-if="prop.valueType == 'boolean'" type="checkbox" v-model="selection[0].attr[prop.name]"/>
+									<input v-else-if="prop.valueType == 'string'" style="width: 70%" type="text" v-model="selection[0].attr[prop.name]"/>
+									<input v-else-if="prop.valueType == 'color'" type="color" v-model="selection[0].attr[prop.name]"/>
+									<input v-else-if="prop.valueType == 'number'" style="width: 70%" type="number" v-model="selection[0].attr[prop.name]"/>
+									<label>{{i}}</label>
+								</template>
+								<template v-else-if="prop.type == 'computed'">
+									<input v-if="prop.valueType == 'boolean'" type="checkbox" @change="selection[0].computeProp(prop.name)" v-model="selection[0].attr['data-prop-' + prop.name]"/>
+									<input v-else-if="prop.valueType == 'string'" style="width: 70%" type="text" @change="selection[0].computeProp(prop.name)" v-model="selection[0].attr['data-prop-' + prop.name]"/>
+									<input v-else-if="prop.valueType == 'color'" type="color" @change="selection[0].computeProp(prop.name)" v-model="selection[0].attr['data-prop-' + prop.name]"/>
+									<input v-else-if="prop.valueType == 'number'" style="width: 70%" type="number" @change="selection[0].computeProp(prop.name)" v-model="selection[0].attr['data-prop-' + prop.name]"/>
+									<label>{{i}}</label>
+								</template>
+							</div>
+						</div>
+					</div>
+					<div class="editor-row" v-if="selection.length == 1">
+							<label class="header">Triggers</label>
+							<label class="right" @click="selection[0].triggers.push({__type__: null, __action__: {__type__: null}})"><icon fa>plus</icon></label>
+							<div>
+								<div class="input-group editor-row" v-for="(trig, i) in selection[0].triggers">
+									<div class="input-split">
+										<p class="">
+											<select v-model="trig.__type__">
+												<option v-for="(_type, _name) in globalTriggers" :value="_name">{{_type.name}}</option>
+											</select>
+										</p>
+										<template v-if="trig.__type__ in globalTriggers" class="input-group">
+											<div v-for="(prop, pName) in globalTriggers[trig.__type__].props || {}">
+												<select v-if="prop.combo" v-model="trig[pName]">
+													<option v-for="(_value, _name) in prop.combo" :value="_value">{{_name}}</option>
+												</select>
+												<template v-else>
+													<input v-if="prop.valueType == 'boolean'" type="checkbox" v-model="trig[pName]"/>
+													<input v-else-if="prop.valueType == 'string'" style="width: 70%" type="text" v-model="trig[pName]"/>
+													<input v-else-if="prop.valueType == 'color'" type="color" v-model="trig[pName]"/>
+													<input v-else-if="prop.valueType == 'number'" style="width: 70%" type="number" v-model="trig[pName]"/>
+												</template>
+												<label>{{prop.name}}</label>
+											</div>
+										</template>
+									</div>
+									<div class="input-split">
+										<p class="">
+											<select v-model="trig.__action__.__type__">
+												<option v-for="(_type, _name) in globalActions" :value="_name">{{_type.name}}</option>
+											</select>
+										</p>
+										<template v-if="trig.__action__.__type__ in globalActions" class="input-group">
+											<div v-for="(prop, pName) in globalActions[trig.__action__.__type__].props || {}">
+												<input v-if="prop.valueType == 'boolean'" type="checkbox" v-model="trig.__action__[pName]"/>
+												<input v-else-if="prop.valueType == 'string'" style="width: 70%" type="text" v-model="trig.__action__[pName]"/>
+												<input v-else-if="prop.valueType == 'color'" type="color" v-model="trig.__action__[pName]"/>
+												<input v-else-if="prop.valueType == 'number'" style="width: 70%" type="number" v-model="trig.__action__[pName]"/>
+												<label>{{prop.name}}</label>
+											</div>
+										</template>
+									</div>
+								</div>
+							</div>
+						</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+client {
+	props: ["data"],
+	data: function () {
+		let dv = new Websom.Editor.Blocks.div();
+		dv.mode = "desktop";
+		return {
+			theme: "dark",
+			mode: "design",
+			z: 10,
+			id: 0,
+			zoom: 1,
+			views: [],
+			draggingBlock: null,
+			pack: {},
+			rootBlock: dv,
+			selected: null,
+			selection: [],
+			basicViews: [],
+			search: "",
+			groups: {},
+			downView: null,
+			viewWidth: 1920,
+			viewHeight: 1080,
+			viewMode: 0,
+			selectBounds: {x: 0, y: 0, x2: 100, y2: 100, dx: 0, dy: 0},
+			movingBounds: {x: 0, y: 0, x2: 100, y2: 100},
+			selectedTool: "pointer",
+			selectedTab: "objects",
+			boards: [],
+			selectedView: false,
+			txx: 0,
+			tyy: 0,
+			curRect: {x: 0, y: 0, w: 0, h: 0},
+			pointer: {x: 0, y: 0},
+			translate: {x: 0, y: 0},
+			templateViews: [],
+			groups: {},
+			history: {undo: [], redo: []},
+			undoPoint: 0,
+			globalTriggers: Websom.Designer.triggers,
+			globalActions: Websom.Designer.actions,
+			down: {x: 0, y: 0, is: false, downOnObject: false, rotate: false, button: 0, cx: 0, cy: 0, xx: 0, yy: 0, resize: false, rx: 0, ry: 0}
+		};
+	},
+	computed: {
+		colorVal: function () {
+			return this.getProp("color");
+		},
+		borderVal: function () {
+			return this.getProp("borderColor");
+		},
+		shadowVal: function () {
+			return this.getProp("shadowColor");
+		},
+		blocks: function () {
+			return window.Websom.Designer.Blocks;
+		},
+		reg: function () {
+			return new RegExp(this.search, "i");
+		},
+		realizedBounds: function () {
+			let xx = this.translate.x;
+			let yy = this.translate.y;
+			/*if (!this.$refs.view)
+				return {x: 0, y: 0, w: 0, h: 0};*/
+			let rel = this.realizeRelative(this.selectBounds.x, this.selectBounds.y);
+			let rel2 = this.realizeRelative(this.selectBounds.x2, this.selectBounds.y2);
+
+			if (this.selectedView) {
+				let v = this.downView;
+				rel = this.realizeRelative(0, 0);
+				rel2 = this.realizeRelative(v.viewWidth, v.viewHeight);
+				this.selectBounds.x = 0;
+				this.selectBounds.y = 0;
+				this.selectBounds.x2 = v.viewWidth;
+				this.selectBounds.y2 = v.viewHeight;
+			}
+
+			if (false) {
+				return {x: this.selectBounds.x, y: this.selectBounds.y, x2: this.selectBounds.x2, y2: this.selectBounds.y2, w: (this.selectBounds.x2 - this.selectBounds.x), h: (this.selectBounds.y2 - this.selectBounds.y)};
+			}
+
+			return {x: rel.x, y: rel.y, x2: rel2.x, y2: rel2.y, w: (this.selectBounds.x2 - this.selectBounds.x) * this.zoom, h: (this.selectBounds.y2 - this.selectBounds.y) * this.zoom};
+		}
+	},
+	created: function () {
+		$("body").css({overflow: "hidden"});
+	},
+	methods: {
+		selectObject: function (e, obj, canFocus, dbl) {
+			let id = typeof obj == "number" ? obj : parseInt(obj.attr("data-object-id"));
+
+			let real = this.getObjectById(id);
+
+			for (let sel of this.selection) {
+				sel.isSelected = false;
+			}
+			
+			if (e.button == 0)
+			for (let i = 0; i < this.selection.length; i++) {
+				let selection = this.selection[i];
+				if (selection.objectId == id) {
+					if (e.shiftKey) {
+						$("[data-object-id=" + selection.objectId + "]").removeClass("designer-selected");
+						this.selection.splice(i, 1);
+						this.computeBounds();
+						return;
+					}else if (canFocus)
+						return;
+				}
+			}
+
+			if (!e.shiftKey) {
+				for (let i = 0; i < this.selection.length; i++) {
+					let selection = this.selection[i];
+					$("[data-object-id=" + selection.objectId + "]").removeClass("designer-selected");
+				}
+
+				this.selection.splice(0, this.selection.length);
+			}
+
+			$("[data-object-id=" + real.objectId + "]").addClass("designer-selected");
+			this.selection.push(real);
+
+			if (real.parent.container) {
+				for (let c of real.parent.children) {
+					if (!dbl && c.objectId != real.objectId)
+						this.selection.push(c);
+				}
+			}
+
+			if (this.selection.length == 1) {
+				real.selectX = 0;
+				real.selectY = 0;
+				real.selectW = 1;
+				real.selectH = 1;
+			}else{
+				real.selectX = real.x - this.selectBounds.x;
+				real.selectY = real.y - this.selectBounds.y;
+				real.selectW = real.width / (this.selectBounds.x2 - this.selectBounds.x);
+				real.selectH = real.height / (this.selectBounds.y2 - this.selectBounds.y);
+			}
+			this.computeBounds();
+
+			for (let sel of this.selection) {
+				sel.isSelected = true;
+			}
+		},
+		dragView: function (block) {
+			this.draggingBlock = block;
+		},
+		buildBasicViews: function () {
+			for (var i = 0; i < this.templateViews.length; i++) {
+				((view) => {
+					Websom.Designer.Blocks[view.name] = (class extends Websom.Designer.Object {
+						static display() {return view.name;}
+						static displayIcon() {return "eye";}
+						static description() {return view.meta.description || "";}
+						static nodeName() {return view.name;}
+						nodeName() {return view.name;}
+						static group() {return view.module || "website";}
+
+						constructor(parent) {
+							super(parent, view.name);
+
+							this.templateView = view;
+							this.position = "absolute";
+							this.width = 350;
+							this.height = 350;
+						}
+						
+						static addClass() {
+							return " designer-template-view design-object ";
+						}
+
+						render(createElement, vm) {
+							return super.simpleRender(view.name, createElement, vm, true);
+						}
+					});
+				})(this.templateViews[i]);
+			}
+			this.groups = this.getGroups();
+		},
+		getGroups: function () {
+			var groups = {};
+			for (var i in Websom.Designer.Blocks)
+				if (Websom.Designer.Blocks[i].group)
+					if (!(Websom.Designer.Blocks[i].group() in groups))
+						groups[Websom.Designer.Blocks[i].group()] = true;
+			
+			return groups;
+		},
+		play: function () {
+			if (!this.downView)
+			return;
+			
+			let w = window.open("", "Preview", "width=360, height=640, toolbar=0, menubar=0, location=0");
+			let methods = {methods: [], mounted: []};
+			this.setupTriggers(this.downView, methods);
+			w.document.write($("head").html() + `<title>Preview</title><body class="${$("body").attr("class")}"><div id="play">${this.downView.rootBlock.serialize(0)}</div></body><script>var app = new Vue({el: "#play", props: ["data"], mounted: function () {${methods.mounted.join("")}}, methods: {callAction: function ($objectId, $triggerId) {${methods.methods.join("else")}}}});</script>`);
+			w.document.close();
+		},
+		unGroup: function (objs) {
+			for (let obj of objs) {
+				this.rootBlock.children.push(obj);
+				obj.parent = this.rootBlock;
+			}
+		},
+		makeGroup: function (objs) {
+			let view = this.getClosest();
+			let grp = new Websom.Designer.Group();
+			grp.children = [];
+			grp.objectId = view.id;
+			grp.name = "Group";
+			grp.container = true;
+			grp.parent = view.rootBlock;
+			grp.z = view.z;
+			view.z++;
+			view.id++;
+			
+			for (let obj of objs) {
+				obj.parent = grp;
+				grp.children.push(obj);
+			}
+
+			view.rootBlock.children.push(grp);
+			this.clearGroups();
+		},
+		clearGroups: function (parent) {
+			parent = parent || this.rootBlock.children;
+
+			for (let g of parent)
+				if (g.container)
+					if (g.children.length == 0)
+						this.removeObject(parent, g);
+					else
+						this.clearGroups(g.children);
+		},
+		removeObject: function (list, obj) {
+			for (let i = 0; i < list.length; i++) {
+				let test = list[i];
+				if (test.objectId == obj.objectId) {
+					list.splice(i, 1);
+					return;
+				}
+			}
+		},
+		removeSelected: function () {
+			for (let i = 0; i < this.selection.length; i++) {
+				let sel = this.selection[i];
+
+				this.removeObject(sel.parent.children, sel);
+			}
+		},
+		setTab: function (tab) {
+			this.selectedTab = tab;
+		},
+		log: m => console.log(m),
+		addAction: function (obj, action, data) {
+			this.history.undo.push({type: "action", action: action, id: obj.id, data: data});
+		},
+		addUndo: function () {
+			this.history.undo.push([]);
+			this.history.redo.splice(0, this.history.redo.length);
+		},
+		addRedo: function () {
+			this.history.redo.push([]);
+		},
+		addChange: function (obj, key, oldValue, target) {
+			target = target || "undo"
+			let undo = this.history[target][this.history[target].length - 1];
+			undo.push({type: "valueChange", id: obj.objectId, key: key, value: oldValue});
+		},
+		doApply: function (type) {
+			if (this.history[type].length == 0)
+				return;
+
+			let dos = this.history[type][this.history[type].length - 1];
+			let opType = type == "undo" ? "redo" : "undo";
+			
+			this.history[opType].push([]);
+
+			for (let d of dos) {
+				if (d.type == "valueChange") {
+					let obj = this.getObjectById(d.id);
+					let curValue = obj[d.key];
+					obj[d.key] = d.value;
+					this.addChange(obj, d.key, curValue, opType);
+				}
+			}
+
+			this.history[type].pop();
+
+			this.computeBounds();
+		},
+		undo: function () {
+			this.doApply("undo");
+		},
+		redo: function () {
+			this.doApply("redo");
+		},
+		setProp: function (name, val, doUndo, oldValue) {
+			if (doUndo !== false)
+				this.addUndo();
+			
+			for (let i = 0; i < this.selection.length; i++) {
+				let obj = this.selection[i];
+				if (doUndo !== false)
+					this.addChange(obj, name, oldValue || obj[name]);
+				obj[name] = val;
+			}
+		},
+		getProp: function (name) {
+			let val = null;
+			
+			for (let i = 0; i < this.selection.length; i++) {
+				let obj = this.selection[i];
+
+				if (obj[name] === false && val == true)
+					val = true;
+				else if (obj[name])
+					val = obj[name];
+			}
+
+			return val;
+		},
+		realizeRelative: function (x, y) {
+			let zmm = this.zoom;
+			let v = this.getClosest();
+			if (!v || !v.rootBlock.el)
+				return {x: 0, y: 0};
+			let off = $(v.rootBlock.el.$el).parent().offset();
+			let back = $(this.$refs.port).offset();
+			let rx = ((x) * zmm + off.left - back.left);
+			let ry = ((y) * zmm + off.top - back.top);
+			
+			return {x: rx, y: ry};
+		},
+		getSnap: function(tx, ty) {
+			let v = this.getClosest();
+			let snap = 3 * (1/this.zoom);
+			
+			let x = $(this.$refs.xGuide);
+			let y = $(this.$refs.yGuide);
+
+			let special = [
+				{x: v.viewX, y: v.viewY},
+				{x: v.viewX, y: this.viewHeight},
+				{x: v.viewWidth, y: v.viewY},
+				{x: v.viewWidth, y: v.viewHeight},
+				{x: v.viewWidth/2, y: v.viewHeight/2}
+			];
+
+			let curX = 1;
+			let curY = 1;
+			let lastX = -1;
+			let lastY = -1;
+			let handle = (pos) => {
+				if (tx > pos.x - snap && tx < pos.x + snap) {
+					this.pointer.x = pos.x;
+					$(this.$refs["xGuide" + v.name + curX]).css({top: 0, left: pos.x, height: "100%", width: 1});
+					lastX = pos.x;
+					curX++;
+				}
+
+				if (ty > pos.y - snap && ty < pos.y + snap) {
+					this.pointer.y = pos.y;
+					$(this.$refs["yGuide" + v.name + curY]).css({top: pos.y, left: 0, width: "100%", height: 1});
+					lastY = pos.y;
+					curY++;
+				}
+			};
+
+			let recur = (obj) => {
+				let isIn = false;
+				for (let sel of this.selection)
+					if (sel.objectId == obj.objectId)
+						isIn = true;
+				
+				if (("x" in obj) && !isIn) {
+					handle(obj);
+					handle({x: obj.x + obj.width, y: obj.y + obj.height});
+					handle({x: obj.x + obj.width/2, y: obj.y + obj.height/2});
+				}
+
+				for (let i = 0; i < obj.children.length; i++)
+					recur(obj.children[i]);
+			};
+
+			recur(v.rootBlock);
+
+			for (let i = 0; i < special.length; i++)
+				handle(special[i]);
+			
+			return {x: lastX, y: lastY};
+		},
+		getGuides: function (e, off, eee) {
+			let v = this.getClosest();
+			let zmm = 1/this.zoom;
+			let snap = 3 * zmm;
+			let tx = (e.clientX - off.left) * zmm;
+			let ty = (e.clientY - off.top) * zmm;
+			this.pointer.x = tx;
+			this.pointer.y = ty;
+			let x = $(this.$refs.xGuide);
+			let y = $(this.$refs.yGuide);
+
+			let special = [
+				{x: v.viewX, y: v.viewY},
+				{x: v.viewX, y: v.viewHeight},
+				{x: v.viewWidth, y: v.viewY},
+				{x: v.viewWidth, y: v.viewHeight},
+				{x: v.viewWidth/2, y: v.viewHeight/2}
+			];
+
+			let curX = 1;
+			let curY = 1;
+			$(this.$el).find(".designer-guide").css({width: 0, height: 0});
+			let handle = (pos) => {
+				if (tx > pos.x - snap && tx < pos.x + snap) {
+					this.pointer.x = pos.x;
+					$(this.$refs["xGuide" + v.name + curX]).css({top: 0, left: pos.x, height: "100%", width: 1});
+					curX++;
+				}
+
+				if (ty > pos.y - snap && ty < pos.y + snap) {
+					this.pointer.y = pos.y;
+					$(this.$refs["yGuide" + v.name + curY]).css({top: pos.y, left: 0, width: "100%", height: 1});
+					curY++;
+				}
+			};
+
+			let recur = (obj) => {
+				let isIn = false;
+				for (let sel of this.selection)
+					if (sel.objectId == obj.objectId)
+						isIn = true;
+				
+				if (("x" in obj) && !isIn) {
+					handle(obj);
+					handle({x: obj.x + obj.width, y: obj.y + obj.height});
+					handle({x: obj.x + obj.width/2, y: obj.y + obj.height/2});
+				}
+
+				for (let i = 0; i < obj.children.length; i++)
+					recur(obj.children[i]);
+			};
+
+			recur(v.rootBlock);
+
+			for (let i = 0; i < special.length; i++)
+				handle(special[i]);
+		},
+		computeBounds: function (doNoTime) {
+			let low = {};
+			let high = {};
+
+			for (let i = 0; i < this.selection.length; i++) {
+				let obj = this.selection[i];
+
+				if (!("x" in low))
+					low.x = obj.getScreenX();
+				low.x = Math.min(low.x, obj.getScreenX());
+				if (!("y" in low))
+					low.y = obj.getScreenY();
+				low.y = Math.min(low.y, obj.getScreenY());
+				if (!("x" in high))
+					high.x = obj.getScreenX();
+				high.x = Math.max(high.x, obj.getScreenX() + obj.width);
+				if (!("y" in high))
+					high.y = obj.getScreenY();
+				high.y = Math.max(high.y, obj.getScreenY() + obj.height);
+			}
+
+			this.selectBounds.x = low.x;
+			this.selectBounds.y = low.y;
+			this.selectBounds.x2 = high.x;
+			this.selectBounds.y2 = high.y;
+
+			for (let i = 0; i < this.selection.length; i++) {
+				let obj = this.selection[i];
+				obj.selectX = obj.x - this.selectBounds.x;
+				obj.selectY = obj.y - this.selectBounds.y;
+				obj.selectXR = obj.selectX / (this.selectBounds.x2 - this.selectBounds.x); 
+				obj.selectYR = obj.selectY / (this.selectBounds.y2 - this.selectBounds.y); 
+				obj.selectW = obj.width / (this.selectBounds.x2 - this.selectBounds.x);
+				obj.selectH = obj.height / (this.selectBounds.y2 - this.selectBounds.y);
+			}
+
+			if (!doNoTime) {
+				this.movingBounds.x = low.x;
+				this.movingBounds.y = low.y;
+				this.movingBounds.x2 = high.x;
+				this.movingBounds.y2 = high.y;
+			}
+
+			this.translate.x += 1;
+
+			/*if (!doNoTime) {
+				$(this.$refs.container).css({"transition": ".3s"});
+				setTimeout(() => {
+					$(this.$refs.container).css({"transition": "opacity .3s"});
+				}, 300);
+			}*/
+		},
+		getObjectById: function (id, obj) {
+			obj = obj || this.getClosest().rootBlock;
+
+			if (obj.objectId == id)
+				return obj;
+
+			for (let i = 0; i < obj.children.length; i++) {
+				let ch = this.getObjectById(id, obj.children[i]);
+				if (ch)
+					return ch;
+			}
+
+			return null;
+		},
+		handleSquareTool: function (e) {
+			let marker = $(this.$refs["view" + this.downView.name]).find("svg").children("rect");
+			if (marker.length == 0) {
+				marker = $(document.createElementNS("http://www.w3.org/2000/svg", "rect")).appendTo(this.$refs.svg);
+			}
+			let y = Math.min(this.down.yy, this.pointer.y);
+			let x = Math.min(this.down.xx, this.pointer.x);
+			let w = Math.max(this.pointer.x, this.down.xx) - x;
+			let h = Math.max(this.pointer.y, this.down.yy) - y;
+
+			if (e.altKey) {
+				if (e.shiftKey) {
+					w = h = Math.max(w, h);
+				}
+				
+				x = this.down.xx - w;
+				y = this.down.yy - h;
+				w = w * 2;
+				h = h * 2;
+			}
+
+			this.curRect = {x: x, y: y, w: w, h: h};
+
+			marker.attr({
+				x: Math.floor(x) + .5,
+				y: Math.floor(y) + .5,
+				width: Math.floor(w),
+				height: Math.floor(h),
+				style: "stroke: black; fill: white; stroke-width: 1"
+			});
+		},
+		placeText: function () {
+			let view = this.getClosest();
+			let sq = new Websom.Designer.Text(view.rootBlock, "Text");
+
+			sq.setAllX(this.pointer.x);
+			sq.setAllY(this.pointer.y);
+			sq.setAllWidth(sq.fontSize * sq.text.length);
+			sq.setAllHeight(sq.fontSize);
+
+			sq.z = view.z;
+			sq.position = "absolute";
+			sq.objectId = view.id;
+			view.rootBlock.children.push(sq);
+
+			view.z++;
+			view.id++;
+
+			return sq;
+		},
+		getClosest: function (x, y) {
+			let off = {left: 0, top: 0}; //$(this.$refs.portContainer).offset();
+			x = x || (this.down.px || 0);
+			y = y || (this.down.py || 0);
+			
+			for (let v of this.views) {
+				if (v.viewX < x && x < v.viewX + v.viewWidth && v.viewY < y && y < v.viewY + v.viewHeight) {
+					return v;
+				}
+			}
+
+			let minD = 1000000;
+			let minV = null;
+			for (let v of this.views) {
+				let dx = (v.viewX + v.viewWidth / 2) - x;
+				let dy = (v.viewY + v.viewHeight / 2) - y;
+				let dist = Math.sqrt(dx*dx + dy*dy);
+
+				if (dist < minD) {
+					minD = dist;
+					minV = v;
+				}
+			}
+			
+			return minV;
+		},
+		finishSquareTool: function () {
+			let marker = $(this.$refs.svg).children("rect");
+			marker.fadeOut(300);
+			let view = this.getClosest();
+			let sq = new Websom.Designer.Rectangle(view.rootBlock, "Square");
+			let y = Math.min(this.down.yy, this.pointer.y);
+			let x = Math.min(this.down.xx, this.pointer.x);
+			let w = Math.max(this.pointer.x, this.down.xx) - x;
+			let h = Math.max(this.pointer.y, this.down.yy) - y;
+
+			sq.setAllX(this.curRect.x);
+			sq.setAllY(this.curRect.y);
+			sq.z = view.z;
+			sq.setAllWidth(this.curRect.w);
+			sq.setAllHeight(this.curRect.h);
+			sq.position = "absolute";
+			sq.objectId = view.id;
+			view.rootBlock.children.push(sq);
+
+			view.z++;
+			view.id++;
+
+			return sq;
+		},
+		setTool: function (str) {
+			this.selectedTool = str;
+			this.updateCursor();
+		},
+		setMode: function (v, mode) {
+			v.viewMode = mode;
+			let oW = v.viewWidth;
+			let oH = v.viewHeight;
+
+			if (v.viewMode == 0) {
+				v.viewWidth = v.sizes.desktop.width;
+				v.viewHeight = v.sizes.desktop.height;
+				v.rootBlock.mode = "desktop";
+			}else if (v.viewMode == 1) {
+				v.viewWidth = v.sizes.tablet.width;
+				v.viewHeight = v.sizes.tablet.height;
+				v.rootBlock.mode = "tablet";
+			}else if (v.viewMode == 2) {
+				v.viewWidth = v.sizes.mobile.width;
+				v.viewHeight = v.sizes.mobile.height;
+				v.rootBlock.mode = "mobile";
+			}
+		},
+		updateCursor: function () {
+			let el = $(this.$refs.port);
+			el.removeClass("pointer-tool");
+			el.removeClass("pen-tool");
+			el.removeClass("square-tool");
+			el.removeClass("circle-tool");
+			el.removeClass("text-tool");
+			el.addClass(this.selectedTool + "-tool");
+		},
+		moveTo: function (x, y) {
+			for (let i = 0; i < this.selection.length; i++) {
+				let sel = this.selection[i];
+				sel.setX(x + sel.selectX);
+				sel.setY(y + sel.selectY);
+			}
+		},
+		rotateTo: function (x, y, e) {
+			let pivot = {x: 0, y: 0};
+			pivot.x = this.down.pivot.x;
+			pivot.y = this.down.pivot.y;
+
+			let dx = pivot.x - x;
+			let dy = pivot.y - y;
+
+			let angle = Math.atan2(dy, dx) - this.down.rotation;
+
+			let snap = Math.PI / 8;
+			if (e.shiftKey)
+				angle = Math.round(angle / snap) * snap;
+
+			for (let i = 0; i < this.selection.length; i++) {
+				let sel = this.selection[i];
+				let a = angle;
+				sel.setX(Math.cos(a) * (sel.rotateX - pivot.x) - Math.sin(a) * (sel.rotateY - pivot.y) + pivot.x - sel.width/2);//pivot.x - sel.width / 2 + Math.cos(a + sel.rotateBase) * sel.rotateDistance);
+				sel.setY(Math.sin(a) * (sel.rotateX - pivot.x) + Math.cos(a) * (sel.rotateY - pivot.y) + pivot.y - sel.height / 2);//pivot.y - sel.height / 2 + Math.sin(a + sel.rotateBase) * sel.rotateDistance);
+				sel.rotation = (a + sel.rotateBaseS) * (180/Math.PI);
+			}
+		},
+		sizeTo: function (dx, dy, x, y, equal) {
+			equal = equal || false;
+			x = x * dx;
+			y = y * dy;
+
+			if (x > 0)
+				this.selectBounds.x2 = x;
+			if (y > 0)
+				this.selectBounds.y2 = y;
+
+			if (x < 0) {
+				this.selectBounds.x = x * -1;
+			}
+			if (y < 0) {
+				this.selectBounds.y = y * -1;
+			}
+			
+			if (this.selectBounds.x2 - this.selectBounds.x <= 1) {
+				this.selectBounds.x2 = this.selectBounds.x + 2;
+			}
+			if (this.selectBounds.y2 - this.selectBounds.y <= 1) {
+				this.selectBounds.y2 = this.selectBounds.y + 2;
+			}
+
+			let w = (this.selectBounds.x2 - this.selectBounds.x);
+			let h = (this.selectBounds.y2 - this.selectBounds.y);
+			for (let i = 0; i < this.selection.length; i++) {
+				let sel = this.selection[i];
+				let xs = 0;
+				let ys = 0;
+				if (equal) {
+					let cx = this.selectBounds.x - w/2;
+					let cy = this.selectBounds.y - h/2;
+					xs = (w/2);
+					ys = (h/2);
+				}
+
+				sel.setWidth(w * sel.selectW);
+				sel.setHeight(h * sel.selectH);
+				sel.setX((this.selectBounds.x + sel.selectXR * w - xs));
+				sel.setY((this.selectBounds.y + sel.selectYR * h - ys));
+
+				/*sel.width = w * sel.selectW;
+				sel.height = h * sel.selectH;
+				sel.x = this.selectBounds.x + sel.selectXR * w - xs;
+				sel.y = this.selectBounds.y + sel.selectYR * h - ys;*/
+			}
+		},
+		loadFromHref: function() {
+			var splits = window.location.href.split("/");
+			var searchIn = this.views.views;
+
+			var name = splits[splits.length - 1];
+
+			if (name) {
+				this.loadPack(name);
+			}else{
+				Websom.Theme.toast("Error no pack name");
+			}
+		},
+		loadPack: function(name) {
+			DashboardBridge.getPacks().then((packs) => {
+				for (let pack of packs) {
+					if (pack.name == name) {
+						this.loadViews(pack.views);
+						this.pack = pack;
+					}
+				}
+			});
+		},
+		loadBlock: function (xml) {
+			let elemName = xml.nodeName;
+			if (elemName in Websom.views.loaded) {
+				if (Websom.views.loaded[this.elemName].extendOptions.editor) {
+					var componentName = genComponent(this.elemName);
+					if (!this.editorComponent)
+						this.editorComponent = new Websom.views.editor[componentName]();
+					this.editorComponent.$vnode = {child: Websom.views.editor[componentName].extendOptions.data()};
+					Websom.views.editor[componentName].extendOptions.methods.deserialize.call(this.editorComponent.$vnode.child, xml);
+				}
+			}
+	
+			this.loadChildren(xml.childNodes);
+	
+			if (xml.attributes)
+			for (var i = 0; i < xml.attributes.length; i++) {
+				var attr = xml.attributes[i];
+				this.attributes[attr.name] = attr.value;
+			}
+		},
+		loadViews: function (views) {
+			this.views = [];
+			for (let view of views) {
+				let d = view.meta.designer;
+				let v = {name: view.name, filename: view.filename, changed: true, mounted: [], methods: {}, meta: view.meta, template: view.template, client: view.client, viewX: d.x, viewY: d.y, viewWidth: d.sizes.desktop.width || 1920, viewHeight: d.sizes.desktop.height || 1080, sizes: d.sizes || {desktop: {width: 1920, height: 1080}, mobile: {width: 360, height: 640}, tablet: {width: 1080, height: 720}}, id: d.id || 0, z: d.z || 0};
+				v.rootBlock = Websom.Designer.loadBlock(Websom.Editor.parseBlock(v.template), null, v);
+				v.rootBlock.isRoot = true;
+				this.views.push(v);
+			}
+		},
+		setupTriggers: function (v, m, o) {
+			o = o || v.rootBlock;
+
+			if (o.triggers.length > 0) {
+				let trigs = [];
+				for (let i = 0; i < o.triggers.length; i++) {
+					let trig = o.triggers[i];
+
+					trigs.push(" if ($triggerId == " + i + ") {" + this.globalActions[trig.__action__.__type__].action(trig.__action__) + "}");
+
+					let t = this.globalTriggers[trig.__type__].trigger(trig);
+					if (t.type == "script") {
+						m.mounted.push("(($el, $trigger) => {" + t.source + "})(this.$refs['object-id-" + o.objectId + "'], ($context) => {" + this.globalActions[trig.__action__.__type__].action(trig.__action__) + "})");
+					}
+				}
+
+				m.methods.push(" if ($objectId == " + o.objectId + ") {let $el = this.$refs['object-id-' + $objectId]; " + trigs.join("else") + "}");
+			}
+
+			for (let child of o.children)
+				this.setupTriggers(v, m, child);
+		},
+		saveView: function (v) {
+			v.meta.designer.id = v.id;
+			v.meta.designer.z = v.z;
+			v.meta.designer.sizes = v.sizes;
+
+			let methods = {methods: [], mounted: []};
+			this.setupTriggers(v, methods);
+
+			
+let str = `info ${JSON.stringify(v.meta, null, "\t")}
+
+template {
+${v.rootBlock.serialize()}
+}
+
+client {
+	props: ["data"],
+	methods: {
+		callAction: function ($objectId, $triggerId) {
+			${methods.methods.join("else")}
+		}
+	},
+	mounted: function () {
+		${methods.mounted.join("")}
+	}
+}`;
+			DashboardBridge.writePackFile(this.pack.name, v.filename, str).then(() => {
+				Websom.toast("Saved");
+			});
+		},
+		save: function () {
+			for (let view of this.views) {
+				if (view.changed) {
+					//Build thumbnail
+
+					this.saveView(view);
+				}
+			}
+		}
+	},
+	created: function () {
+		this.groups = this.getGroups();
+
+		DashboardBridge.getBuilderViews().then((views) => {
+			this.templateViews = views.views;
+			this.buildBasicViews();
+		});
+	},
+	mounted: function () {
+		let customPan = false;
+
+		$(document).on("blur", ".design-text", (e) => {
+			e.target.designObject.text = e.target.innerHTML;
+		});
+
+		let zoom = 1;
+		let rotate = 0;
+		let baseTranslate = {x: 0, y: 0};
+		let translate = {x: 0, y: 0};
+		let point = $(this.$refs.point);
+		let moved = false;
+
+		$(this.$refs.port).on("mousemove", (e) => {
+			let pz = null;
+
+			let cosX = Math.cos(rotate/(180*Math.PI));
+			let sinY = Math.sin(rotate/(180*Math.PI));
+			
+			this.down.cx = Math.floor(e.clientX);
+			this.down.cy = Math.floor(e.clientY);
+			let zmm = 1/zoom;
+			
+			let off = $(e.target).closest(".designer-page").offset();
+			if (!off) {
+				off = $(this.getClosest().rootBlock.el.$el).closest(".designer-page").offset();
+				if (this.previewBlock) {
+					this.previewBlock.remove();
+					this.previewBlock = null;
+				}
+			}else{
+				let v = this.getClosest();
+				if (this.draggingBlock) {
+					if (this.previewBlock) {
+						let px = Math.floor((e.clientX - off.left) * zmm);
+						let py = Math.floor((e.clientY - off.top) * zmm);
+						this.previewBlock.setAllX(px - this.previewBlock.width/2);
+						this.previewBlock.setAllY(py - this.previewBlock.height/2);
+					}else{
+						this.previewBlock = new this.draggingBlock(v.rootBlock, "Temp");
+						if (this.previewBlock.spawn)
+							this.previewBlock.spawn();
+						v.rootBlock.children.push(this.previewBlock);
+						this.previewBlock.x = this.pointer.x;
+						this.previewBlock.y = this.pointer.y;
+						this.previewBlock.z = v.z;
+						this.previewBlock.placeMode = true;
+						this.previewBlock.objectId = v.id;
+
+						v.z++;
+						v.id++;
+					}
+				}
+			}
+			
+			
+			let px = Math.floor((e.clientX - off.left) * zmm);
+			let py = Math.floor((e.clientY - off.top) * zmm);
+
+			let offP = $(this.$refs.portContainer).offset();
+			this.down.px = Math.floor((e.clientX - offP.left) * zmm);
+			this.down.py = Math.floor((e.clientY - offP.top) * zmm);
+
+			//this.pointer.x = Math.floor((e.clientX - off.left) * zmm);
+			//this.pointer.y = Math.floor((e.clientY - off.top) * zmm);
+
+			point.css({top: this.pointer.y, left: this.pointer.x});
+			this.translate.x = translate.x;
+			this.translate.y = translate.y;
+
+			$(this.$el).find(".designer-guide").css({width: 0, height: 0});
+
+			if (this.selectedTool != "pointer") {
+				this.getGuides(e, off, zmm);
+			}
+
+			if (this.down.is) {
+				$(this.$refs.container).css({"transition": "opacity .3s"});
+			}
+			
+			if (this.down.is && this.down.button == 1) {
+				translate.x = baseTranslate.x + (e.clientX - this.down.x) * zmm;
+				translate.y = baseTranslate.y + (e.clientY - this.down.y) * zmm;
+				if (customPan)
+					this.$refs.view.style.transform = "scale(" + zoom + ") rotate(" + rotate + "deg) translate(" + translate.x + "px, " + translate.y + "px)";
+			}else if (this.down.is) {
+				if (this.selectedTool == "square") {
+					this.handleSquareTool(e);
+				}
+
+				if (this.down.button == 0 && this.selectedTool == "pointer" && this.rotate) {
+
+				}else if (this.down.button == 0 && this.selectedTool == "pointer" && this.downOnObject) {
+					moved = true;
+					/*let off = $(this.target).closest(".designer-page").offset();
+					if (!off)
+						off = {left: 0, top: 0};*/
+					let tx = (e.clientX - this.down.x) * zmm;
+					let ty = (e.clientY - this.down.y) * zmm;
+					this.ttx = tx;
+					this.tty = ty;
+					
+					/*let mx = this.movingBounds.x + tx;
+					let my = this.movingBounds.y + ty;
+					let mx2 = this.movingBounds.x2 + tx;
+					let my2 = this.movingBounds.y2 + ty;*/
+
+					let bW = (this.selectBounds.x2 - this.selectBounds.x);
+					let bH = (this.selectBounds.y2 - this.selectBounds.y);
+					let mx = px - this.selectBounds.dx;
+					let my = py - this.selectBounds.dy;
+
+					if (this.down.resize) {
+						mx = px - (bW * this.down.rx);
+						if (this.down.rx == -1)
+							mx = px;
+
+						my = py - (bH * this.down.ry);
+
+						if (this.down.ry == -1)
+							my = py;
+					}
+
+					let mx2 = mx + bW;
+					let my2 = my + bH;
+					
+					$(this.$refs.moving).css({
+						top: my,
+						left: mx,
+						width: mx2 - mx,
+						height: my2 - my
+					});
+
+					let snaps = [
+						{x: mx, y: my},
+						{x: mx, y: my2},
+						{x: mx2, y: my2},
+						{x: mx2, y: my2},
+						{x: mx + (mx2 - mx)/2, y: my + (my2 - my)/2}
+					];
+					let ox = false;
+					let oy = false;
+					let spx = 0;
+					let spy = 0;
+
+					for (let sp of snaps) {
+						let c = this.getSnap(sp.x, sp.y);
+						if (c.x != -1) {
+							ox = c.x;
+							spx = sp.x;
+						}
+						if (c.y != -1) {
+							oy = c.y;
+							spy = sp.y;
+						}
+					}
+
+					let mtx = px - this.selectBounds.dx;
+					let mty = py - this.selectBounds.dy;
+					if (oy !== false)
+						mty = oy - (spy - my);
+					
+					if (ox !== false)
+						mtx = ox - (spx - mx);
+					
+					if (!this.down.resize && !this.down.rotate) {
+						if (this.downOnObject) {
+							this.moveTo(mtx, mty);
+							
+							for (let sel of this.selection) {
+								sel.placeMode = e.ctrlKey;
+							}
+							
+							if (e.ctrlKey && $(e.target).hasClass("designer-object")) {
+								$(this.$refs.containMarker).addClass("designer-contain");
+								let t = $(e.target);
+								let overOff = t[0].getBoundingClientRect();
+								$(this.$refs.containMarker).css({left: overOff.left, top: overOff.top, width: overOff.width, height: overOff.height})
+							}else
+								$(this.$refs.containMarker).removeClass("designer-contain");
+						}
+					}else if (this.down.rotate) {
+						this.rotateTo(px, py, e);
+					}else {
+						this.getGuides(e, off, zmm);
+						this.sizeTo(this.down.rx, this.down.ry, this.pointer.x, this.pointer.y, e.altKey);
+					}
+
+					this.computeBounds(true);
+					$(this.$refs.container).removeClass("open");
+				}
+			}
+		});
+
+		let selectObject = (e, obj, canFocus, dbl) => {
+			let id = typeof obj == "number" ? obj : parseInt(obj.attr("data-object-id"));
+
+			let real = this.getObjectById(id);
+
+			for (let sel of this.selection) {
+				sel.isSelected = false;
+			}
+			
+			if (e.button == 0)
+			for (let i = 0; i < this.selection.length; i++) {
+				let selection = this.selection[i];
+				if (selection.objectId == id) {
+					if (e.shiftKey) {
+						$("[data-object-id=" + selection.objectId + "]").removeClass("designer-selected");
+						this.selection.splice(i, 1);
+						this.computeBounds();
+						return;
+					}else if (canFocus)
+						return;
+				}
+			}
+
+			if (!e.shiftKey) {
+				for (let i = 0; i < this.selection.length; i++) {
+					let selection = this.selection[i];
+					$("[data-object-id=" + selection.objectId + "]").removeClass("designer-selected");
+				}
+
+				this.selection.splice(0, this.selection.length);
+			}
+
+			$("[data-object-id=" + real.objectId + "]").addClass("designer-selected");
+			this.selection.push(real);
+
+			if (real.parent.container) {
+				for (let c of real.parent.children) {
+					if (!dbl && c.objectId != real.objectId)
+						this.selection.push(c);
+				}
+			}
+
+			if (this.selection.length == 1) {
+				real.selectX = 0;
+				real.selectY = 0;
+				real.selectW = 1;
+				real.selectH = 1;
+			}else{
+				real.selectX = real.x - this.selectBounds.x;
+				real.selectY = real.y - this.selectBounds.y;
+				real.selectW = real.width / (this.selectBounds.x2 - this.selectBounds.x);
+				real.selectH = real.height / (this.selectBounds.y2 - this.selectBounds.y);
+			}
+			this.computeBounds();
+
+			for (let sel of this.selection) {
+				sel.isSelected = true;
+			}
+		};
+
+		$(this.$refs.port).on("dblclick", (e) => {
+			if ($(e.target).hasClass("designer-object") && this.selectedTool == "pointer" && e.button == 0) {
+				selectObject(e, $(e.target), false, true);
+			}
+		});
+
+		$(this.$refs.port).on("mousedown", (e) => {
+			moved = false;
+			this.down.is = true;
+			this.downOnObject = false;
+			if (e.button == 0)
+				this.selectedView = false;
+			if ($(e.target).hasClass("designer-page") && e.button == 0 && this.selectedTool == "pointer") {
+				this.selectedView = true;
+			}else if ($(e.target).hasClass("designer-grab")) {
+				this.downOnObject = true;
+				this.down.resize = true;
+				this.down.rx = parseInt($(e.target).attr("data-x"));
+				this.down.ry = parseInt($(e.target).attr("data-y"));
+			}else if ($(e.target).hasClass("designer-rotate")) {
+				this.downOnObject = true;
+				let pivot = {x: 0, y: 0};
+				pivot.x = this.selectBounds.x + (this.selectBounds.x2 - this.selectBounds.x) / 2;
+				pivot.y = this.selectBounds.y + (this.selectBounds.y2 - this.selectBounds.y) / 2;
+
+				for (let sel of this.selection) {
+					let dx = pivot.x - (sel.x + sel.width/2);
+					let dy = pivot.y - (sel.y + sel.height/2);
+					sel.rotateDistance = Math.sqrt(dx*dx + dy*dy);
+					sel.rotateX = sel.x + sel.width / 2;
+					sel.rotateY = sel.y + sel.height / 2;
+
+					sel.rotateBase = Math.atan2(dy, dx) + (sel.rotation * (Math.PI / 180));
+					sel.rotateBaseS = (sel.rotation * (Math.PI / 180));
+				}
+
+				let off = $(e.target).closest(".designer-page").offset();
+				if (!off) {
+					off = $(this.getClosest().rootBlock.el.$el).closest(".designer-page").offset();
+				}
+				
+				let zmm = 1/zoom;
+				
+				let px = Math.floor((e.clientX - off.left) * zmm);
+				let py = Math.floor((e.clientY - off.top) * zmm);
+
+				let dx = pivot.x - px;
+				let dy = pivot.y - py;
+				this.down.rotation = Math.atan2(dy, dx);
+
+				this.down.rotate = true;
+				this.down.pivot = pivot;
+			}else if ($(e.target).hasClass("designer-object") && this.selectedTool == "pointer" && e.button == 0) {
+				this.downOnObject = true;
+				selectObject(e, $(e.target), true);
+				if (e.preventDefault)
+					e.preventDefault();
+			}else if ($(e.target).hasClass("root-block") && this.selectedTool == "pointer") {
+				this.downOnObject = false;
+			}else if (!$(e.target).hasClass("designer-object") && this.selectedTool == "pointer") {
+				this.downOnObject = false;
+			}
+
+			this.downView = this.getClosest();
+
+			if (e.button == 1) {
+				$("html").addClass("design-move");
+			}else{
+				e.stopImmediatePropagation();
+			}
+			
+			let off = $(e.target).closest(".designer-page").offset();
+			if (!off)
+				off = {left: 0, top: 0};
+			let zmm = 1/zoom;
+			
+			let px = Math.floor((e.clientX - off.left) * zmm);
+			let py = Math.floor((e.clientY - off.top) * zmm);
+
+			
+			this.down.x = e.clientX;
+			this.down.y = e.clientY;
+			this.down.xx = this.pointer.x;
+			this.down.yy = this.pointer.y;
+			this.down.button = e.button;
+
+			this.selectBounds.dx = px - this.selectBounds.x;
+			this.selectBounds.dy = py - this.selectBounds.y;
+
+			for (let i = 0; i < this.selection.length; i++) {
+				let sel = this.selection[i];
+				sel.baseTransform = {x: sel.x, y: sel.y, w: sel.width, h: sel.height};
+			}
+		});
+
+		/*$(document).on("click", ".designer-object", (e) => {
+			if (moved)
+				return;
+
+			selectObject(e, $(e.target));
+		});*/
+
+		$(document).on("keydown", (e) => {
+			if (e.ctrlKey && e.keyCode == 71) {
+				let doGroup = true;
+				if (this.selection.length > 0 && this.selection[0].parent.container) {
+					let containerId = this.selection[0].parent.objectId;
+					doGroup = false;
+
+					for (let sel of this.selection)
+						if (!sel.parent.container || sel.parent.objectId != containerId) {
+							doGroup = true;
+							break;
+						}
+				}
+
+				if (doGroup) {
+					this.removeSelected();
+					this.makeGroup(this.selection);
+					e.preventDefault();
+				}else{
+					let grp = this.selection[0].parent;
+					this.unGroup(this.selection);
+					this.removeObject(grp.parent.children, grp);
+					e.preventDefault();
+				}
+			}
+		});
+
+		$(document).on("keyup", (e) => {
+			if (e.ctrlKey && e.keyCode == 90) {
+				if (e.shiftKey)
+					this.redo();
+				else
+					this.undo();
+			}else if (e.keyCode == 46) {
+				for (let sel of this.selection)
+					sel.remove();
+				this.selection.splice(0, this.selection.length);
+			}
+		});
+
+		$(document).on("mouseup", (e) => {
+			$(this.$refs.containMarker).removeClass("designer-contain");
+			if (e.button == 0) {
+				if (this.previewBlock) {
+					this.previewBlock.placeMode = false;
+				}
+				this.previewBlock = null;
+				this.draggingBlock = null;
+			}
+		});
+
+		$(this.$refs.port).on("mouseup", (e) => {
+			for (let sel of this.selection) {
+				sel.placeMode = false;
+			}
+			$("html").removeClass("design-move");
+			this.down.is = false;
+			baseTranslate.x = translate.x;
+			baseTranslate.y = translate.y;
+
+			if (this.selection.length > 0) {
+				$(this.$refs.container).addClass("open");
+			}
+
+			/*if ($(e.target).hasClass("designer-object") && this.selectedTool == "pointer") {
+				if (!moved)
+					selectObject(e, $(e.target), true);
+			}*/
+
+			if (e.ctrlKey && $(e.target).hasClass("designer-object")) {
+				let obj = this.getObjectById($(e.target).attr("data-object-id"));
+				for (let sel of this.selection) {
+					sel.x = sel.x - obj.getScreenX();
+					sel.y = sel.y - obj.getScreenY();
+					sel.remove();
+					sel.parent = obj;
+					obj.children.push(sel);
+				}
+			}
+
+			if (moved) {
+				this.addUndo();
+				for (let sel of this.selection) {
+					this.addChange(sel, "x", sel.baseTransform.x);
+					this.addChange(sel, "y", sel.baseTransform.y);
+					this.addChange(sel, "width", sel.baseTransform.w);
+					this.addChange(sel, "height", sel.baseTransform.h);
+				}
+			}
+
+			if (this.selectedTool == "square" && e.button == 0) {
+				for (let sel of this.selection) {
+					sel.isSelected = false;
+				}
+				this.selection.splice(0, this.selection.length);
+				this.selection.push(this.finishSquareTool(e));
+				this.selection[0].isSelected = true;
+				this.computeBounds();
+			}else if (this.selectedTool == "text" && e.button == 0) {
+				for (let sel of this.selection) {
+					sel.isSelected = false;
+				}
+				this.selection.splice(0, this.selection.length);
+				this.selection.push(this.placeText(e));
+				this.selection[0].isSelected = true;
+				this.computeBounds();
+			}
+
+			if (e.button == 0 && !this.down.resize && !this.down.rotate)
+			if (!$(e.target).hasClass("designer-object") && this.selectedTool == "pointer")
+				for (let i = this.selection.length - 1; i >= 0; i--) {
+					let selection = this.selection[i];
+					selection.isSelected = false;
+					$("[data-object-id=" + selection.objectId + "]").removeClass("designer-selected");
+					this.selection.splice(i, 1);
+				}
+			
+			this.down.resize = false;
+			this.down.rotate = false;
+		});
+		
+		$.getScript("https://cdn.jsdelivr.net/npm/interactjs@1.3.3/dist/interact.min.js", () => {
+			/*Websom.Editor.listenForToolbox();
+			DashboardBridge.getdesignerViews().then((views) => {
+				this.views = {views: views.views.concat(views.pages), overrides: views.website, useViews: views.website.concat(views.views)};
+				this.buildBasicViews();
+				this.loadFromHref();
+			});*/
+		});
+		let xPort = 0;
+		let yPort = 0;
+		let xLast = 0;
+		let yLast = 0;
+
+		let transformPort = this.$refs.port;
+		
+		if (customPan)
+		document.onmousewheel = (e) => {
+			
+			let oldPos = zoom;
+			let relX = e.clientX - $(this.$refs.port).offset().left;
+			let relY = e.clientY - $(this.$refs.port).offset().top;
+
+			xPort = xPort + ((relX - xLast) / zoom);
+			yPort = yPort + ((relY - yLast) / zoom);
+
+			let x = relX * oldPos;
+			let y = relY * oldPos;
+			this.translate.x = x;
+
+			if (e.ctrlKey) {
+				if (e.deltaY < 0.5)
+					zoom += 0.07;
+				else
+					zoom -= 0.07;
+
+				if (zoom < 0.01)
+					zoom = 0.01;
+
+				//this.zoom = zoom;
+
+				this.$refs.container.style.setProperty("--zoom-size", (1/(zoom)*8) + "px");
+
+				e.preventDefault();
+			}
+
+			let nx = relX * zoom;
+			let ny = relY * zoom;
+
+			/*translate.x += (nx - x) * zoom;
+			translate.y += (ny - y) * zoom;*/
+			//translate.x += 100;(relX - xPort) / zoom;
+			//translate.y += 100;(relY - yPort) / zoom;
+			let ch = zoom - oldPos;
+			/*translate.x -= relX / (zoom) - relX / oldPos;
+			translate.y -= relY / (zoom) - relY / oldPos;*/
+			//translate.x -= relX * ch;
+			//translate.y -= relY * ch;
+
+			xLast = relX;
+			yLast = relY;
+			baseTranslate.x = translate.x;
+			baseTranslate.y = translate.y;
+
+
+			if (e.altKey) {
+				if (e.deltaY < 0.5)
+					rotate += 15;
+				else
+					rotate -= 15;
+
+				if (Math.abs(rotate) == 360)
+					rotate = 0;
+
+				e.preventDefault();
+			}
+
+			if (true) {
+				transformPort.style.transform = "scale(" + zoom + ") rotate(" + rotate + "deg) translate(" + translate.x + "px, " + translate.y + "px)";
+				//this.$refs.view.style["transform-origin"] = xPort + "px " + yPort + "px";
+			}else
+			transformPort.removeAttribute("style");
+		}
+		
+		pz = panzoom(this.$refs.portContainer, {smoothScroll: false, filterKey: function() {
+			return true;
+		}});
+
+		this.$refs.portContainer.addEventListener("transform", () => {
+			let t = pz.getTransform();
+			zoom = t.scale;
+			this.zoom = zoom;
+			this.translate.x = t.x;
+			this.translate.y = t.y;
+			this.computeBounds(true);
+		});
+
+		this.loadFromHref();
+	}
+}

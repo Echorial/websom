@@ -1,0 +1,53 @@
+class Websom.Controls.File inherits Websom.Control {
+	string keyName = "";
+	uint64 maxSize = 0;
+
+	<void, Websom.Input, <Websom.File>array, <void, Websom.InputValidation>function>function validateHook = null;
+	<void, bool, Websom.Input, Websom.Data, <Websom.File>array>function successHook = null;
+
+	void @construct(string keyName, uint64 maxSize, <void, Websom.Input, <Websom.File>array, <void, Websom.InputValidation>function>function validate, <void, bool, Websom.Input, Websom.Data, <Websom.File>array>function success) {
+		this.keyName = keyName;
+		this.maxSize = maxSize;
+
+		this.validateHook = validate;
+		this.successHook = success;
+	}
+
+	void validate(Websom.Input input, <void, Websom.InputValidation>function done) {
+		if (input.files.hasKey(this.keyName)) {
+			for (var int i in input.files[this.keyName]) {
+				var Websom.File file = input.files[this.keyName];
+				if (file.size > this.maxSize) {
+					done(new Websom.InputValidation(true, "File exceeds limit of " + (this.maxSize / 1024) + "kb"));
+					return null;
+				}
+			}
+
+			this.validateHook(input, input.files[this.keyName], void (Websom.InputValidation validation) => {
+				if (validation != null and validation.hadError) {
+					done(validation);
+				}else{
+					done(new Websom.InputValidation(false, ""));
+				}
+			});
+		}else{
+			done(new Websom.InputValidation(true, "No file for field " + this.keyName));
+		}
+	}
+
+	void fill(Websom.Input input, map raw, <void>function done) {
+		done();
+	}
+
+	trust override void insert(Websom.Input input, Websom.Data data, primitive key) {
+		this.successHook(true, input, data, input.files[this.keyName]);
+	}
+
+	trust override void update(Websom.Input input, Websom.Data data) {
+		this.successHook(false, input, data, input.files[this.keyName]);
+	}
+
+	void filter(Websom.Input input, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+		done(new Websom.InputValidation(false, ""));
+	}
+}

@@ -1,0 +1,152 @@
+info {
+	"name": "sort"
+}
+
+template {
+	<div class="row sort" v-if="!layout">
+		<div v-if="$slots.default" class="col s12 m4 controls">
+			<slot/>
+		</div>
+		<div class="col s12" :class="{'m8': $slots.default, 'm12': !$slots.default}">
+			<slot name="static"/>
+			<h2 v-if="documents.length == 0 && !results">No results</h2>
+			<template v-else-if="documents.length == 0 && results"><slot name="no-results"/></template>
+			<transition-group v-else name="list" tag="div" :class="containerClass">
+				<template v-if="!isSlot">
+					<component v-for="(doc, key) in documents" v-bind="bindData" v-if="!('_w_loadMore' in doc)" :is="view" :data="filterDocument(doc)" :key="key" />
+				</template>
+				<template v-else>
+					<slot v-for="(doc, key) in documents" v-if="!('_w_loadMore' in doc)" name="view" :dataKey="key" :data="filterDocument(doc)"/>
+				</template>
+
+				<button class="button full" v-if="'_w_loadMore' in documents[documents.length - 1]" @click="loadMore()" key="loadButton">Load more</button>
+			</transition-group>
+		</div>
+	</div>
+	<div v-else-if="layout =='vertical'">
+		<div v-if="$slots.default" class="controls">
+			<slot/>
+		</div>
+		<div>
+			<slot name="static"/>
+			<h2 v-if="documents.length == 0 && !results">No results</h2>
+			<template v-else-if="documents.length == 0 && results"><slot name="no-results"/></template>
+			<transition-group v-else name="list" tag="div" :class="containerClass">
+				<template v-if="!isSlot">
+					<component v-for="(doc, key) in documents" v-bind="bindData" v-if="!('_w_loadMore' in doc)" :is="view" :data="filterDocument(doc)" :key="key" />
+				</template>
+				<template v-else>
+					<slot v-for="(doc, key) in documents" v-if="!('_w_loadMore' in doc)" name="view" :dataKey="key" :data="filterDocument(doc)"/>
+				</template>
+
+				<button class="button full" v-if="'_w_loadMore' in documents[documents.length - 1]" @click="loadMore()" key="loadButton">Load more</button>
+			</transition-group>
+		</div>
+	</div>
+	<div v-else class="sort">
+		<component :is="layout" :documents="documents"/>
+	</div>
+}
+
+client {
+	data: function () {
+		return {documents: [], offset: 0};
+	},
+	props: ["view", "bind-data", "render-field", "container", "sub", "sub-field", "parent", "query", "container-class", "layout"],
+	computed: {
+		isSlot: function () {
+			return this.$slots.view || this.$scopedSlots.view;
+		},
+		results: function () {
+			return this.$slots["no-results"] || this.$scopedSlots["no-results"];
+		}
+	},
+	methods: {
+		filterDocument: function (doc) {
+			if (this.renderField)
+				return doc[this.renderField];
+			return doc;
+		},
+		loadMore: function () {
+			this.offset++;
+			this.sort();
+		},
+		querySort: function (query) {
+			var that = this;
+			var route = "default";
+			if (this.$attrs.route)
+				route = this.$attrs.route;
+
+			if (this.offset != 0)
+				query._w_loadMore = this.offset;
+
+			if (this.sub)
+				query.sub = {document: this.sub, field: this.subField || false};
+
+			if (this.parent)
+				query.parentDocument = this.parent;
+
+			query._w_type = "select";
+			query._w_route = route;
+			$.post("/postInput",
+				{
+					inputKey: this.container,
+					data: query
+				},
+				(d) => {
+					let rawDocs = JSON.parse(d).documents
+					if (!rawDocs)
+						console.error(d + " on sort form(container: " + that.container + ", view: " + that.view + ")");
+					let clientData = new Array(rawDocs.length);
+					for (let i = 0; i < rawDocs.length; i++)
+						clientData[i] = Websom.setupClientData(this.container, rawDocs[i]);
+
+					if (this.offset != 0)
+						this.documents = this.documents.concat(clientData);
+					else
+						this.documents = clientData;
+				});
+		},
+		sort: function () {
+			var that = this;
+			var query = JSON.parse(JSON.stringify(this.query || {}));
+			var ready = 0;
+			var empty = true;
+			if (this.$slots.default)
+			$(this.$el).children(".controls").children().each(function () {
+				var control = $(this);
+				empty = false;
+				ready++;
+				this.__vue__.value(function (val) {
+					query[control.attr("name")] = val;
+					ready--;
+					if (ready == 0) {
+						that.querySort(query);
+					}
+				});
+			});
+
+			if (empty)
+				that.querySort(query);
+		}
+	},
+	mounted: function () {
+		var that = this;
+
+		$(document).on("success", "[data-submit]", function (e) {
+			if ($(this).closest("form").attr("form-key") == that.container && $(this).attr("data-interface") == "insert")
+				that.sort();
+		});
+
+		if (this.$attrs.auto === "true") {
+			$(this.$el).children(".controls").each(function () {
+				$(this).on("controlChange", function () {
+					that.offset = 0;
+					that.sort();
+				});
+			});
+		}
+
+		this.sort();
+	}
+}

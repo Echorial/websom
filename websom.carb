@@ -1,0 +1,280 @@
+#include "core/services.carb"
+#include "Oxygen/oxygen.carb"
+
+namespace Websom {
+
+}
+
+class Websom.Server {
+	<Websom.Bucket>array buckets = new <Websom.Bucket>array();
+	map bucketReference = null;
+
+	string version = "1.0";
+
+	Websom.Services.Module module = null;
+	Websom.Services.Resource resource = null;
+	Websom.Services.Router router = null;
+	Websom.Services.View view = null;
+	Websom.Services.Theme theme = null;
+	Websom.Services.Database database = null;
+	Websom.Services.Input input = null;
+	Websom.Services.Crypto crypto = null;
+	Websom.Services.Email email = null;
+	Websom.Services.Render render = null;
+	Websom.Services.Pack pack = null;
+	
+	Websom.Standard.Dashboard.Module dashboard = null;
+	Websom.Standard.UserSystem.Module userSystem = null;
+	Websom.Standard.PaymentSystem.Module paymentSystem = null;
+
+	Websom.Config config = null;
+
+	string scriptPath = "";
+	string websomRoot = "";
+
+	Websom.Status status = new Websom.Status();
+
+	void @construct(Websom.Config config) {
+		native php {
+			$this->scriptPath = __FILE__;
+		}
+
+		native javascript {
+			this.scriptPath = __filename;
+		}
+
+		this.websomRoot = FileSystem.resolve(FileSystem.dirName(this.scriptPath) + "/../../");
+
+		this.config = config;
+		this.database = new Websom.Services.Database(this);
+		this.module = new Websom.Services.Module(this);
+		this.resource = new Websom.Services.Resource(this);
+		this.view = new Websom.Services.View(this);
+		this.router = new Websom.Services.Router(this);
+		this.theme = new Websom.Services.Theme(this);
+		this.pack = new Websom.Services.Pack(this);
+		this.input = new Websom.Services.Input(this);
+		this.crypto = new Websom.Services.Crypto(this);
+		this.email = new Websom.Services.Email(this);
+		this.render = new Websom.Services.Render(this);
+
+		this.status.inherit(this.database.start());
+		this.status.inherit(this.module.start());
+		this.status.inherit(this.resource.start());
+		this.status.inherit(this.view.start());
+		this.status.inherit(this.router.start());
+		this.status.inherit(this.theme.start());
+		this.status.inherit(this.pack.start());
+		this.status.inherit(this.input.start());
+		this.status.inherit(this.crypto.start());
+		this.status.inherit(this.email.start());
+		this.status.inherit(this.render.start());
+
+		if (this.config.bucket)
+			if ("reference" in this.config.bucket)
+				this.bucketReference = this.config.bucket["reference"];
+	}
+
+	Websom.Bucket getBucketFromReference(string referenceName) {
+		if (referenceName in this.bucketReference)
+			return this.getBucket(this.bucketReference[referenceName]["bucket"]);
+		return null;
+	}
+
+	Websom.Bucket getBucket(string name) {
+		for (var int i in this.buckets) {
+			if (this.buckets[i].name == name)
+				return this.buckets[i];
+		}
+
+		var map buckets = this.config.bucket["buckets"];
+		if (name in buckets)
+			return this.loadBucket(name, buckets[name]);
+	}
+
+	Websom.Bucket loadBucket(string name, map raw) {
+		var string type = raw["type"]; //TODO: Validate raw
+		var bucket = Websom.Bucket.make(this, name, type, raw);
+		this.buckets.push(bucket);
+		return bucket;
+	}
+
+	void listen(int port) {
+		native javascript {
+			var that = this;
+			
+			const express = require("express");
+			const session = require("express-session");
+			const fileStore = require("session-file-store")(session);
+			const bodyParser = require("body-parser");
+			const multer = require("multer");
+			const crypto = require("crypto");
+			const fs = require("fs");
+
+			var server = express();
+			server.use("/resources", express.static(this.config.resources));
+			
+			var sessionSecret = crypto.randomBytes(64).toString('hex');
+			
+			if (!fs.existsSync(this.config.root + "/secret.txt"))
+				fs.writeFileSync(this.config.root + "/secret.txt", sessionSecret);
+			else
+				sessionSecret = fs.readFileSync(this.config.root + "/secret.txt", "utf8");
+
+			var secure = false;
+
+			if (this.config.https)
+				secure = true;
+
+			server.use(session({
+				secret: sessionSecret,
+				store: new fileStore(),
+				resave: false,
+				cookie: {
+					secure: secure
+				}
+			}));
+
+			server.get(/.*/, (req, res) => {
+				if (that.config.dev)
+					if (that.status.hadError) {
+						console.log(that.status.display());
+						that.status.clear();
+					}
+				
+				var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+				
+				client.family = req.socket.remoteFamily;
+				client.localAddress = req.socket.localAddress;
+				client.localPort = req.socket.localPort;
+
+				var websomRequest = new Websom.Request(that, client);
+				websomRequest.path = req.path;
+				websomRequest.response.jsResponse = res;
+				websomRequest.jsRequest = req;
+				that.router.handle(websomRequest);
+			});
+
+			server.post("/postInput", bodyParser.urlencoded({limit: '160mb', extended: true}), (req, res) => {
+				if (!req.body) {
+					res.sendStatus(400);
+					res.send("Invalid post"); //TODO: Make generic with Websom.Error...
+				}else{
+					if (("inputKey" in req.body) && typeof req.body.inputKey == "string" && req.body.inputKey.length > 0 && req.body.inputKey.length < 2048 && ("data" in req.body)) {
+						var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+				
+						client.family = req.socket.remoteFamily;
+						client.localAddress = req.socket.localAddress;
+						client.localPort = req.socket.localPort;
+						
+						var websomRequest = new Websom.Request(that, client);
+						websomRequest.path = req.path;
+						websomRequest.response.jsResponse = res;
+						websomRequest.jsRequest = req;
+						this.input.handle(req.body.inputKey, req.body.data, websomRequest);
+					}else{
+						res.sendStatus(400);
+						res.send("Invalid post");
+					}
+				}
+			});
+
+			server.post("/postInputM", multer({dest: "/tmp", limits: {files: 50, fileSize: 1024 * 1024 * 160}}).any(), (req, res) => { // Multipart form
+				if (!req.body) {
+					res.sendStatus(400);
+					res.send("Invalid post"); //TODO: Make generic with Websom.Error...
+				}else{
+					if (("inputKey" in req.body) && typeof req.body.inputKey == "string" && req.body.inputKey.length > 0 && req.body.inputKey.length < 2048 && ("data" in req.body) && typeof req.body.data == "string") {
+						var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+				
+						client.family = req.socket.remoteFamily;
+						client.localAddress = req.socket.localAddress;
+						client.localPort = req.socket.localPort;
+						
+						var websomRequest = new Websom.Request(that, client);
+						websomRequest.path = req.path;
+						websomRequest.response.jsResponse = res;
+						websomRequest.jsRequest = req;
+						let data = req.body.data;
+
+						try {
+							data = JSON.parse(data);
+						}catch (e) {
+							res.sendStatus(400);
+							res.send("Invalid post");
+
+							return;
+						}
+
+						this.input.handle(req.body.inputKey, data, websomRequest);
+					}else{
+						/*for (let files of req.files) {
+							for (let file of files) {
+								fs.unlinkSync(file);
+							}
+						}*/
+						res.sendStatus(400);
+						res.send("Invalid post");
+					}
+				}
+			});
+
+			server.post("/postBridge", bodyParser.urlencoded({limit: '160mb', extended: true}), (req, res) => {
+				if (!req.body) {
+					res.sendStatus(400);
+					res.send("Invalid post"); //TODO: Make generic with Websom.Error...
+				}else{
+					if (("bridge" in req.body) && typeof req.body.bridge == "string" && req.body.bridge.length > 0 && req.body.bridge.length < 2048 &&
+						("method" in req.body) && typeof req.body.method == "string" && req.body.method.length > 0 && req.body.method.length < 2048) {
+						var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+				
+						client.family = req.socket.remoteFamily;
+						client.localAddress = req.socket.localAddress;
+						client.localPort = req.socket.localPort;
+						
+						var websomRequest = new Websom.Request(that, client);
+						websomRequest.path = req.path;
+						websomRequest.response.jsResponse = res;
+						websomRequest.jsRequest = req;
+						this.module.handleBridge(websomRequest, req.body.bridge, req.body.method, req.body.arguments || []);
+					}
+				}
+			});
+
+			server.listen(port);
+		}
+
+		native php {
+			throw new Exception("Use Websom.Server.run(string route) for php servers");
+		}
+	}
+
+	void run(string route) {
+		native php {
+			$client = new Websom_Client($_SERVER["REMOTE_ADDR"], $_SERVER["REMOTE_PORT"]);
+			$request = new Websom_Request($this, $client);
+			$request->path = $route;
+			if ($this->status->hadError) {
+				echo $this->status->display();
+			}
+			if (isset($_POST["inputKey"])) { //TODO: Add post method with generic helper
+				if (gettype($_POST["inputKey"]) == "string" AND strlen($_POST["inputKey"]) > 0 AND strlen($_POST["inputKey"]) < 2048 AND ($_POST["data"])) {
+					$data = $_POST["data"];
+					if (gettype($data) == "string") {
+						$data = json_decode($data, true);
+					}
+
+					$this->input->handle($_POST["inputKey"], $data, $request);
+				}
+			}else if (isset($_POST["bridge"])) {
+				if (gettype($_POST["bridge"]) == "string" AND strlen($_POST["bridge"]) > 0 AND strlen($_POST["bridge"]) < 2048 AND 
+					gettype($_POST["method"]) == "string" AND strlen($_POST["method"]) > 0 AND strlen($_POST["method"]) < 2048) {
+					
+					$this->module->handleBridge($request, $_POST["bridge"], $_POST["method"], isset($_POST["arguments"]) ? $_POST["arguments"] : []);
+				}
+			}else{
+				$this->router->handle($request);
+			}
+		}
+	}
+}

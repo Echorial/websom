@@ -1,0 +1,285 @@
+class DashboardBridge inherits Websom.Bridge {
+	[Server]
+	map getInfo(Websom.Request req) {
+		var rtn = new map();
+		rtn["status"] = false;
+		
+		if (req.session.get("dashboard") == null) {
+			
+		}else{
+			rtn["status"] = true;
+			rtn["websomRoot"] = this.server.websomRoot;
+			rtn["tabs"] = this.server.dashboard.mapTabs(req);
+			rtn["version"] = this.server.version;
+			rtn["platform"] = "node";
+			
+			native javascript {
+				rtn.platformVersion = process.version;
+			}
+
+			native php {
+				$rtn["platform"] = "php";
+				$rtn["platform"] = phpversion();
+			}
+		}
+
+		return rtn;
+	}
+
+	[Server]
+	map getFileInfo(Websom.Request req, string dir) {
+		if (req.session.get("dashboard") != null and (dir.test("\\.\\.") == false)) {
+			var rtn = new map();
+			var <map>array files = new <map>array();
+			var resolve = FileSystem.resolve(this.server.config.root + "/" + dir); //TODO: Secure
+			rtn["dir"] = dir;
+			var reals = FileSystem.readDirSync(resolve);
+			for (var int i in reals) {
+				var file = new map();
+				file["name"] = reals[i];
+				file["isDir"] = FileSystem.isDir(resolve + "/" + reals[i]);
+				files.push(file);
+			}
+			rtn["files"] = files;
+			return rtn;
+		}
+	}
+
+	[Server]
+	string readFile(Websom.Request req, string file) {
+		if (req.session.get("dashboard") != null and (file.test("\\.\\.") == false)) {
+			var res = FileSystem.resolve(this.server.config.root + "/" + file);
+			if (FileSystem.exists(res))
+				return FileSystem.readSync(res, "utf8");
+		}
+	}
+
+	[Server]
+	void writePackFile(Websom.Request req, string pack, string name, string content) {
+		if (req.session.get("dashboard") != null) {
+			var res = FileSystem.resolve(this.server.config.root + "/packs/" + pack + "/view/" + name);
+			FileSystem.writeSync(res, content);
+		}
+	}
+
+	[Server]
+	<map>array getContainers(Websom.Request req) {
+		if (req.session.get("dashboard") != null) {
+			var containers = new <map>array();
+			for (var int i in this.server.module.modules) {
+				var module = this.server.module.modules[i];
+
+				for (var int c in module.containers) {
+					var container = module.containers[c];
+
+					var mp = new map();
+					mp["module"] = module.name;
+					mp["name"] = container.name;
+					containers.push(mp);
+				}
+			}
+			return containers;
+		}
+	}
+
+	[Server]
+	string loadContainers(Websom.Request req) {
+		if (req.session.get("dashboard") != null) {
+			return this.server.module.loadAllContainers();
+		}
+	}
+
+	[Server]
+	void exportResources(Websom.Request req) {
+		if (req.session.get("dashboard") != null) {
+			this.server.resource.exportToFolder(this.server.config.resources, void (bool hadError, string errMsg) => {
+				Console.log("Exported resources " + errMsg);
+			});
+		}
+	}
+
+	[Server]
+	void rebuildAll(Websom.Request req) {
+		if (req.session.get("dashboard") != null) {
+			this.server.module.rebuild();
+		}
+	}
+
+	[Server]
+	<map>array getModules(Websom.Request req) {
+		if (req.session.get("dashboard") != null) {
+			var modules = new <map>array();
+			for (var int i in this.server.module.modules) {
+				var module = this.server.module.modules[i];
+
+				var mp = new map();
+				mp["name"] = module.name;
+				mp["config"] = module.baseConfig;
+				modules.push(mp);
+			}
+			return modules;
+		}
+	}
+
+	[Server]
+	map getBuilderViews(Websom.Request req) {
+		if (req.session.get("dashboard") != null) {
+			var views = new <map>array();
+			var pages = new <map>array();
+			var website = new <map>array();
+			for (var int i in this.server.view.views) {
+				var view = this.server.view.views[i];
+				var map data = new map();
+
+				data["name"] = view.name;
+				data["meta"] = view.meta;
+				data["location"] = Websom.Path.relativePath(this.server.config.root, view.location);
+
+				if (view.isPage) {
+					pages.push(data);
+				}else if (view.websiteView) {
+					website.push(data);
+				}else{
+					views.push(data);
+				}
+			}
+
+			var moduleViews = this.server.view.getModuleViews();
+
+			for (var int i in moduleViews) {
+				var view = moduleViews[i];
+				var map data = new map();
+
+				data["name"] = view.name;
+				data["meta"] = view.meta;
+				data["module"] = view.owner.name;
+				data["location"] = Websom.Path.relativePath(this.server.config.root, view.location);
+
+				if (view.isPage) {
+					pages.push(data);
+				}else if (view.websiteView) {
+					website.push(data);
+				}else{
+					views.push(data);
+				}
+			}
+
+			var output = new map();
+			output["views"] = views;
+			output["pages"] = pages;
+			output["website"] = website;
+
+			return output;
+		}
+	}
+
+	[Server]
+	<map>array getPacks(Websom.Request req) {
+		if (req.session.get("dashboard") != null) {
+			var packs = new <map>array();
+			for (var int i in this.server.pack.packs) {
+				var pack = this.server.pack.packs[i];
+				var map data = new map();
+
+				data["name"] = pack.name;
+
+				var dataViews = new <map>array();
+				
+				var views = pack.getViews();
+				for (var int j in views) {
+					var view = views[j];
+
+					var map vData = new map();
+
+					vData["name"] = view.name;
+					vData["meta"] = view.meta;
+					vData["template"] = view.template;
+					vData["client"] = view.client;
+					vData["location"] = Websom.Path.relativePath(this.server.config.root, view.location);
+					vData["filename"] = FileSystem.basename(view.location);
+
+					dataViews.push(vData);
+				}
+
+				data["views"] = dataViews;
+
+				packs.push(data);
+			}
+
+			return packs;
+		}
+	}
+
+	[Server]
+	map getDatabaseFile(Websom.Request req) {
+		if (req.session.get("dashboard") != null)
+			return Websom.Json.parse(FileSystem.readSync(this.server.config.databaseFile, "utf8"));
+	}
+
+	[Server]
+	void setDatabaseFile(Websom.Request req, string content) {
+		if (req.session.get("dashboard") != null)
+			FileSystem.writeSync(this.server.config.databaseFile, content);
+	}
+
+	[Server]
+	map getBucketFile(Websom.Request req) {
+		if (req.session.get("dashboard") != null)
+			return Websom.Json.parse(FileSystem.readSync(this.server.config.bucketFile, "utf8"));
+	}
+
+	[Server]
+	void setBucketFile(Websom.Request req, string content) {
+		if (req.session.get("dashboard") != null)
+			FileSystem.writeSync(this.server.config.bucketFile, content);
+	}
+
+	[Server]
+	map login(Websom.Request req, string username, string password) {
+		var root = this.server.dashboard.root;
+		if (FileSystem.exists(root + "/auth.json") == false)
+			FileSystem.writeSync(root + "/auth.json", '{\n	"username": "websom",\n	"password": "admin"\n}');
+		var map auth = Websom.Json.parse(FileSystem.readSync(root + "/auth.json", "utf8"));
+
+		if (auth["username"] == username and auth["password"] == password) {
+			req.session.set("dashboard", true);
+			return this.getInfo(req);
+		}else{
+			var msg = new map();
+			msg["hadError"] = true;
+			msg["error"] = "Invalid username or password";
+			return msg;
+		}
+	}
+
+	[Server]
+	map upload(Websom.Request req, string dir, <<string>array>array files) {
+		if (req.session.get("dashboard") != null and (dir.test("\\.\\.") == false)) {
+			for (var int i in files) {
+				var string name = files[i][0];
+				var content = files[i][1];
+				var res = FileSystem.resolve(this.server.config.root + "/" + dir);
+				var raw = "";
+				
+				native php {
+					$raw = base64_decode($content);
+				}
+
+				native javascript {
+					raw = new Buffer(content, "base64");
+				}
+
+				FileSystem.writeSync(res + "/" + name, raw);
+			}
+
+			return this.getFileInfo(req, dir);
+		}
+	}
+
+	[Client]
+	void awaitInfo() {
+		native javascript {
+			return this.getInfo();
+		}
+	}
+}

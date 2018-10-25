@@ -1,0 +1,14 @@
+[Structure="string", Control="Websom.Standard.RichTextControl", Reroute]
+header interface Websom.Standard.RichText inherits Websom.StandardData {
+	string type = "";
+	string content = "";
+
+	override void read(primitive value) {}
+	override primitive write() {}
+	override primitive exposeToClient() {}
+}
+
+[Reroute]
+header interface Websom.Standard.RichTextControl {
+
+}

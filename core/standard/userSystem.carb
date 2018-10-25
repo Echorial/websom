@@ -1,0 +1,155 @@
+namespace Websom.Standard.UserSystem {}
+
+header relative Websom.Standard.UserSystem.Module inherits Websom.StandardModule {
+	const int ok = 0;
+	const int usernameInUse = 1;
+	const int emailInUse = 2;
+	const int invalidEmail = 3;
+	const int invalidUsername = 4;
+	const int invalidPassword = 5;
+
+	Websom.Container users = null;
+	Websom.Container confirmations = null;
+	Websom.Container admissions = null;
+	Websom.Container groups = null;
+
+	`Creates a new user with email confirmation`
+	void register(string username, string password, string email, <void, int, Websom.Standard.UserSystem.User, string>function done);
+
+	void checkUser(string usernameOrEmail, string password, <void, bool, map>function checked);
+
+	void registerConfirmationRoute(string route, <void, Websom.Request, Websom.Standard.UserSystem.Confirmation, Websom.Standard.UserSystem.User>function listener);
+
+	void getLoggedIn(Websom.Request req, <void, Websom.Standard.UserSystem.User>function callback);
+
+	bool isLoggedIn(Websom.Request req);
+
+	`Reloads the client login info`
+	void refreshClient(Websom.Request req);
+
+	void getGroup(string name, <void, Websom.Standard.UserSystem.Group>function callback);
+}
+
+[Linked="users", Reroute]
+header interface Websom.Standard.UserSystem.User inherits Websom.StandardData {
+	primary autoIncrement field int id = 0;
+
+	[Length = 12]
+	expose field string publicId = "";
+
+	[Length = 256, Matches="[A-Za-z0-9_.]"]
+	expose field string username = "";
+
+	[Length = 512]
+	field string password = "";
+
+	[Length = 256]
+	field string email = "";
+
+	`Status bytes:
+	a: unconfirmed email
+	b: banned user
+	c: confirmed user
+	e: restricted
+	t: temp banned
+	l: locked`
+	[Length = 1]
+	field string status = "a";
+
+	`Custom type byte`
+	[Length = 1]
+	field string type = "a";
+
+	field uint64 timestamp = 0;
+	
+	void sendConfirmation(string route, string meta, <void, string, string>function sent);
+	
+	void resetPassword(<void, bool, int, string>function sent);
+
+	void inGroup(string name, <void, bool>function callback);
+
+	void hasPermission(string perm, <void, bool>function callback);
+
+	void addToGroup(Websom.Standard.UserSystem.Group group, <void, bool>function callback);
+	void addToGroupFromName(string group, <void, bool>function callback);
+
+	void getGroups(<void, <Websom.Standard.UserSystem.Admission>array>function callback);
+}
+
+[Reroute]
+header interface Websom.Standard.UserSystem.Confirmation inherits Websom.StandardData {
+	void @construct();
+
+	primary autoIncrement field int id = 0;
+
+	[Length=256]
+	field string key = "";
+	
+	[Length=256]
+	field string route = "";
+
+	[Length=256]
+	field string meta = "";
+
+	field int user = 0;
+
+	field bool confirmed = false;
+
+	field uint64 timestamp = 0;
+}
+
+[Reroute]
+header interface Websom.Standard.UserSystem.UserControl inherits Websom.FieldControl {
+	override void filterField(primitive value, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+
+	}
+}
+
+//[GROUPS]
+
+[Reroute, Linked="user_groups"]
+header interface Websom.Standard.UserSystem.Group inherits Websom.StandardData {
+	expose primary autoIncrement field int id = 0;
+
+	[Length = 12]
+	expose field string publicId = "";
+
+	[Length = 256]
+	expose edit field string name = "";
+	
+	[Length = 256]
+	expose edit field string description = "";
+
+	expose field int members = 0;
+
+	expose edit field bool hidden = true;
+
+	expose edit field bool automatic = false;
+
+	[Length = 10000]
+	expose edit field string rules = "";
+
+	[Length = 10000]
+	expose edit field string permissions = "";
+
+	void getUsers(<void, <Websom.Standard.UserSystem.User>array>function callback);
+}
+
+[Reroute, Linked="user_admissions"]
+header interface Websom.Standard.UserSystem.Admission inherits Websom.StandardData {
+	primary autoIncrement field int id = 0;
+
+	[Length = 12]
+	expose field string publicId = "";
+
+	expose field Websom.Standard.UserSystem.User owner = null;
+	expose field Websom.Standard.UserSystem.Group group = null;
+	
+	[Length = 1]
+	expose edit field string status = "";
+
+	[Length = 256]
+	expose edit field string role = "";
+
+	expose field uint64 timestamp = 0;
+}

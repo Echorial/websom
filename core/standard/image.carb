@@ -1,0 +1,10 @@
+[Control = "Websom.Standard.ImageControl", Reroute]
+header interface Websom.Standard.Image inherits Websom.StandardData {
+	[Length = 256]
+	edit expose field string caption = "";
+}
+
+[Reroute]
+header interface Websom.Standard.ImageControl {
+
+}

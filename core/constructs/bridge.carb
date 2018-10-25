@@ -1,0 +1,26 @@
+header class Websom.Bridge {
+	Websom.Server server = null;
+
+	string getName() {
+		native php {return $this->name;}
+		native javascript {return this.name;}
+	}
+
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	/*map clientMethods() {
+
+	}*/
+
+	phpNoRef <string>array getServerMethods() {
+		native javascript {
+			return this.serverMethods();
+		}
+
+		native php {
+			return $this->serverMethods();
+		}
+	}
+}

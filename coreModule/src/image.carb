@@ -1,0 +1,75 @@
+class CoreModule.Image inherits Websom.Standard.Image, Websom.Data {
+	override void containerInsert(Websom.Input input, Websom.Container container, Websom.DatabaseInsert insert, map data, <void>function done) {
+		var string cast = data["arrayIndex"];
+		var writeTo = cast + ".png";
+		var string bucketReference = this.websomFieldInfo.attributes["Bucket"];
+		var bucket = this.websomServer.getBucketFromReference(bucketReference);
+
+		if (this.websomFieldInfo.structure.hasFlag("linked")) {
+			var pId = this.websomParentData.getPublicId();
+			bucket.makeDir(pId, void (bool ok) => {});
+			writeTo = pId + "/" + writeTo;
+		}
+
+		if ("encoded" in input.raw) {
+			bucket.write(writeTo, this.decodePng(input.raw["encoded"]), void (string msg) => {
+
+			});
+		}
+		done();
+	}
+	
+	override void containerUpdate(Websom.Input input, Websom.Container container, Websom.DatabaseSelect update, map data, <void>function done) {
+		if ("encoded" in input.raw) {
+			var string bucketReference = this.websomFieldInfo.attributes["Bucket"];
+			var bucket = this.websomServer.getBucketFromReference(bucketReference);
+			bucket.write("image.txt", input.raw["encoded"], void (string msg) => {
+				
+			});
+		}
+		done();
+	}
+
+	string decodePng(string base64) { //Move to websom util
+		native javascript {
+			return new Buffer(base64.replace(new RegExp("data:image\\/(png|jpeg|gif);base64,"), ""), "base64");
+		}
+
+		native php {
+			return base64_decode(preg_replace("~data:image/(png|jpeg|gif);base64,~", "", $raw));
+		}
+	}
+
+	override map exposeToClient() {
+		var string bucketReference = this.websomFieldInfo.attributes["Bucket"];
+		var bucket = this.websomContainer.server.getBucketFromReference(bucketReference);
+		var publicUrl = bucket.raw["publicUrl"];
+
+		var mp = new map();
+		mp["caption"] = this.caption;
+		mp["arrayIndex"] = this.getField("arrayIndex");
+
+
+		var url = publicUrl + this.getPublicId() + ".png";
+
+		if (this.websomFieldInfo.structure.hasFlag("linked")) {
+			var string cast = this.getField("arrayIndex");
+			var ext = cast + ".png";
+			url = publicUrl + this.websomParentData.getPublicId() + "/" + ext;
+		}
+
+		mp["url"] = url;
+		
+		return mp;
+	}
+}
+
+CoreModule.Image implements Websom.Standard.Image;
+
+class CoreModule.ImageControl inherits Websom.Standard.ImageControl, Websom.FieldControl {
+	void fillField(primitive value, map values) {
+		values[this.field] = value;
+	}
+}
+
+CoreModule.ImageControl implements Websom.Standard.ImageControl;

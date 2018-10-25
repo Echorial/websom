@@ -1,0 +1,84 @@
+class Websom.DatabaseInterface {
+	Websom.Database database = null;
+}
+
+class Websom.DatabaseSelect inherits Websom.DatabaseInterface {
+	string table = "";
+
+	string workingField = "";
+	string fields = "*";
+
+	int limitAmount = 0;
+	int limitOffset = 0;
+
+	string orderField = "";
+	string orderWay = "";
+
+	bool doUpdate = false;
+	bool doDelete = false;
+
+	int groupLevel = 0;
+
+	bool freshGroup = false;
+
+	<Websom.DatabaseUpdate>array updates = new <Websom.DatabaseUpdate>array();
+
+	bool doesSet(string field) {
+		for (var int i in this.updates)
+			if (this.updates[i].field == field)
+				return true;
+		
+		return false;
+	}
+
+	void @construct(Websom.Database database, string table) {
+		
+	}
+	
+	Websom.DatabaseSelect new();
+
+	Websom.DatabaseSelect field(string fields);
+
+	Websom.DatabaseSelect where(string field);
+
+	Websom.DatabaseSelect order(string field, string order);
+
+	Websom.DatabaseSelect limit(int documents) {
+		this.limitAmount = documents;
+		return this;
+	}
+
+	Websom.DatabaseSelect limit(int offset, int documents) {
+		this.limitAmount = documents;
+		this.limitOffset = offset;
+		return this;
+	}
+
+	Websom.DatabaseSelect run(<void, string, <map>array>function callback);
+
+	force Websom.DatabaseSelect or();
+	force Websom.DatabaseSelect and();
+
+	Websom.DatabaseSelect group();
+	Websom.DatabaseSelect endGroup();
+
+	Websom.DatabaseSelect not();
+	Websom.DatabaseSelect equals(primitive value);
+	Websom.DatabaseSelect in(array values);
+	Websom.DatabaseSelect like(primitive value);
+	Websom.DatabaseSelect wildLike(primitive value);
+	Websom.DatabaseSelect greater(primitive value);
+	Websom.DatabaseSelect lesser(primitive value);
+
+	Websom.DatabaseSelect update() {
+		this.doUpdate = true;
+		return this;
+	}
+
+	Websom.DatabaseSelect delete() {
+		this.doDelete = true;
+		return this;
+	}
+
+	Websom.DatabaseSelect set(string field, primitive value);
+}

@@ -1,0 +1,52 @@
+.theme {
+	.popover {
+		z-index: 5000;
+		display: none;
+		position: absolute;
+		background: @popover;
+		color: @popover-text;
+		border: 1px solid @primary-border;
+
+		&.open {
+			display: block;
+		}
+
+		&.list {
+			padding: 0 .25em;
+			min-width: 150px;
+			max-width: 250px;
+			max-height: 350px;
+
+			hr {
+				margin: 0 -.25em;
+				border-bottom: 1px @line-overlay solid;
+			}
+
+			.button {
+				border: none;
+				box-shadow: none;
+				margin: .25em auto;
+				display: block;
+			}
+
+			label {
+				font-size: 1rem;
+				color: @popover-text;
+
+				&.title {
+					font-weight: 800;
+					line-height: 2.5rem;
+				}
+			}
+
+			h2 {
+				font-size: 1rem;
+				color: @popover-text;
+			}
+
+			h4 {
+				font-size: 1rem;
+			}
+		}
+	}
+}

@@ -1,0 +1,94 @@
+class Websom.Services.Pack inherits Websom.Service {
+	<Websom.Pack>array packs = new <Websom.Pack>array();
+
+	Websom.Status load(string packDir, map config) {
+		var that = this;
+
+		if (("name" in config) == false)
+			return Websom.Status.singleError("Pack", "Must provide name in pack config " + packDir);
+		
+		var pack = new Websom.Pack(this.server, config["name"], packDir, config);
+		
+		#if platform.javascript
+			if (this.server.config.dev)
+				pack.buildAndSave(void (string err) => {
+					if (err.length > 0)
+						that.server.status.inherit(Websom.Status.singleError("Pack." + pack.name, err));
+				});
+		#end if
+
+		this.packs.push(pack);
+
+		native javascript {
+			if (this.server.config.dev) {
+				var fs = require("fs");
+				console.log("Setup watch on pack " + pack.name);
+				
+				fs.watch(packDir, {recursive: true}, (type, file) => {
+					console.log("Saw change on " + file + ". Rebuilding pack");
+					var newConfig = JSON.parse(fs.readFileSync(packDir + "/pack.json", "utf8"))
+					pack.config = newConfig;
+					pack.buildAndSave((err) => {
+						if (err.length > 0) {
+							this.server.status.inherit(Websom.Status.singleError("Pack." + pack.name, err));
+							console.log(err);
+						}else
+							console.log("No errors");
+					});
+				});
+			}
+		}
+	}
+
+	Websom.Status reload(string path) {
+		if (this.server.config.dev) {
+			var dir = this.server.config.resources + "/pack/";
+
+			if (FileSystem.exists(dir) == false)
+				FileSystem.makeDir(dir);
+		}
+
+		var packs = FileSystem.readDirSync(path);
+		for (var int i in packs) {
+			if (packs[i] == "." or packs[i] == "..")
+				continue;
+			
+			var packDir = path + packs[i];
+			if (FileSystem.isDir(packDir)) {
+				var configFile = packDir + "/pack.json";
+
+				if (FileSystem.exists(configFile) == false)
+					return Websom.Status.singleError("Servics.Pack", "Unable to find config for pack " + packDir);
+
+				var map config = Websom.Json.parse(FileSystem.readSync(configFile, "utf8"));
+				var status = this.load(packDir, config);
+				if (status != null)
+					return status;
+			}
+		}
+
+		for (var int i in this.packs) {
+			var pack = this.packs[i];
+			var status = pack.start();
+			if (status != null)
+				return status;
+		}
+	}
+
+	string include() {
+		var inc = "";
+		for (var int i in this.packs) {
+			inc += this.packs[i].include();
+		}
+		return inc;
+	}
+
+	override Websom.Status start() {
+		var dir = this.server.config.root + "/packs/";
+		//TODO: Add pack dir override
+		if (FileSystem.exists(dir) == false)
+			return Websom.Status.singleError("Services.Pack", "Unable to find packs directory within website root.");
+
+		return this.reload(dir);
+	}
+}

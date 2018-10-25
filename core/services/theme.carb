@@ -1,0 +1,95 @@
+class Websom.Services.Theme inherits Websom.Service {
+	<Websom.Theme>array themes = new <Websom.Theme>array();
+
+	Websom.Status load(string themeDir, map config) {
+		var that = this;
+
+		if (("name" in config) == false)
+			return Websom.Status.singleError("Theme", "Must provide name in theme config " + themeDir);
+		
+		var theme = new Websom.Theme(this.server, config["name"], themeDir, config);
+		
+		#if platform.javascript
+			if (this.server.config.dev)
+				theme.buildAndSave(void (string err) => {
+					//TODO: Tell websom theme build is done
+					if (err.length > 0)
+						that.server.status.inherit(Websom.Status.singleError("Theme." + theme.name, err));
+				});
+		#end if
+
+		this.themes.push(theme);
+
+		native javascript {
+			if (this.server.config.dev) {
+				var fs = require("fs");
+				console.log("Setup watch on theme " + config.name);
+				
+				fs.watch(themeDir, {recursive: true}, (type, file) => {
+					console.log("Saw change on " + file + ". Rebuilding theme");
+					var newConfig = JSON.parse(fs.readFileSync(themeDir + "/" + config.name + ".json", "utf8"))
+					theme.config = newConfig;
+					theme.buildAndSave((err) => {
+						if (err.length > 0) {
+							this.server.status.inherit(Websom.Status.singleError("Theme." + theme.name, err));
+							console.log(err);
+						}else
+							console.log("No errors");
+					});
+				});
+			}
+		}
+	}
+
+	Websom.Status reload(string path) {
+		var themes = FileSystem.readDirSync(path);
+		for (var int i in themes) {
+			var themeDir = path + themes[i];
+			if (FileSystem.isDir(themeDir)) {
+				var name = FileSystem.basename(themeDir);
+				if (name != "." and name != "..") {
+					var configFile = themeDir + "/" + name + ".json";
+
+					if (FileSystem.exists(configFile) == false)
+						return Websom.Status.singleError("Servics.Theme", "Unable to find config for theme " + name);
+
+					var map config = Websom.Json.parse(FileSystem.readSync(configFile, "utf8"));
+					var status = this.load(themeDir, config);
+					if (status != null)
+						return status;
+				}
+			}
+		}
+
+		for (var int i in this.themes) {
+			var theme = this.themes[i];
+			var status = theme.start();
+			if (status != null)
+				return status;
+		}
+	}
+
+	string include() {
+		var inc = "";
+		for (var int i in this.themes) {
+			inc += this.themes[i].include();
+		}
+		return inc;
+	}
+
+	override Websom.Status start() {
+		var dir = this.server.config.root + "/themes/";
+		//TODO: Add theme dir override
+		if (FileSystem.exists(dir) == false)
+			return Websom.Status.singleError("Services.Theme", "Unable to find themes directory within website root.");
+
+		var themeDir = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../theme/");
+		var map config = Websom.Json.parse(FileSystem.readSync(themeDir + "/theme.json", "utf8"));
+		var status = this.load(themeDir, config);
+
+		if (status != null)
+			return status;
+
+		return this.reload(dir);
+	}
+}

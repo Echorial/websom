@@ -1,0 +1,60 @@
+[Reroute, Linked = "forums"]
+header interface Websom.Standard.Forum inherits Websom.StandardData {
+	primary autoIncrement field big int id = 0;
+
+	[Length = 12]
+	expose field string publicId = "";
+
+	[Length = 256, Min = 3]
+	edit expose field string name = "";
+
+	[Length = 4096]
+	edit expose field Websom.Standard.RichText description = "";
+
+	[NoLoad]
+	field linked <Websom.Standard.ForumThread>array threads = new <Websom.Standard.ForumThread>array();
+
+	expose field uint64 timestamp = 0;
+
+	/*[Interface = "comment"]
+	void comment(Websom.Input input, map data, <void, map>function respond);*/
+}
+
+[Reroute]
+header interface Websom.Standard.ForumThread inherits Websom.StandardData {
+	primary autoIncrement field big int id = 0;
+	
+	[Length = 12]
+	expose field string publicId = "";
+
+	[Conditional, AutoCreate]
+	expose linked field Websom.Standard.Rating.Likes rating = null;
+
+	[Length = 256, Min = 3]
+	edit expose field string title = "";
+
+	[Length = 4096, Min = 10]
+	edit expose field Websom.Standard.RichText body = "";
+
+	[NoLoad]
+	field linked <Websom.Standard.ForumReply>array replies = new <Websom.Standard.ForumReply>array();
+
+	expose field Websom.Standard.UserSystem.User owner = null;
+
+	expose field uint64 timestamp = 0;
+}
+
+[Reroute]
+header interface Websom.Standard.ForumReply inherits Websom.StandardData {
+	primary autoIncrement field big int id = 0;
+	
+	[Length = 12]
+	expose field string publicId = "";
+
+	[Length = 4096, Min = 3]
+	edit expose field Websom.Standard.RichText body = "";
+
+	expose field Websom.Standard.UserSystem.User owner = null;
+
+	expose field uint64 timestamp = 0;
+}

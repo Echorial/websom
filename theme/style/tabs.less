@@ -1,0 +1,108 @@
+.theme {
+	.tabs {
+		border: 1px solid #CBCBCB;
+		border-radius: .1em;
+
+		> ul {
+			position: relative;
+			display: flex;
+			margin: 0;
+			padding: 0;
+
+			> li {
+				flex: 1;
+				padding: .6em 0;
+				flex-grow: 1;
+				text-align: center;
+				cursor: pointer;
+				display: inline-block;
+				height: 1.5em;
+				text-transform: uppercase;
+			}
+		}
+
+		> div > div {
+			display: none;
+			padding: 1em;
+		}
+
+		&.full > div > div {
+			height: 100%;
+		}
+
+		> div > div.open {
+			display: block;
+		}
+	}
+
+	.v-tabs {
+		border: 1px solid #CBCBCB;
+		border-radius: .1em;
+		display: flex;
+
+		> ul {
+			position: relative;
+			flex-basis: 15%;
+			margin: 0;
+			padding: 0;
+
+			> li {
+				transition: .3s;
+				padding: .4em 1.9em;
+				text-align: center;
+				cursor: pointer;
+				display: block;
+				text-transform: uppercase;
+
+				&.open {
+					background: @secondary;
+					color: contrast(@secondary);
+				}
+			}
+		}
+		
+		> div > div {
+			display: none;
+		}
+
+		&.full > div > div {
+			height: 100%;
+		}
+
+		> div {
+			flex-basis: 85%;
+		}
+
+		> div > div.open {
+			display: block;
+		}
+	}
+
+	.tabs[data-head-position="top"] > ul > .tab-head {
+		top: 0;
+	}
+
+	.tabs > ul > .tab-head {
+		transition: .2s;
+		border-top: 3px solid lightblue;
+		position: absolute;
+	}
+
+	.tabs[data-head-position="bottom"] > ul > .tab-head {
+		top: 1.5em + 1.2em;
+	}
+
+	.v-tabs[data-head-position="left"] > ul > .v-tab-head {
+		left: 0;
+	}
+
+	.v-tabs > ul > .v-tab-head {
+		transition: .2s;
+		border-left: 3px solid lightblue;
+		position: absolute;
+	}
+
+	.v-tabs[data-head-position="right"] > ul > .v-tab-head {
+		right: 0;
+	}
+}

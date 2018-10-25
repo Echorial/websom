@@ -1,0 +1,18 @@
+info {
+	"name": "dashboard-studio-file"
+}
+
+template {
+	<card style="display: inline-block; padding: .7em; margin: .25em;" class="dashboard-file">
+		<div>
+			<span v-if="icon" class="dashboard-icon-folder"><icon fa>{{icon}}</icon></span>
+			<span v-else-if="data.isDir" class="dashboard-icon-folder"><icon fa>folder</icon></span>
+			<span v-else class="dashboard-icon-file"><icon fa>file</icon></span>
+			{{data.name}}
+		</div>
+	</card>
+}
+
+client {
+	props: ["data", "icon"]
+}

@@ -1,0 +1,91 @@
+info {
+	"name": "dashboard-buckets"
+}
+
+template {
+	<div style="height: 100%" class="main dashboard-config">
+		<div v-for="(bucket, name) in file.buckets" style="margin-top: 0px;" class="config-main card blue-grey white-text">
+			<h2 class="card black-text"><icon :data-tooltip="bucket.type" fa>box</icon> {{name}} <label>{{bucket.path}}</label></h2>
+			<label>Type</label>
+			<input placeholder="Type" type="text" class="input" v-model="bucket.type"/>
+
+			<label>Path</label>
+			<input placeholder="Path" type="text" class="input" v-model="bucket.path"/>
+
+			<label>Public Url</label>
+			<input placeholder="Public Url" type="text" class="input" v-model="bucket.publicUrl"/>
+		</div>
+
+		<h3 v-if="file.buckets.length == 0" class="card black-text" style="margin-top: 0">No buckets found.</h3>
+
+		<accordion class="white">
+			<fold>
+				<name>New Bucket</name>
+				<content>
+					<div style="padding: .5em; color: black;">
+						<label>Name</label>
+						<input placeholder="Name" type="text" class="input" v-model="create.name"/>
+
+						<label>Type</label>
+						<input placeholder="Type" type="text" class="input" v-model="create.type"/>
+
+						<label>Path</label>
+						<input placeholder="Path" type="text" class="input" v-model="create.path"/>
+
+						<label>Public Url</label>
+						<input placeholder="Public Url" type="text" class="input" v-model="create.publicUrl"/>
+
+						<div style="text-align: right; margin-top: .3em;"><button class="button green" @click="createBucket()">Create</button></div>
+					</div>
+				</content>
+			</fold>
+		</accordion>
+
+		<div style="text-align: center; margin-top: .3em;"><button class="button green" @click="save()">Save</button></div>
+	</div>
+}
+
+client {
+	props: ["data"],
+	data: function () {
+		return {
+			create: {
+				name: "",
+				type: "",
+				path: "",
+				publicUrl: ""
+			},
+			file: {
+				buckets: [],
+				reference: []
+			}
+		};
+	},
+	methods: {
+		reset: function () {
+			this.create = {
+				name: "",
+				type: "",
+				path: "",
+				publicUrl: ""
+			};
+		},
+		createBucket: function () {
+			var c = this.create;
+			this.$set(this.file.buckets, c.name, {type: c.type, path: c.path, publicUrl: c.publicUrl});
+			
+			this.reset();
+		},
+		save: function () {
+			DashboardBridge.setBucketFile(JSON.stringify(this.file));
+		}
+	},
+	created: function () {
+		this.reset();
+	},
+	mounted: function () {
+		DashboardBridge.getBucketFile().then((data) => {
+			this.file = data;
+		});
+	}
+}

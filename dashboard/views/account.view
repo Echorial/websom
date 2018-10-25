@@ -1,0 +1,9 @@
+info {
+	"name": "dashboard-account"
+}
+
+template {
+	<div class="main card blue-grey">
+		
+	</div>
+}

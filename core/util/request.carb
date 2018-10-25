@@ -1,0 +1,52 @@
+class Websom.Http {
+	fixed void postJson(Websom.Server server, string url, map data, <void, map>function callback) {
+		native javascript {
+			const request = require('request'); // Move to global define
+
+			request.post(url, data, (err, res) => {
+				if (err)
+					console.log(err);
+				else
+					callback(res.body);
+			});
+		}
+
+		native php {
+			try {
+				$ch = curl_init($url);
+				$str = json_encode($data["body"]);
+
+				if (!$server->config->sslVerifyPeer)
+					curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+				
+				curl_setopt($ch, CURLOPT_POST, 1);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $str);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_USERPWD, $data["auth"]["user"] . ":" . $data["auth"]["pass"]);
+				curl_setopt($ch, CURLOPT_HTTPHEADER, [
+					"Content-Type: application/json",
+					"Content-Length: " . strlen($str)
+				]);
+
+				$response = curl_exec($ch);
+				
+				if ($response === false) {
+					throw new Exception(curl_error($ch), curl_errno($ch));
+				}
+
+				curl_close($ch);
+
+				$callback(json_decode($response, true));
+			} catch(Exception $e) {
+				if ($server->config->dev)
+					throw $e;
+				
+				return $e;
+			}
+		}
+	}
+
+	fixed void get(string url, map data, <void, map>function callback) {
+
+	}
+}

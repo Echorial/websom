@@ -1,0 +1,621 @@
+class Websom.Databases.MySql inherits Websom.Database {
+	void connection = null; //TODO: Add multiple connections for insert, update, remove, search
+
+	override void connect(<void, Websom.Status>function done) {
+		var string host = this.config["host"];
+		var string database = this.config["database"];
+		var string username = this.config["auth"]["admin"]["username"];
+		var string password = this.config["auth"]["admin"]["password"]; //TODO: Validate
+
+		this.connecting = true;
+
+		native php {
+			$this->connection = new mysqli($host, $username, $password, $database);
+
+			if ($this->connection->connect_error)
+				$done(Websom_Status::singleError("Database.MySql", $this->connect_error));
+			else {
+				$this->open = true;
+				$this->connecting = false;
+				$done(null);
+				$this->connected();
+			}
+		}
+
+		native javascript {
+			var mysql = require("mysql");
+
+			this.connection = mysql.createConnection({
+				host: host,
+				database: database,
+				user: username,
+				password: password
+			});
+
+			this.connection.connect((err) => {
+				if (err) {
+					done(Websom.Status.singleError("Database.MySql", err));
+					console.log("Error connecting to MySql database " + database);
+				}else {
+					this.open = true;
+					this.connecting = false;
+					done(null);
+					this.connected();
+					console.log("Connected to MySql database " + database);
+				}
+			});
+		}
+	}
+
+	override void close() {
+		this.open = false;
+
+		native php {
+			$this->connection->close();
+		}
+
+		native javascript {
+			this.connection.end();
+		}
+	}
+
+	Websom.DatabaseSelect from(string table) {
+		return new Websom.MySqlDatabaseSelect(this, table);
+	}
+
+	Websom.DatabaseInsert into(string table) {
+		return new Websom.MySqlDatabaseInsert(this, table);
+	}
+
+	string flagField(Websom.DatabaseField field, bool isAlter) {
+		var sql = "";
+		var last = " NOT NULL";
+		var add = "ADD";
+		if (isAlter == false)
+			add = "";
+
+		for (var int i in field.flags) {
+			var flag = field.flags[i];
+
+			if (flag.type == "primary") {
+				last += ", " + add + " PRIMARY KEY(`" + field.name + "`)";
+			}else if (flag.type == "autoIncrement") {
+				sql += " AUTO_INCREMENT";
+			}else if (flag.type == "unsigned") {
+				sql += " UNSIGNED";
+			}
+		}
+		return sql + last;
+	}
+
+	string wFieldToMySql(Websom.DatabaseField field, bool isAlter) {
+		var type = "";
+		if (field.type.type == "varchar") {
+			var Websom.DatabaseTypes.Varchar cast = field.type;
+			type = "VARCHAR(" + cast.length + ")";
+		}else if (field.type.type == "text") {
+			type = "TEXT";
+		}else if (field.type.type == "int") {
+			type = "INT";
+		}else if (field.type.type == "bigInt") {
+			type = "BIGINT";
+		}else if (field.type.type == "float") {
+			type = "DOUBLE";
+		}else if (field.type.type == "bool") {
+			type = "TINYINT(1)";
+		}
+
+		return type + this.flagField(field, isAlter);
+	}
+
+	void runStructure(Websom.DatabaseStructure str, <void, string>function callback) { //TODO: Clean up, maybe spread
+		if (this.open == false) {
+			var that = this;
+			if (this.connecting) {
+				this.wait(void () => {
+					that.runStructure(str, callback);
+				});
+			}else{
+				this.connect(void (Websom.Status status) => {
+					that.runStructure(str, callback);
+				});
+			}
+			
+			return null;
+		}
+
+		native javascript {
+			this.connection.query("DESCRIBE " + str.table, (err, cols, m) => {
+				var cback = (cerr) => {
+					if (cerr)
+						callback(cerr.toString());
+					else
+						callback("");
+				};
+				if (err) { //Create
+					var creates = [];
+					for (var field of str.fields) {
+						creates.push("`" + field.name + "` " + this.wFieldToMySql(field, false));
+					}
+					this.connection.query("CREATE TABLE " + str.table + " (" + creates.join(",") + ")", cback);
+				}else{ //Add col
+					var adds = [];
+					function hasCol(name) {
+						for (var col of cols) {
+							if (col.Field == name)
+								return true;
+						}
+						return false;
+					}
+
+					for (var i = 0; i < str.fields.length; i++)
+						if (!hasCol(str.fields[i].name))
+							adds.push("ADD `" + str.fields[i].name + "` " + this.wFieldToMySql(str.fields[i], true));
+
+					this.connection.query("ALTER TABLE " + str.table + " " + adds.join(",") + ";", cback);
+				}
+			});
+		}
+
+		native php {
+			if ($result = $this->connection->query("DESCRIBE " . $str->table)) { //Add col
+				$names = [];
+				$aQuery = "ALTER TABLE " . $str->table;
+				$doQuery = false;
+
+				while($val = $result->fetch_array(MYSQLI_ASSOC)) {
+					$names[] = $val["Field"];
+				}
+
+				foreach ($str->fields as $field) {
+					if (!in_array($field->name, $names)) {
+						$aQuery .= " ADD `" . $field->name . "` " . $this->wFieldToMySql($field, true) . ";";
+						$doQuery = true;
+					}
+				}
+
+				$result->free();
+
+				if ($doQuery)
+					$this->connection->query($aQuery);
+			}else{ //Create
+				$fields = [];
+				
+				foreach ($str->fields as $field) {
+					$fields[] = "`" . $field->name . "` " . $this->wFieldToMySql($field, false);
+				}
+
+				$cQuery = "CREATE TABLE " . $str->table . " (" . implode(", ", $fields) . ")";
+				$this->connection->query($cQuery);
+				$callback("");
+			}
+		}
+	}
+}
+
+class Websom.MySqlDatabaseSelect inherits Websom.DatabaseSelect {
+	string currentWhere = "";
+
+	bool notMode = false;
+
+	<string>array query = new <string>array();
+
+	<string>array multiQuery = new <string>array();
+
+	array values = new array();
+
+	override void @construct(Websom.Database database, string table) {
+		this.database = database;
+		this.table = table;
+	}
+	
+	Websom.DatabaseSelect field(string fields) {
+		this.fields = fields;
+		return this;
+	}
+
+	Websom.DatabaseSelect new() {
+		var str = this.build();
+		this.limitAmount = 0;
+		this.limitOffset = 0;
+		this.orderField = "";
+		if (str.length > 0)
+			this.multiQuery.push(str);
+		this.query = new <string>array();
+		return this;
+	}
+
+	Websom.DatabaseSelect where(string field) {
+		if (this.currentWhere.length > 0)
+			this.query.push(this.currentWhere);
+		this.currentWhere = "";
+
+		this.workingField = field;
+		return this;
+	}
+
+	Websom.DatabaseSelect not() {
+		this.notMode = true;
+		return this;
+	}
+
+	string getNot() {
+		if (this.notMode) {
+			return "NOT";
+			this.notMode = false;
+		}else
+			return "";
+	}
+
+	Websom.DatabaseSelect in(array values) {
+		this.freshGroup = false;
+
+		this.currentWhere += "`" + this.workingField + "` " + this.getNot() + " IN (";
+		for (var int i in values) {
+			var value = values[i];
+			this.currentWhere += "?";
+			if (i != values.length - 1)
+				this.currentWhere += ", ";
+
+			this.values.push(value);
+		}
+		this.currentWhere += ")";
+		return this;
+	}
+
+	Websom.DatabaseSelect order(string field, string order) {
+		this.orderField = field;
+		this.orderWay = order;
+		return this;
+	}
+
+	string build() {
+		if (this.currentWhere.length > 0)
+			this.query.push(this.currentWhere);
+		this.currentWhere = "";
+		
+		var whereState = "";
+
+		var limit = "";
+		if (this.limitAmount != 0) {
+			if (this.limitOffset != 0)
+				limit = " LIMIT " + this.limitOffset + ", " + this.limitAmount;
+			else
+				limit = " LIMIT " + this.limitAmount;
+		}
+
+		var orderBy = "";
+		if (this.orderField.length > 0)
+			orderBy = " ORDER BY " + this.orderField + " " + this.orderWay;
+
+		var search = this.trim(this.query.join(""));
+		
+		if (this.groupLevel > 0)
+			search += ")";
+
+		if (search.length > 0)
+			whereState = "WHERE " + search;
+
+		if (this.doUpdate) {
+			var <string>array sets = new <string>array();
+			var array shiftValues = new array();
+
+			for (var int i in this.updates) {
+				var update = this.updates[i];
+				shiftValues.push(update.value);
+				sets.push("`" + update.field + "` = ?");
+			}
+			
+			this.values = shiftValues.concat(this.values);
+			return "UPDATE " + this.table + " SET " + sets.join(", ") + " " + whereState + orderBy + limit;
+		}else if (this.doDelete) {
+			return "DELETE FROM " + this.table + " " + whereState + orderBy + limit;
+		}else{
+			return "SELECT " + this.fields + " FROM " + this.table + " " + whereState + orderBy + limit;
+		}
+	}
+
+	string trim(string query) {
+		//TODO: Fix trim hack
+		native php {
+			return preg_replace("~^(AND|OR|\\s)*|(AND|OR|\\s)*$~", "", $query);
+		}
+
+		native javascript {
+			return query.replace(/^(AND|OR|\s)*|(AND|OR|\s)*$/g, "");
+		}
+	}
+
+	Websom.DatabaseSelect run(<void, string, <map>array>function callback) {
+		var query = "";
+		if (this.database.open == false) {
+			var that = this;
+			if (this.database.connecting) {
+				this.database.wait(void () => {
+					that.run(callback);
+				});
+			}else{
+				this.database.connect(void (Websom.Status status) => {
+					that.run(callback);
+				});
+			}
+			return this;
+		}
+
+		query = this.build();
+		if (this.multiQuery.length > 0)
+			query = this.multiQuery.join(";") + ";" + query;
+
+		native php {
+			$prep = $this->database->connection->prepare($query);
+			if (!$prep)
+				throw new Exception("Error preparing query " . $query);
+			
+			$types = "";
+			foreach ($this->values as $v) {
+				$type = gettype($v);
+				if ($type == "integer")
+					$types .= "i";
+				else if ($type == "string")
+					$types .= "s";
+				else if ($type == "double")
+					$types .= "d";
+				else if ($type == "boolean")
+					$types .= "i";
+				else if ($type == "double")
+					$types .= "d";
+				else
+					throw new Exception("Unable to query values of type " . $type . " in database query " . $query);
+			}
+			if (count($this->values) > 0)
+				$prep->bind_param($types, ...$this->values);
+			$prep->execute();
+
+			$result = $prep->get_result();
+			$res = [];
+			if ($result !== false)
+				while($row = $result->fetch_array(MYSQLI_ASSOC)) {
+					$res[] = $row;
+				}
+
+			$callback($prep->error, $res);
+			$prep->close();
+		}
+
+		native javascript {
+			this.database.connection.query(query, this.values, (err, res, meta) => {
+				if (err)
+					console.log("Error in database " + this.database.name + " with query '" + query + "'\n" + err);
+
+				callback(err, res);
+			});
+		}
+
+		return this;
+	}
+
+	force Websom.DatabaseSelect or() { //Force tells carbon not to escape the php reserved word or
+		if (this.freshGroup == false)
+			if (this.currentWhere.length > 0)
+				this.currentWhere += " OR ";
+		return this;
+	}
+
+	force Websom.DatabaseSelect and() {
+		if (this.freshGroup == false)
+			if (this.currentWhere.length > 0)
+				this.currentWhere += " AND ";
+		return this;
+	}
+	
+	Websom.DatabaseSelect group() {
+		this.groupLevel++;
+		this.freshGroup = true;
+		this.currentWhere += "(";
+		return this;
+	}
+
+	Websom.DatabaseSelect endGroup() {
+		this.groupLevel--;
+		if (this.freshGroup) {
+			this.currentWhere += "TRUE"; // HACK: rework groups in future.
+			this.freshGroup = false;
+		}
+		if (this.currentWhere.length > 0)
+			this.currentWhere += ")";
+		return this;
+	}
+
+	Websom.DatabaseSelect equals(primitive value) {
+		var nt = "";
+		this.freshGroup = false;
+
+		if (this.notMode) {
+			nt = "!";
+			this.notMode = false;
+		}
+
+		this.currentWhere += "`" + this.workingField + "` " + nt + "= ?";
+		this.values.push(value);
+		return this;
+	}
+
+	Websom.DatabaseSelect like(primitive value) {
+		this.freshGroup = false;
+
+		this.currentWhere += "`" + this.workingField + "` " + this.getNot() + " LIKE ?";
+		this.values.push(value);
+		return this;
+	}
+
+	Websom.DatabaseSelect wildLike(string value) {
+		this.freshGroup = false;
+
+		this.currentWhere += "`" + this.workingField + "` " + this.getNot() + " LIKE ?";
+		this.values.push("%" + value.replace("%", "!%").replace("_", "!_").replace("\\[", "![") + "%");
+		return this;
+	}
+
+	Websom.DatabaseSelect greater(primitive value) {
+		this.freshGroup = false;
+
+		this.currentWhere += this.workingField + " > ?";
+		this.values.push(value);
+		return this;
+	}
+
+	Websom.DatabaseSelect lesser(primitive value) {
+		this.freshGroup = false;
+
+		this.currentWhere += "`" + this.workingField + "` < ?";
+		this.values.push(value);
+		return this;
+	}
+
+	Websom.DatabaseSelect set(string field, primitive value) {
+		if (value.typeAsString() == "boolean")
+			if (value == true) {
+				value = 1;
+			}else{
+				value = 0;
+			}
+		this.updates.push(new Websom.DatabaseUpdate(field, value));
+		return this;
+	}
+}
+
+class Websom.MySqlDatabaseInsert inherits Websom.DatabaseInsert {
+	override void @construct(Websom.Database database, string table) {
+		this.database = database;
+		this.table = table;
+	}
+
+	string build() {
+		var <string>array sets = new <string>array();
+		var array shiftValues = new array();
+		var string value = "";
+		var <string>array values = new <string>array();
+		if (this.isMulti == false) {
+			for (var int i in this.inserts) {
+				var insert = this.inserts[i];
+				this.values.push(insert.value);
+				sets.push("`" + insert.field + "`");
+				value += "?";
+
+				if (i != this.inserts.length - 1)
+					value += ", ";
+			}
+
+			for (var int i = 0; i < this.number; i++) {
+				values.push("(" + value + ")");
+			}
+		}else{
+			for (var string field in this.multiKeys)
+				sets.push("`" + field + "`");
+
+			for (var int mi in this.multiInserts) {
+				var curValue = "";
+				for (var int i in this.multiInserts[mi]) {
+					var insert = this.multiInserts[mi][i];
+					this.values.push(insert.value);
+					
+					curValue += "?";
+
+					if (i != this.multiInserts[mi].length - 1)
+						curValue += ", ";
+				}
+				values.push("(" + curValue + ")");
+			}
+		}
+		
+		return "INSERT INTO " + this.table + " (" + sets.join(", ") + ") VALUES " + values.join(", ");
+	}
+
+	Websom.DatabaseInsert run(<void, string, primitive>function callback) {
+		var query = "";
+		if (this.database.open == false) {
+			var that = this;
+			if (this.database.connecting) {
+				this.database.wait(void () => {
+					that.run(callback);
+				});
+			}else{
+				this.database.connect(void (Websom.Status status) => {
+					that.run(callback);
+				});
+			}
+			return this;
+		}
+
+		query = this.build();
+
+		native php {
+			$prep = $this->database->connection->prepare($query);
+			if (!$prep)
+				throw new Exception("Error preparing query " . $query);
+			
+			$types = "";
+			foreach ($this->values as $v) {
+				$type = gettype($v);
+				if ($type == "integer")
+					$types .= "i";
+				else if ($type == "string")
+					$types .= "s";
+				else if ($type == "double")
+					$types .= "d";
+				else if ($type == "boolean")
+					$types .= "i";
+				else if ($type == "double")
+					$types .= "d";
+				else
+					throw new Exception("Unable to query values of type " . $type . " in database query " . $query);
+			}
+			$prep->bind_param($types, ...$this->values);
+			$prep->execute();
+
+			$callback($prep->error, $prep->insert_id);
+			$prep->close();
+		}
+
+		native javascript {
+			this.database.connection.query(query, this.values, (err, res, meta) => {
+				if (err)
+					console.log("Error in database " + this.database.name + " with query '" + query + "'\n" + err);
+				
+				callback(err, res.insertId || 0);
+			});
+		}
+
+		return this;
+	}
+
+	Websom.DatabaseInsert new() {
+		this.multiInserts.push(new <Websom.DatabaseUpdate>array());
+		return this;
+	}
+
+	primitive get(string field) {
+		for (var int i in this.inserts) {
+			if (this.inserts[i].field == field)
+				return this.inserts[i].value;
+		}
+
+		return null;
+	}
+
+	Websom.DatabaseInsert set(string field, primitive value) {
+		if (value.typeAsString() == "boolean")
+			if (value == true) {
+				value = 1;
+			}else{
+				value = 0;
+			}
+		if (this.isMulti) {
+			this.multiKeys[field] = true;
+			this.multiInserts[this.multiInserts.length - 1].push(new Websom.DatabaseUpdate(field, value));
+		}else{
+			this.inserts.push(new Websom.DatabaseUpdate(field, value));
+		}
+		return this;
+	}
+}

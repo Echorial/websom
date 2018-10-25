@@ -1,0 +1,19 @@
+class Websom.Controls.Unique inherits Websom.FieldControl {
+	override void validateField(Websom.Input input, primitive value, <void, Websom.InputValidation>function done) {
+		var that = this;
+		
+		var Websom.Containers.Table container = this.container;
+		
+		container.from().where(this.field).equals(value).run(void (string err, <map>array docs) => {
+			if (err != null) {
+				done(new Websom.InputValidation(true, "Unable to complete request"));
+			}else{
+				if (docs.length > 0) {
+					done(new Websom.InputValidation(true, "The " + that.field + " must be unique"));
+				}else{
+					done(null);
+				}
+			}
+		});
+	}
+}

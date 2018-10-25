@@ -1,0 +1,14 @@
+info {
+	"name": "designer-list-object"
+}
+
+template {
+	<div class="list-object" :class="{'selected': data.isSelected}">
+		<span><span @click="select($event, data.objectId)"><icon fa :icon="data.getIcon()" /></span> <input class="designer-clear" type="text" v-model="data.name"/></span>
+		<designer-list-object v-for="(o, i) in data.children" :data="o" :key="i" :select="select"/>
+	</div>
+}
+
+client {
+	props: {data: Object, select: Function}
+}

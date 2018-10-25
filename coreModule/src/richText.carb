@@ -1,0 +1,25 @@
+[Structure="string", Control="Websom.Standard.RichTextControl"]
+class CoreModule.RichText inherits Websom.Standard.RichText, Websom.Data {
+	override void read(string value) {
+		this.type = value[0];
+		this.content = value.substr(1, value.length - 1);
+	}
+
+	override primitive exposeToClient() {
+		return this.type + this.content;
+	}
+
+	override primitive write() {
+		return this.type + this.content;
+	}
+}
+
+CoreModule.RichText implements Websom.Standard.RichText;
+
+class CoreModule.RichTextControl inherits Websom.Standard.RichTextControl, Websom.FieldControl {
+	void fillField(primitive value, map values) {
+		values[this.field] = value;
+	}
+}
+
+CoreModule.RichTextControl implements Websom.Standard.RichTextControl;

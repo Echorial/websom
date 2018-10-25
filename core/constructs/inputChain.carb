@@ -1,0 +1,365 @@
+`Helper class for building global, validated, input handlers.
+
+@note The chain requires at least one key to receive messages.`
+class Websom.InputChain {
+	Websom.InputHandler handler = null;
+
+	<void, Websom.Input, map>function successCallback = null;
+	<void, Websom.Input, Websom.InputValidation>function errorCallback = null;
+
+	<Websom.InputRestriction>array restricts = new <Websom.InputRestriction>array();
+
+	<Websom.InputKey>array keys = new <Websom.InputKey>array();
+
+	void @construct(Websom.InputHandler ih) {
+		this.handler = ih;
+	}
+
+	`This will give the control ownership over this InputChain.`
+	Websom.InputChain use(Websom.Control control) {
+		control.use(this);
+		
+		return this;
+	}
+
+	Websom.InputChain restrict() {
+		var restrict = new Websom.InputRestriction("global", "");
+		this.restricts.push(restrict);
+
+		return this;
+	}
+
+	`Restricts the form to the custom restrictor by key`
+	Websom.InputChain to(string key, string value) {
+		if (this.restricts.length > 0) {
+			var r = this.restricts[this.restricts.length - 1];
+
+			r.simple = true;
+			r.key = key;
+			r.value = value;
+		}
+
+		return this;
+	}
+
+	`Restricts the form to users with the permission`
+	Websom.InputChain to(string permission) {
+		return this.to("permission", permission);
+	}
+
+	`Restricts the form to the custom callback`
+	Websom.InputChain to(<void, <void, bool>function>function callback) {
+		if (this.restricts.length > 0) {
+			var r = this.restricts[this.restricts.length - 1];
+
+			r.simple = false;
+			r.callback = callback;
+		}
+
+		return this;
+	}
+
+	Websom.InputChain multipart() { // In the future this will do something
+		return this;
+	}
+
+	Websom.InputChain key(string key) {
+		this.keys.push(new Websom.InputKey(key));
+
+		return this;
+	}
+
+	`Sets the expected type for the current key to a data entity with a publicId.`
+	Websom.InputChain is(Websom.Container dataTypeContainer) {
+		return this.is(new Websom.InputFilters.Data(dataTypeContainer));
+	}
+	
+	Websom.InputChain is(Websom.InputKeyFilter filter) {
+		if (this.keys.length > 0)
+			this.keys[this.keys.length - 1].setFilter(filter);
+		
+		return this;
+	}
+
+	Websom.InputChain is(string typeName) {
+		if (this.keys.length > 0) {
+			if (typeName == "string") {
+				this.keys[this.keys.length - 1].setFilter(new Websom.InputFilters.String());
+			}else{
+				Exception.throw("Unkown is typeName " + typeName);
+			}
+		}
+		
+		return this;
+	}
+
+	Websom.InputChain length(int min, int max) {
+		if (this.keys.length > 0) {
+			var filter = this.keys[this.keys.length - 1].filter;
+			filter.minLength = min;
+			filter.maxLength = max;
+		}
+
+		return this;
+	}
+
+	Websom.InputChain only(<primitive>array values) {
+		if (this.keys.length > 0) {
+			var filter = this.keys[this.keys.length - 1].filter;
+			filter.only = values;
+		}
+
+		return this;
+	}
+
+	Websom.InputChain not(<primitive>array values) {
+		if (this.keys.length > 0) {
+			var filter = this.keys[this.keys.length - 1].filter;
+			filter.not = values;
+		}
+
+		return this;
+	}
+
+	Websom.InputChain matches(string regex) {
+		if (this.keys.length > 0) {
+			var filter = this.keys[this.keys.length - 1].filter;
+			filter.matches = regex;
+		}
+
+		return this;
+	}
+
+	`Calls the $callback when a request is validated fully.`
+	Websom.InputChain success(<void, Websom.Input, map>function callback) {
+		this.successCallback = callback;
+
+		return this;
+	}
+
+	`Calls the $callback as soon as a key has an error without completing the others.`
+	Websom.InputChain error(<void, Websom.Input, Websom.InputValidation>function callback) {
+		this.errorCallback = callback;
+		
+		return this;
+	}
+
+	void received(Websom.Input input) {
+		var that = this;
+
+		var hasKeys = true;
+
+		for (var int i in this.keys) {
+			var key = this.keys[i];
+			if ((key.key in input.raw) == false)
+				hasKeys = false;
+		}
+
+		if (hasKeys == false) {
+			input.sendError("Invalid keys");
+			return null;
+		}
+
+		var dones = this.keys.length + this.restricts.length;
+
+		var Websom.InputValidation validation = null;
+
+		var putData = new <everything>map();
+
+		var checkDone = void () => {
+			if (dones <= 0) {
+				var sent = false;
+				if (validation != null and validation.hadError) {
+					if (that.errorCallback != null) {
+						that.errorCallback(input, validation);
+					}else
+						input.sendError(validation.stringify());
+				}else{
+					if (that.successCallback != null) {
+						that.successCallback(input, putData);
+					}else
+						input.sendSuccess("No success handler registered");
+				}
+			}
+		};
+
+		for (var int i in this.keys) {
+			var key = this.keys[i];
+
+			if (key.filter != null) {
+				key.filter.filter(input, input.raw, key.key, putData, void (Websom.InputValidation iv) => {
+					if (iv != null and iv.hadError) {
+						dones = 0;
+						validation = iv;
+						checkDone();
+					}else{
+						dones--;
+						checkDone();
+					}
+				});
+			}else{
+				putData[key.key] = input.raw[key.key];
+				dones--;
+				checkDone();
+			}
+		}
+		for (var int i in this.restricts) {
+			var r = this.restricts[i];
+
+			if (r.simple) {
+				var map ct = input.server.input.restrictHandlers;
+				if (r.key in ct) {
+					var <void, string, Websom.Request, <void, bool>function>function handler = input.server.input.restrictHandlers[r.key];
+					handler(r.value, input.request, void (bool passed) => {
+						if (passed) {
+							dones--;
+							checkDone();
+						}else{
+							input.sendError("No permission");
+						}
+					});
+
+					return null;
+				}else{
+					Exception.throw("Custom restriction " + r.key + " not found in request to global interface");
+				}
+			}else{
+				if (r.callback != null) {
+					r.callback(void (bool passed) => {
+						if (passed) {
+							dones--;
+							checkDone();
+						}else{
+							input.sendError("No permission");
+						}
+					});
+				}else{
+					Exception.throw("Restrict callback on global interface is null. Did you forget interface.to(void () => {})?");
+				}
+
+				return null;
+			}
+		}
+	}
+}
+
+class Websom.InputKey {
+	string key = null;
+
+	string type = "raw";
+
+	Websom.InputKeyFilter filter = null;
+
+	void @construct(string key) {
+		this.key = key;
+	}
+
+	void setFilter(Websom.InputKeyFilter filter) {
+		this.filter = filter;
+	}
+}
+
+class Websom.InputKeyFilter {
+	int minLength = -1;
+	int maxLength = -1;
+	int max = -1;
+	int min = -1;
+	<primitive>array only = new <primitive>array();
+	<primitive>array not = new <primitive>array();
+
+	string matches = "";
+
+	void filter(Websom.Input input, map data, string key, <everything>map putData, <void, Websom.InputValidation>function done) {
+		putData[key] = data[key];
+		done(new Websom.InputValidation(false, ""));
+	}
+}
+
+namespace Websom.InputFilters {}
+
+class Websom.InputFilters.Data inherits Websom.InputKeyFilter {
+	Websom.Containers.Table container = null;
+
+	void @construct(Websom.Containers.Table container) {
+		this.container = container;
+	}
+	
+	override void filter(Websom.Input input, map data, string key, <everything>map putData, <void, Websom.InputValidation>function done) {
+		var invalid = true;
+		if (data[key].typeAsString() == "string") {
+			var string publicId = data[key];
+			if (publicId.length == 12) {
+				invalid = false;
+			}
+		}
+
+		if (invalid) {
+			done(new Websom.InputValidation(true, "Invalid publicId for key " + key));
+		}else{
+			this.container.loadFromSelect(this.container.from().where("publicId").equals(data[key]), void (<Websom.Data>array results) => {
+				if (results.length != 1) {
+					done(new Websom.InputValidation(true, "Invalid publicId for key " + key));
+				}else{
+					putData[key] = results[0];
+					done(new Websom.InputValidation(false, ""));
+				}
+			});
+		}
+	}
+}
+
+
+class Websom.InputFilters.String inherits Websom.InputKeyFilter {
+	void @construct() {
+		
+	}
+	
+	override void filter(Websom.Input input, map data, string key, <everything>map putData, <void, Websom.InputValidation>function done) {
+		var invalid = false;
+
+		if (data[key].typeAsString() == "string") {
+			var string value = data[key];
+			if (this.maxLength != -1) {
+				if (value.length > this.maxLength)
+					invalid = true;
+			}
+
+			if ((invalid == false) and this.minLength != -1) {
+				if (value.length < this.minLength)
+					invalid = true;
+			}
+
+			if ((invalid == false) and this.only.length > 0) {
+				invalid = true;
+
+				for (var int i in this.only) {
+					var string check = this.only[i];
+					if (value == check) {
+						invalid = false;
+						break;
+					}
+				}
+			}else if ((invalid == false) and this.not.length > 0) {
+				for (var int i in this.not) {
+					var string check = this.not[i];
+					if (value == check) {
+						invalid = true;
+						break;
+					}
+				}
+			}
+
+			if ((invalid == false) and this.matches.length > 0) {
+				if (value.test(this.matches) == false)
+					invalid = true;
+			}
+		}else
+			invalid = true;
+
+		if (invalid) {
+			done(new Websom.InputValidation(true, "Invalid value for key " + key));
+		}else{
+			done(new Websom.InputValidation(false, ""));
+		}
+	}
+}

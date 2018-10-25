@@ -1,0 +1,299 @@
+class Websom.Services.Input inherits Websom.Service {
+	<Websom.InputHandler>array inputs = new <Websom.InputHandler>array();
+	string clientValidate = "";
+	<string>array inputTypes = new <string>array();
+	map completed = new map();
+
+	<<void, string, Websom.Request, <void, bool>function>function>map restrictHandlers = new <<void, string, Websom.Request, <void, bool>function>function>map();
+
+	Websom.Status start() { //TODO: Most of this code should passed off to a container //WARN: Input needs to be started after module
+		this.clientValidate = this.buildClientValidation();
+
+		this.restriction("permission", void (string perm, Websom.Request req, <void, bool>function callback) => {
+			req.getUser(void (Websom.Standard.UserSystem.User user) => {
+				if (user != null)
+					user.hasPermission(perm, void (bool yes) => {
+						callback(yes);
+					});
+				else
+					callback(false);
+			});
+		});
+
+		this.restriction("group", void (string name, Websom.Request req, <void, bool>function callback) => {
+			req.getUser(void (Websom.Standard.UserSystem.User user) => {
+				if (user != null)
+					user.inGroup(name, void (bool yes) => {
+						callback(yes);
+					});
+				else
+					callback(false);
+			});
+		});
+
+		this.restriction("username", void (string username, Websom.Request req, <void, bool>function callback) => {
+			req.getUser(void (Websom.Standard.UserSystem.User user) => {
+				if (user != null and user.username == username) {
+					callback(true);
+				}else{
+					callback(false);
+				}
+			});
+		});
+
+		this.restriction("is", void (string type, Websom.Request req, <void, bool>function callback) => {
+			if (type == "user") {
+				req.getUser(void (Websom.Standard.UserSystem.User user) => {
+					if (user != null) {
+						callback(true);
+					}else{
+						callback(false);
+					}
+				});
+			}else{
+				Exception.throw("Unkown is restriction with type " + type);
+			}
+		});
+	}
+
+	`Used with buildDataValidation to generate a string that is sent to the client every page load. It needs some optimizing.`
+	string buildClientValidation() {
+		var strs = new <string>array();
+
+		for (var int i in this.inputs) {
+			var input = this.inputs[i];
+			if (input.containerInterface != null) {
+				var name = input.containerInterface.dataInfo.name;
+				if ((name in this.completed) == false) {
+					this.completed[name] = true;
+					strs.push("\"" + name + "\": {" + this.buildDataValidation(input.containerInterface.dataInfo) + "}");
+				}
+			}
+		}
+
+		return "<script>Websom.inputValidation = {" + strs.join(", ") + ", " + this.inputTypes.join(", ") + "};</script>";
+	}
+
+	`Registers a custom restriction for input interfaces`
+	void restriction(string key, <void, string, Websom.Request, <void, bool>function>function callback) {
+		this.restrictHandlers[key] = callback;
+	}
+
+	`See buildClientValidation`
+	string buildDataValidation(Websom.DataInfo info) {
+		var keys = new <string>array();
+
+		for (var int i in info.fields) {
+			var field = info.fields[i];
+			if (field.expose == false)
+				continue;
+			var type = "primitive";
+
+			if (field.singleLink) {
+				type = field.typeRoute;
+			}else if (field.typeRoute == "array") {
+				var Websom.DatabaseFlags.Linked linked = field.structure.getFlag("linked");
+				type = linked.fieldType;
+			}
+
+			if (type != "primitive") {
+				var dataInfo = Websom.DataInfo.getDataInfoFromRoute(type);
+				var name = dataInfo.name;
+				if ((name in this.completed) == false) {
+					this.completed[name] = true;
+					this.inputTypes.push("\"" + name + "\": {" + this.buildDataValidation(dataInfo) + "}");
+				}
+			}
+
+			var fieldValidation = new <string>array();
+			fieldValidation.push("type: \"" + type + "\"");
+
+			for (var string key in field.attributes) { //TODO: Allow the type to choose what attributes to send.
+				if (key == "Min" or key == "Max" or key == "Matches" or key == "Length")
+					fieldValidation.push(key + ": " + Websom.Json.encode(field.attributes[key]));
+			}
+			keys.push(field.realName + ": {" + fieldValidation.join(", ") + "}");
+		}
+
+		return keys.join(", ");
+	}
+
+	`Regsiters an InputHandler for the input key`
+	Websom.InputHandler register(string key, <void, Websom.Input>function callback) {
+		var handler = new Websom.InputHandler(key, callback);
+		this.inputs.push(handler);
+		return handler;
+	}
+
+	trust void handle(string key, map raw, Websom.Request req) {
+		var handled = false;
+		for (var int i in this.inputs) {
+			var input = this.inputs[i];
+			if (input.key == key) {
+				handled = true;
+				input.handle(raw, req);
+			}
+		}
+
+		if (handled == false) {
+			req.send("Invalid key " + key);
+		}
+	}
+
+	Websom.InputChain interface(string key) {
+		var Websom.InputChain chain = null;
+
+		var handler = this.register(key, void (Websom.Input input) => {
+			chain.received(input);
+		});
+
+		chain = new Websom.InputChain(handler);
+
+		return chain;
+	}
+}
+
+class Websom.InputHandler {
+	string key = "";
+	<void, Websom.Input>function handler = null;
+
+	Websom.Container containerInterface = null;
+
+	void @construct(string key, <void, Websom.Input>function handler) {
+		this.key = key;
+		this.handler = handler;
+	}
+
+	trust void handle(map raw, Websom.Request req) {
+		var input = new Websom.Input(this.key, raw, req);
+		input.server = req.server;
+		this.handler(input);
+	}
+}
+
+class Websom.File {
+	string name = "";
+	string path = "";
+	string type = "";
+	uint64 size = 0;
+
+	void @construct(string name, string path, uint64 size, string type) {
+		this.name = name;
+		this.path = path;
+		this.size = size;
+		this.type = type;
+	}
+}
+
+class Websom.Input {
+	Websom.Server server = null;
+	map raw = null;
+	<<Websom.File>array>map files = new <<Websom.File>array>map();
+
+	Websom.Request request = null;
+	string key = "";
+	string route = "";
+
+	trust void @construct(string key, map raw, Websom.Request request) {
+		this.key = key;
+		this.raw = raw;
+		if ("_w_route" in raw)
+			this.route = raw["_w_route"];
+		
+		this.request = request;
+		this.server = this.request.server;
+
+		native javascript {
+			if (request.jsRequest.files) {
+				for (let files in request.jsRequest.files) {
+					let file = request.jsRequest.files[files];
+					if (!(file.fieldname in this.files))
+						this.files[file.fieldname] = [];
+					
+					this.files[file.fieldname].push(new Websom.File(file.originalname, file.path, file.size, file.mimetype));
+
+					/*if (Array.isArray(request.jsRequest.files[files])) {
+						for (let file of request.jsRequest.files[files]) {
+							console.log(file);
+						}
+					}else{
+						let file = request.jsRequest.files[files];
+						this.files[files].push(new Websom.File(file.originalname, file.path, file.size, file.mimetype));
+					}*/
+				}
+			}
+		}
+
+		native php {
+			foreach ($_FILES as $name => $file) {
+				if (is_array($file["error"])) {
+					$this->files[$name] = [];
+					foreach ($file["error"] as $index => $mFile) {
+						array_push($this->files[$name], new Websom_File($file["name"][$index], $file["tmp_name"][$index], $file["size"][$index], $file["type"][$index]));
+					}
+				}else{
+					$this->files[$name] = [new Websom_File($file["name"], $file["tmp_name"], $file["size"], $file["type"])];
+				}
+			}
+		}
+	}
+
+	`Use this over val.validate if you can`
+	void validate(Websom.InputValidator val, <void, Websom.InputValidation>function done) {
+		val.validate(this, done);
+	}
+
+	`Checks if an input raw contains all of the keys`
+	bool has(<string>array keys) {
+		for (var int i in keys)
+			if ((keys[i] in this.raw) == false)
+				return false;
+		return true;
+	}
+
+	`Alias for request.send`
+	void send(string raw) {
+		this.request.send(raw);
+	}
+
+	void sendAction(string actionName) {
+		this.request.send('{"status": "action", "action": ' + Websom.Json.encode(actionName) + '}');
+	}
+
+	void sendError(string message) {
+		this.request.send('{"status": "error", "message": ' + Websom.Json.encode(message) + '}');
+	}
+
+	void sendSuccess(string message) {
+		this.request.send('{"status": "success", "message": ' + Websom.Json.encode(message) + '}');
+	}
+}
+
+class Websom.InputValidator {
+	void validate(Websom.Input input, <void, Websom.InputValidation>function done);
+}
+
+class Websom.InputValidation {
+	bool hadError = false;
+	string message = "";
+	Websom.FieldInfo field = null;
+
+	void @construct(bool hadError, string message) {
+		this.hadError = hadError;
+		this.message = message;
+	}
+
+	void @construct(bool hadError, string message, Websom.FieldInfo field) {
+		this.hadError = hadError;
+		this.message = message;
+		this.field = field;
+	}
+
+	string stringify() {
+		if (this.field == null) {
+			return this.message;
+		}else{
+			return this.message + " on field " + this.field.realName;
+		}
+	}
+}

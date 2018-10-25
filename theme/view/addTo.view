@@ -1,0 +1,55 @@
+info {
+	"name": "add-to"
+}
+
+template {
+	<div>
+		<button class="button floating activate-popover" href="~.popover"><icon fa>plus</icon></button>
+		<div class="popover list">
+			<label class="title">Add to</label>
+			<hr>
+			<sort layout="vertical" :container="container" auto="true" container-class="add-to-container" :query="query">
+				<div class="popover-row" :key="sort.dataKey" slot="view" slot-scope="sort">
+					<input  @click="toggle(sort.data)" type="checkbox" class="input" :checked="sort.data[listField].length > 0"/>
+					<label style="vertical-align: middle;">{{sort.data[containerDisplayField]}}</label>
+				</div>
+			</sort>
+			<!--<div v-for="i in container">
+				<label>{{i[containerDisplayField]}}</label> <input  type="checkbox" class="input"/>
+			</div>-->
+			<hr>
+			<button class="button">Create</button>
+		</div>
+	</div>
+}
+
+client {
+	props: ["container", "list-field", "route", "query", "item", "field", "container-display-field"],
+	data: () => {
+		return {containers: []};
+	},
+	methods: {
+		fetchFromContainer: function () {
+			let sQ = {};
+			sQ[this.listField] = {recipe: this.item.publicId};
+			Websom.interface(this.container, "select", sQ, (data) => {
+				this.containers = data.documents;
+			});
+		},
+		toggle: function (collection) {
+			$.post("/postInput",
+				{
+					inputKey: this.route,
+					data: {collection: collection.publicId, item: this.item.publicId}
+				},(d) => {})
+		}
+	},
+	created: function () {
+		this.query[this.listField] = {recipe: this.item.publicId};
+	},
+	mounted: function () {
+		$(this.$el).children(".popover").on("open", () => {
+			this.fetchFromContainer();
+		});
+	}
+}

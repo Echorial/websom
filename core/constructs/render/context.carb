@@ -1,0 +1,43 @@
+class Websom.Render.Context {
+	map data = null;
+	map props = null;
+
+	Websom.Render.Context slotContext = null;
+
+	<Websom.Render.Node>array slot = null;
+
+	void @construct() {
+		this.data = new map();
+		this.props = new map();
+	}
+
+	primitive find(string key) {
+		var splits = key.split(".");
+		var primitive root = null;
+		
+		if (splits[0] in this.data) {
+			root = this.data[splits[0]];
+		}else if (splits[0] in this.props){
+			root = this.props[splits[0]];
+		}
+
+		if (root == null)
+			return "Unkown variable " + key;
+
+		if (splits.length == 1) {
+			return root;
+		}else{
+			splits.shift();
+			return this.findRooted(root, splits);
+		}
+	}
+
+	primitive findRooted(map base, <string>array splits) {
+		if (splits.length == 1) {
+			return base[splits[0]];
+		}else{
+			splits.shift();
+			return this.findRooted(base, splits);
+		}
+	}
+}

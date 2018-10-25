@@ -1,0 +1,50 @@
+info {
+	"name": "dashboard-home"
+}
+
+template {
+	<div class="main">
+		<h3 class="white-text" style="text-align: center;">
+			<img src="/resources/dashboard/Websom.svg" style="max-width: 50%;">
+			<h2>websom v{{info.version}}</h2>
+			<div>
+				<h3 v-if="info.platform == 'php'">php {{info.platformVersion}}</h3>
+				<h3 v-else-if="info.platform == 'node'">node.js {{info.platformVersion}}</h3>
+			</div>
+		</h3>
+		<div class="card white row">
+			<p>
+				Websom - 1.0
+			</p>
+			<hr>
+			<div class="col s12 m6">
+				Whats new
+				<ul>
+					<li><a href="#">New features in 1.0</a></li>
+				</ul>
+			</div>
+			<div class="col s12 m6">
+				Help
+				<ul>
+					<li><a href="#">Tutorials</a></li>
+					<li><a href="#">Docs</a></li>
+					<li><a href="#">Designer guide</a></li>
+					<li><a href="#">Developer guide</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+}
+
+client {
+	data: function () {
+		return {
+			info: {}
+		};
+	},
+	created: function () {
+		DashboardBridge.getInfo().then((info) => {
+			this.info = info;
+		});
+	}
+}

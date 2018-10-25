@@ -1,0 +1,179 @@
+info {
+	"name": "view-editor"
+}
+
+template {
+	<div/>
+}
+
+client {
+	props: ["studio", "state", "block"],
+	data: function () {
+		return {rootBlock: null};
+	},
+	methods: {
+		refresh: function () {
+			function getLocation(event, block, container) {
+				var offset = $(container).offset();
+				var height = $(container).outerHeight();
+				var ranges = [];
+
+				$(container).children().each(function () {
+					if (ranges.length == 0) {
+						ranges.push({start: $(this).offset().top + $(this).outerHeight()});
+					}else if (!("end" in ranges[ranges.length - 1])) {
+						ranges[ranges.length - 1].end = $(this).offset().top;
+						ranges.push({start: $(this).offset().top + $(this).outerHeight()});
+					}
+				});
+
+				if (ranges.length > 2) ranges.pop();
+
+				for (var r in ranges) {
+					var range = ranges[r];
+					if (event.clientY >= range.start && event.clientY <= range.end)
+						return {append: parseInt(r), splice: parseInt(r), range: range, left: false, right: false};
+				}
+
+				if (event.clientY > offset.top + (height/2)) {
+					return {append: true, left: false, right: false};
+				}else{
+					return {append: false, left: false, right: false};
+				}
+			}
+
+			window.getLocation = getLocation;
+
+			var listen = () => {
+				interact(".editor-hover:not(.root-block):not(.editor-locked)").draggable({
+					onstart: function (e) {
+						$(e.target).css("width", $(e.target).width());
+						e.target.classList.add("editor-dragging");
+						
+					},
+					onmove: window.dragMoveListener,
+					onend: function (e) {
+						var block = $(e.target);
+						block.removeClass("editor-dragging");
+						block.css("transform", "none");
+						block.css("width", "initial");
+						block.attr("data-x", null);
+						block.attr("data-y", null);
+					}
+				});
+
+				interact(".editor-container").dropzone({
+					accept: ".editor-block, .editor-hover",
+					ondropactivate: function (e) {
+						e.target.classList.add("editor-waiting");
+					},
+					ondragenter: function (event) {
+						var draggableElement = $(".editor-dragging")[0],
+							dropzoneElement = event.target;
+
+						dropzoneElement.classList.add("editor-ready");
+						draggableElement.classList.add("editor-can-drop");
+						draggableElement.container = dropzoneElement;
+						event.relatedTarget.container = dropzoneElement;
+					},
+					ondrop: function (event) {
+						var block = $(event.relatedTarget);
+						var container = $(event.target);
+						var loc = window.getLocation(event.dragEvent, block, container);
+						container.removeClass('editor-ready');
+						block.removeClass('editor-can-drop');
+						if (block.hasClass("editor-block")) {
+							container.removeClass('editor-ready');
+							block.removeClass('editor-can-drop');
+
+							if (block.attr("data-type") == "dynamic") {
+								var dyn = new Websom.Editor.DynamicBlock(block.attr("data-node"));
+								container[0].editorBlock.addChild(dyn, loc.append);
+							}else if (block.attr("data-type") == "block") {
+								var dyn = new Websom.Editor.Blocks[block.attr("data-node")]();
+								container[0].editorBlock.addChild(dyn, loc.append);
+							}
+							block.css("transform", "none");
+							block.css("width", null);
+							block.attr("data-x", null);
+							block.attr("data-y", null);
+						}else{
+							var inst = container[0].editorBlock;
+							var bInst = block[0].editorBlock;
+							for (var i = 0; i < bInst.parent.children.length; i++) {
+								var child = bInst.parent.children[i];
+								if (child.id == bInst.id) {
+									bInst.parent.children.splice(i, 1);
+									break;
+								}
+							}
+							inst.addChild(bInst, loc.append);
+							$(".editor-bar").remove();
+							$(".bar-top").removeClass("bar-top");
+							$(".bar-bottom").removeClass("bar-bottom");
+						}
+					},
+					ondragleave: function (event) {
+						event.target.classList.remove('editor-ready');
+						event.relatedTarget.classList.remove('editor-can-drop');
+						delete event.target.container;
+						$(".editor-bar").addClass("off");
+						$(".bar-top").removeClass("bar-top");
+						$(".bar-bottom").removeClass("bar-bottom");
+					},
+					ondropdeactivate: function (event) {
+						event.target.classList.remove('editor-waiting');
+						delete event.target.container;
+						$(".editor-bar").addClass("off");
+						$(".bar-top").removeClass(".bar-top");
+						$(".bar-bottom").removeClass(".bar-bottom");
+					}
+				});
+				this.$forceUpdate();
+			};
+
+			if (this.state)
+				DashboardBridge.readFile(this.state.file).then((raw) => {
+					var view = Websom.Editor.viewParser(raw);
+					this.rootBlock = Websom.Editor.loadBlock(Websom.Editor.parseBlock(view.template));
+					listen();
+				});
+			else
+				listen();
+		}
+	},
+	render: function (createElement) {
+		if (this.rootBlock) {
+			this.rootBlock.isRoot = true;
+			return this.rootBlock.render(createElement, this);
+		}
+	},
+	created: function () {
+		this.refresh();
+	},
+	mounted: function () {
+		var that = this;
+
+		if (this.block)
+			this.rootBlock = this.block;
+
+		var elem = $(this.$el.parentElement);
+		elem.on("mouseenter", "*", function () {
+			if (this.editorBlock)
+				$(this).addClass("editor-hover");
+		});
+
+		elem.on("mouseleave", "*", function () {
+			$(".editor-hover").removeClass("editor-hover");
+		});
+
+		elem.on("click", "*", function (e) {
+			if (this.editorBlock && e.target == e.currentTarget) {
+				elem.find(".editor-active").removeClass("editor-active");
+				$(this).addClass("editor-active");
+				this.editorBlock.realElement = this;
+				that.studio.selected = this.editorBlock;
+			}
+		});
+	}
+}

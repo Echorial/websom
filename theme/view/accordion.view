@@ -1,0 +1,98 @@
+info {
+	"name": "accordion"
+}
+
+template {}
+
+client {
+	props: ["folds"],
+	render: function (createElement) { //TODO: Make into one
+		var cls = "accordion";
+		var def = 0;
+		if ("default" in this.$attrs)
+			def = parseInt(this.$attrs.default);
+
+		if (this.$slots.default && this.$slots.default.length > 0) {
+			var uls = [];
+			var i = 0;
+			for (var fold of this.$slots.default) {
+				if (fold.tag == "fold") {
+					var name = null;
+					var content = null;
+					for (var elem of fold.children) {
+						if (elem.tag == "name")
+							name = elem.children;
+						else if (elem.tag == "content") {
+							content = createElement("div", {attrs: {"data-fold": i, "class": i == def ? "open" : ""}}, [elem]);
+						}
+					}
+					uls.push(createElement("li", {attrs: {"data-fold": i}}, [
+							createElement("div", name),
+							content
+						]));
+					i++;
+				}
+			}
+			return createElement("ul", {class: cls}, uls);
+		}else if (this.folds) {
+			var uls = [];
+			var i = 0;
+			for (var name in this.folds) {
+				var fold = this.folds[name];
+				uls.push(createElement("li", {attrs: {"data-tab": i}}, [createElement("div", name), createElement("div", fold)]));
+				i++;
+			}
+			return createElement("ul", {class: cls}, uls);
+		}
+	},
+	editor: {
+		data: function () {
+			return {folds: []};
+		},
+		template: `
+			<ul class="accordion">
+				<li :data-fold="i" v-for="(fold, i) in folds">
+					<div class="grey lighten-3" style="position: relative;"><editor-text :text="fold.name"/><span @click="remove(i)" class="red-text" style="cursor: pointer; position: absolute; top: 0; right: 0;"><icon fa>times</icon></span></div>
+					<div :data-fold="i"><editor-slot :slot="fold.content"/></div>
+				</li>
+				<li @click="addFold()" style="display: block; padding: .6em;"><button style="display: block; width: 100%;" class="button">Add</button></li>
+			</ul>
+		`,
+		methods: {
+			addFold: function () {
+				this.folds.push({name: new Websom.Editor.Blocks.div(), content: new Websom.Editor.Blocks.div()});
+			},
+			remove: function (i) {
+				this.folds.splice(i, 1);
+			},
+			serialize: function (ind) {
+				var folds = "";
+				for (var i = 0; i < this.folds.length; i++)
+folds += `<fold>
+	<name>
+${this.folds[i].name.serialize(ind + 1)}
+	</name>
+	<content>
+${this.folds[i].content.serialize(ind + 1)}
+	</content>
+</fold>`;
+				return Websom.Editor.indent("<accordion>\n" + folds + "\n</accordion>", ind);
+			},
+			deserialize: function (xml) {
+				for (var i = 0; i < xml.childNodes.length; i++) {
+					var child = xml.childNodes[i];
+					if (child.tagName == "FOLD") {
+						var name = [...child.childNodes].filter(node => node.tagName == 'NAME')[0];
+						var content = [...child.childNodes].filter(node => node.tagName == 'CONTENT')[0];
+						var c = Websom.Editor.loadBlock(content);
+						var n = Websom.Editor.loadBlock(name);
+						this.folds.push({
+							name: n,
+							content: c
+						});
+					}
+				}
+			}
+		}
+	}
+}

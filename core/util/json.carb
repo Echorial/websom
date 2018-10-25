@@ -1,0 +1,21 @@
+header class Websom.Json {
+	phpNoRef fixed map parse(string input) {
+		native php {
+			return json_decode($input, true);
+		}
+
+		native javascript {
+			return JSON.parse(input);
+		}
+	}
+
+	fixed string encode(primitive input) {
+		native php {
+			return json_encode($input);
+		}
+
+		native javascript {
+			return JSON.stringify(input);
+		}
+	}
+}

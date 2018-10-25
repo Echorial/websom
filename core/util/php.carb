@@ -1,0 +1,7 @@
+class Websom.PHP {
+	fixed void load() {
+		native php {
+			require __DIR__  . '/../../vendor/autoload.php';
+		}
+	}
+}

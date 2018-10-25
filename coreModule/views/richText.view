@@ -1,0 +1,101 @@
+info {
+	"name": "rich-text"
+}
+
+template {
+	<div>
+		<div v-if="editMode" class="card rich-text" ref="editor">
+			<div class="rich-text-bar" style="height: 32px;">
+				<button class="right blue lighten-1" style="width: 62px; cursor: pointer; outline: none; font-weight: bold; color: white; border: none; height: 32px;" @click="toggle()">
+					{{preview ? "Edit" : "Preview"}}
+				</button>
+				<icon fa data-tooltip="Heading" @click.native="insert('# ')">heading</icon>
+				<icon fa data-tooltip="Italic" @click.native="wrap('*')">italic</icon>
+				<icon fa data-tooltip="Code" @click.native="wrap('`')">code</icon>
+				<icon fa data-tooltip="Link" @click.native="insert('[name](url)')">link</icon>
+				<icon fa data-tooltip="Image" @click.native="insert('![name](url)')">image</icon>
+				<icon fa data-tooltip="Number list" @click.native="insert('1. Item 1\\n2. Item 2\\n3. Item 3')">list-ol</icon>
+				<icon fa data-tooltip="Bullet list" @click.native="insert('* Item 1\\n* Item 2\\n* Item 3')">list-ul</icon>
+				<icon fa data-tooltip="Block quote" @click.native="insert('> ')">quote-right</icon>
+				<icon fa data-tooltip="Strike" @click.native="wrap('~~')">strikethrough</icon>
+				<icon fa data-tooltip="Bold" @click.native="wrap('**')">bold</icon>
+				<span data-tooltip="Uppercase" @click.native="upper()">A</span>
+				<span data-tooltip="Lowercase" @click.native="lower()">a</span>
+				<icon fa data-tooltip="Horizontal rule" @click.native="insert('\\n---\\n')">minus</icon>
+			</div>
+			<textarea ref="area" v-if="!preview" v-model="text" style="margin: 0; min-height: 300px" class="input" placeholder="Text">{{value ? value.substr(1) : ""}}</textarea>
+			<div v-else style="display: inline-block; width: 100%;" v-html="baked"></div>
+		</div>
+		<div v-else v-html="baked"></div>
+	</div>
+}
+
+client {
+	props: ["value", "data", "edit-mode"],
+	data: function () { return {text: "", baked: "Loading", preview: false}; },
+	methods: {
+		restore: function (start, end) {
+			var that = this;
+			that.$refs.area.setSelectionRange(start, end);
+			that.$refs.area.focus();
+		},
+		insert: function (str) {
+			var start = this.$refs.area.selectionStart;
+			var end = this.$refs.area.selectionEnd;
+			this.text = this.text.slice(0, start) + str + this.text.slice(start);
+			this.restore(start + str.length, end + str.length);
+		},
+		wrap: function (str) {
+			var start = this.$refs.area.selectionStart;
+			var end = this.$refs.area.selectionEnd;
+			this.text = this.text.slice(0, start) + str + this.text.slice(start, end) + str + this.text.slice(end);
+			this.restore(start + str.length, end + str.length);
+		},
+		upper: function () {
+			var start = this.$refs.area.selectionStart;
+			var end = this.$refs.area.selectionEnd;
+			this.text = this.text.slice(0, start) + this.text.slice(start, end).toUpperCase() + this.text.slice(end);
+			this.restore(start, end);
+		},
+		lower: function () {
+			var start = this.$refs.area.selectionStart;
+			var end = this.$refs.area.selectionEnd;
+			this.text = this.text.slice(0, start) + this.text.slice(start, end).toLowerCase() + this.text.slice(end);
+			this.restore(start, end);
+		},
+		toggle: function () {
+			this.build();
+			var that = this;
+			if (this.baked == "")
+				this.baked = "<h3>Nothing to preview</h3>";
+			var old = $(this.$refs.editor).height();
+			this.preview = !this.preview;
+			setTimeout(function () {
+				var now = $(that.$refs.editor).height();
+				$(that.$refs.editor).height(old);
+				$(that.$refs.editor).animate({height: now}, function () {$(that.$refs.editor).removeAttr("style");});
+			});
+		},
+		getValue: function (value) {
+			value("m" + this.text);
+		},
+		build: function () {
+			var that = this;
+			if (window.md) {
+				this.baked = md(this.text);
+			}else{
+				$.getScript("https://unpkg.com/md.js@0.2.6/md.min.js", function () {
+					that.baked = md(that.text);
+				});
+			}
+		}
+	},
+	mounted: function () {
+		if (this.value)
+			this.text = this.value.substr(1);
+		else if (this.data)
+			this.text = this.data.substr(1);
+			
+		this.build();
+	}
+}

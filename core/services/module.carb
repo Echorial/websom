@@ -1,0 +1,335 @@
+class Websom.Services.Module inherits Websom.Service {
+	<Websom.Module>array modules = new <Websom.Module>array();
+
+	#if platform.javascript
+		<void>array watchers = new <void>array();
+	#end if
+
+	#if platform.header
+
+		native inline fixed Websom.Module requireMod(string dir, Websom.Server server)
+		{return "new (require(" + context.arguments[0] + " + 'module.js'))(" + context.arguments[1] + ")";}
+
+		native inline fixed bool checkRequire(string dir)
+		{return "require('fs').existsSync(" + context.arguments[0] + " + 'module.js')";}
+
+	#end if
+
+	#if platform.javascript
+
+		native fixed Websom.Module requireMod(string dir, Websom.Server server)
+		{return "var modCon =  require(" + context.arguments[0] + " + 'module.js'); return new modCon(" + context.arguments[1] + ");";}
+
+		native inline fixed bool checkRequire(string dir)
+		{return "require('fs').existsSync(" + context.arguments[0] + " + '/module.js')";}
+
+	#end if
+
+	#if platform.php
+
+		native fixed Websom.Module requireMod(string dir, Websom.Server server)
+		{return "$cls = include($dir . 'module.php'); return new $cls(" + context.arguments[1] + ");";}
+
+		native inline fixed bool checkRequire(string dir)
+		{return "file_exists(" + context.arguments[0] + " . 'module.php')";}
+
+	#end if
+
+	Websom.Status rebuild() {
+		Console.log("Rebuilding all");
+
+		for (var int i in this.modules) {
+			var module = this.modules[i];
+			
+			native javascript {
+				this.buildModule(module.root, JSON.parse(require("fs").readFileSync(require("path").resolve(module.root, module.name) + ".json")));
+			}
+		}
+		this.server.resource.build(true);
+
+		return null;
+	}
+
+	Websom.Status load(string modDir, map config, bool single) {
+		//TODO: Add check for no module.(js/php) file and build if not
+		#if platform.javascript
+			if (this.checkRequire(modDir) == false) {
+				Console.log("Building module " + config["name"]);
+				this.buildModule(modDir, config);
+			}
+		#end if
+		var that = this;
+		native javascript {
+			if (this.server.config.dev) {
+				if (config.npm) {
+					const npm = require('npm');
+
+					npm.load((err) => {
+						let packages = [];
+						for (let package in config.npm)
+							packages.push(package + "@" + config.npm[package]);
+						
+						npm.commands.install(packages, (er, data) => { // Danger some modules should not be allowed to install things without admin permission
+
+						});
+					});
+				}
+
+				if (config.composer) {
+					for (let package in config.composer) {
+						const cp = require('child_process');
+						cp.exec("composer require \"" + package + ":" + config.composer[package] + "\"", {cwd: this.server.websomRoot}, (err, stdout, stderr) => {
+							console.log(err || stderr || stdout);
+						});
+					}
+				}
+			}
+
+			if (this.server.config.dev) {
+				var fs = require("fs");
+				console.log("Setup watch on module " + config.name);
+				this.watchers.push(fs.watch(modDir, {recursive: true}, function (type, file) {
+					var ext = file.split(".");
+					ext = ext[ext.length - 1];
+					if (file != modDir + "/module.php" && file != modDir + "/module.js") {
+						var slash = "/";
+						if (ext == "carb") {
+							console.log("Saw change on " + file + ". Rebuilding carbon");
+							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + config["name"] + ".json")));
+							that.server.resource.build(true);
+						}else{
+							console.log("Saw change on " + file + ". Rebuilding resources");
+							that.server.resource.build(true);
+						}
+						if (!single) {
+							for (var i = that.watchers.length - 1; i >= 0; i--) {
+								that.watchers[i].close();
+								that.watchers.pop();
+							}
+							for (var i = that.modules.length - 1; i >= 0; i--) {
+								that.modules[i].stop();//TODO: Add async stops
+								that.modules.pop();
+							}
+							that.reload(require("path").resolve(modDir + slash + ".." + slash) + slash);
+							that.server.resource.buildViews();
+						}else{
+							this.close();
+							that.load(modDir, config, single);
+							that.server.resource.buildViews();
+						}
+					}
+				}));
+			}
+		}
+
+		native javascript { //Clear cache
+			delete require.cache[require.resolve(modDir + "/module.js")];
+		}
+
+		var mod = Websom.Services.Module.requireMod(modDir + "/", this.server);
+		mod.root = modDir;
+		
+		for (var int i in this.modules) {
+			if (this.modules[i].root == modDir) {
+				this.modules.remove(i);
+				break;
+			}
+		}
+
+		this.modules.push(mod);
+		
+
+		if ("assets" in config) {
+			var <map>array assets = config["assets"];
+			for (var int i in assets)
+				if (assets[i]["name"] == "font-awesome")
+					this.server.resource.assetFontAwesome = true;
+		}
+
+		native javascript {
+			mod.bridges = mod.setupBridges();
+		}
+
+		native php {
+			$mod->bridges = $mod->setupBridges();
+		}
+
+		return mod.spawn(config);
+	}
+	
+	trust string loadAllContainers() {
+		var log = "";
+		for (var int mi in this.modules) {
+			var mod = this.modules[mi];
+
+			for (var int i in mod.containers) {
+				var container = mod.containers[i];
+				log += "Setup container " + mod.name + "." + container.name + "\n";
+				container.realize(this.server.database.primary, void (string err) => {
+					if (err.length > 0)
+						log += "Error in container " + container.name + ": " + err + "\n";
+				});
+			}
+		}
+
+		return log;
+	}
+
+	trust void checkContainers(Websom.Module module) {
+		#if platform.javascript
+			for (var int i in module.containers) {
+				var container = module.containers[i];
+				Console.log("Setup container " + module.name + "." + container.name);
+				container.realize(this.server.database.primary, void (string err) => {
+					if (err.length > 0)
+						Console.log("Error in container " + container.name + ": " + err);
+				});
+			}
+		#end if
+	}
+
+	Websom.Status reload(string path) {
+		//MEM: Dispose of modules
+
+		native javascript { //Clean up dev watchers
+			/*for (var i = this.watchers.length - 1; i >= 0; i--) {
+				this.watchers[i].close();
+				this.watchers.pop();
+			}*/
+		}
+
+		var mods = FileSystem.readDirSync(path);
+		var dash = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../dashboard");
+		var core = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../coreModule");
+
+		this.load(dash, Websom.Json.parse(FileSystem.readSync(dash + "/dashboard.json", "utf8")), true);
+		this.load(core, Websom.Json.parse(FileSystem.readSync(core + "/coreModule.json", "utf8")), true);
+
+		for (var int i in this.modules)
+			if (this.modules[i].name == "dashboard")
+				this.server.dashboard = this.modules[i];
+		
+		var doLoad = true;
+		
+		if (doLoad)
+		for (var int i in mods) {
+			var modDir = path + mods[i];
+			if (FileSystem.isDir(modDir)) {
+				var name = FileSystem.basename(modDir);
+				if (name != "." and name != "..") {
+					var configFile = modDir + "/" + name + ".json";
+
+					if (FileSystem.exists(configFile) == false)
+						return Websom.Status.singleError("Servics.Module", "Unable to find config for module " + name);
+
+					var map config = Websom.Json.parse(FileSystem.readSync(configFile, "utf8"));
+					var status = this.load(modDir, config, false);
+					if (status != null)
+						return status;
+				}
+			}
+		}
+
+		//Start each module
+		for (var int i in this.modules) {
+			var module = this.modules[i];
+			var containers = module.setupData();
+
+			if (containers != null)
+				module.containers = containers;
+
+			native javascript {
+				module.bridges = module.setupBridges();
+			}
+
+			native php {
+				$module->bridges = $module->setupBridges();
+			}
+
+			this.checkContainers(module);
+			
+			var status = module.start();
+			if (status != null)
+				return status;
+		}
+	}
+
+	Websom.Status buildModule(string dir, map config) {
+		var string name = config["name"];
+		var Websom.Status error = null;
+
+		native javascript {
+			error = require('../../core/util/native/carbonite.js').buildModule(dir + "/" + name + ".carb");
+		}
+
+		#if platform.php
+			error = Websom.Status.singleError("Service.Module", "Unable to build module in php.");
+		#end if
+
+		if (error != null)
+			return error;
+	}
+
+	Websom.Status buildModules(string path) {
+		var mods = FileSystem.readDirSync(path);
+		for (var int i in mods) {
+			var modDir = path + mods[i];
+			if (FileSystem.isDir(modDir)) {
+				var name = FileSystem.basename(modDir);
+				if (name != "." and name != "..") {
+					var configFile = modDir + "/" + name + ".json";
+
+					if (FileSystem.exists(configFile) == false)
+						return Websom.Status.singleError("Servics.Module", "Unable to find config for module " + name);
+
+					var map config = Websom.Json.parse(FileSystem.readSync(configFile, "utf8"));
+					var status = this.buildModule(modDir, config);
+					if (status != null)
+						return status;
+				}
+			}
+		}
+	}
+
+	override Websom.Status start() {
+		var dir = this.server.config.root + "/modules/";
+		//TODO: Add module dir override
+		if (FileSystem.exists(dir) == false)
+			return Websom.Status.singleError("Services.Module", "Unable to find modules directory");
+
+		return this.reload(dir);
+	}
+
+	void handleBridge(Websom.Request req, string bridgeName, string method, <primitive>array args) {
+		for (var int i in this.modules) {
+			var mod = this.modules[i];
+			for (var int b in mod.bridges) {
+				var bridge = mod.bridges[b];
+
+				if (bridge.getName() != bridgeName)
+					continue;
+				
+				var server = bridge.getServerMethods();
+				for (var int m in server) {
+					if (method == server[m]) {
+						var primitive rtn = null;
+						
+						native javascript {
+							rtn = bridge[method].apply(bridge, [req].concat(args));
+						}
+
+						native php {
+							$pass = array_merge([$req], $args);
+							$rtn = $bridge->$method(...$pass);
+						}
+
+						if (rtn != null)
+							req.send(Websom.Json.encode(rtn));
+
+						return null;
+					}
+				}
+			}
+		}
+	}
+}

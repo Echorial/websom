@@ -1,0 +1,49 @@
+{
+	"name": "dashboard",
+	"id": "dashboard",
+	"version": "1.0",
+	"author": "Websom",
+	"license": "MIT",
+	"repo": "url",
+	"website": "https://echorial.com",
+	"supports": {
+		"javascript": "*",
+		"php": "*"
+	},
+	"assets": [
+		{"name": "font-awesome"}
+	],
+	"resources": [
+		{"type": "javascript", "path": "scripts/main.js"},
+		{"type": "javascript", "path": "scripts/studio/panZoom.js"},
+		{"type": "javascript", "path": "scripts/studio/class.js"},
+		{"type": "javascript", "path": "scripts/studio/main.js"},
+		{"type": "javascript", "path": "scripts/studio/designer.js"},
+		{"type": "view", "path": "views/dashboard.view"},
+		{"type": "view", "path": "views/home.view"},
+		{"type": "view", "path": "views/studio.view"},
+		{"type": "view", "path": "views/builder.view"},
+		{"type": "view", "path": "views/toolbox.view"},
+		{"type": "view", "path": "views/properties.view"},
+		{"type": "view", "path": "views/file.view"},
+		{"type": "view", "path": "views/explorer.view"},
+		{"type": "view", "path": "views/database.view"},
+		{"type": "view", "path": "views/buckets.view"},
+		{"type": "view", "path": "views/build.view"},
+		{"type": "view", "path": "views/designerPage.view"},
+		{"type": "view", "path": "views/listObject.view"},
+		{"type": "view", "path": "views/modules.view"},
+		{"type": "view", "path": "views/containers.view"},
+		{"type": "view", "path": "views/dashboard-editor.view"},
+		{"type": "view", "path": "views/editor.view"},
+		{"type": "view", "path": "views/designer.view"},
+		{"type": "view", "path": "views/notifications.view"},
+		{"type": "view", "path": "views/account.view"},
+		{"type": "css", "path": "style/background.css"},
+		{"type": "less", "path": "style/studio.less"},
+		{"type": "less", "path": "style/builder.less"},
+		{"type": "less", "path": "style/designer.less"},
+		{"type": "less", "path": "style/dashboard.less"},
+		{"type": "file", "path": "vector/", "toPath": "dashboard/"}
+	]
+}

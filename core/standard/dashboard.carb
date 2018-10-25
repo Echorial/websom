@@ -1,0 +1,18 @@
+namespace Websom.Standard.Dashboard {}
+
+header relative Websom.Standard.Dashboard.Module inherits Websom.StandardModule {
+	<Websom.Standard.Dashboard.Tab>array tabs = new <Websom.Standard.Dashboard.Tab>array();
+
+	Websom.Standard.Dashboard.Tab register(Websom.Standard.Dashboard.Tab tab);
+
+	map mapTabs(Websom.Request req);
+}
+
+header interface Websom.Standard.Dashboard.Tab {
+	string name = "";
+	string display = "";
+
+	<string, Websom.Request>function handler = null;
+
+	void @construct(string name, string display, <map, Websom.Request>function handler);
+}

@@ -1,0 +1,101 @@
+info {
+	"name": "tabs"
+}
+
+template {}
+
+client {
+	props: ["tabs"],
+	render: function (createElement) { //TODO: Make into one
+		var cls = "tabs";
+		var def = 0;
+		if ("vertical" in this.$attrs)
+			cls = "v-tabs";
+		if ("default" in this.$attrs)
+			def = parseInt(this.$attrs.default);
+
+		if (this.$slots.default && this.$slots.default.length > 0) {
+			var uls = [];
+			var divs = [];
+			var i = 0;
+			for (var tab of this.$slots.default) {
+				if (tab.tag == "tab") {
+					for (var elem of tab.children) {
+						if (elem.tag == "name")
+							uls.push(createElement("li", {attrs: {"data-tab": i}}, elem.children));
+						else if (elem.tag == "content") {
+							divs.push(createElement("div", {attrs: {"data-tab": i, "class": i == def ? "open" : ""}}, [elem]));
+						}
+					}
+					i++;
+				}
+			}
+			return createElement("div", {class: cls, attrs: {"data-head-position": "bottom"}}, [createElement("ul", uls), createElement("div", divs)]);
+		}else if (this.tabs){
+			var uls = [];
+			var divs = [];
+			var i = 0;
+			for (var name in this.tabs) {
+				var tab = this.tabs[name];
+				uls.push(createElement("li", {attrs: {"data-tab": i}}, [name]));
+				divs.push(createElement("div", {attrs: {"data-tab": i, "class": i == def ? "open" : ""}}, [tab]));
+				i++;
+			}
+			return createElement("div", {class: cls, attrs: {"data-head-position": "bottom"}}, [createElement("ul", uls), createElement("div", divs)]);
+		}
+	},
+	editor: {
+		data: function () {
+			return {tabs: []};
+		},
+		template: `
+			<div class="tabs">
+				<ul>
+					<li :data-tab="i" v-for="(tab, i) in tabs">
+						<div class="grey lighten-3" style="position: relative;"><editor-slot inline :slot="tab.name"/><span @click="remove(i)" class="red-text" style="cursor: pointer; position: absolute; top: 0; right: 0;"><icon fa>times</icon></span></div>
+					</li>
+				</ul>
+				<div>
+					<div :data-tab="i" v-for="(tab, i) in tabs"><editor-slot :slot="tab.content"/></div>
+				</div>
+				<li @click="addTab()" style="display: block; padding: .6em;"><button style="display: block; width: 100%;" class="button">Add</button></li>
+			</div>
+		`,
+		methods: {
+			addTab: function () {
+				this.tabs.push({name: new Websom.Editor.Blocks.div(), content: new Websom.Editor.Blocks.div()});
+			},
+			remove: function (i) {
+				this.tabs.splice(i, 1);
+			},
+			serialize: function (ind) {
+				var tabs = "";
+				for (var i = 0; i < this.tabs.length; i++)
+tabs += `<tab>
+	<name>
+${this.tabs[i].name.serialize(ind + 1)}
+	</name>
+	<content>
+${this.tabs[i].content.serialize(ind + 1)}
+	</content>
+</tab>`;
+				return Websom.Editor.indent("<tabs>\n" + tabs + "\n</tabs>", ind);
+			},
+			deserialize: function (xml) {
+				for (var i = 0; i < xml.childNodes.length; i++) {
+					var child = xml.childNodes[i];
+					if (child.tagName == "TAB") {
+						var name = [...child.childNodes].filter(node => node.tagName == 'NAME')[0];
+						var content = [...child.childNodes].filter(node => node.tagName == 'CONTENT')[0];
+						var c = Websom.Editor.loadBlock(content);
+						var n = Websom.Editor.loadBlock(name);
+						this.tabs.push({
+							name: n,
+							content: c
+						});
+					}
+				}
+			}
+		}
+	}
+}

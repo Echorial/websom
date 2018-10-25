@@ -1,0 +1,99 @@
+info {
+	"name": "dashboard-studio-explorer"
+}
+
+template {
+	<div style="height: 100%; width: 100%; position: relative;" class="dashboard-explorer">
+		<input ref="upload" type="file" multiple class="dashboard-upload"/>
+		<dashboard-studio-file :icon="'level-up-alt'" style="cursor: pointer; color: dodgerblue;" :data="{name: ''}" @click.native="up()"></dashboard-studio-file>
+		<dashboard-studio-file v-for="file in files" :data="file" v-on:dblclick.native="enter(file)" @click.native="selected = file" :class="{'active': selected == file}"></dashboard-studio-file>
+		<label style="position: absolute; bottom: 0; right: 0; padding: .1 .6em; background: white;">{{dir}}</label>
+	</div>
+}
+
+client {
+	props: ["studio"],
+	data: function () {
+		return {
+			dir: "./",
+			files: [],
+			selected: ""
+		};
+	},
+	methods: {
+		up: function () {
+			this.selected = "";
+			var splits = this.dir.split("/");
+			if (splits.length > 1) {
+				splits.pop();
+				this.dir = splits.join("/");
+				this.refresh();
+			}
+		},
+		enter: function (file) {
+			if (file.isDir) {
+				this.dir += "/" + file.name;
+				this.refresh();
+			}else{
+				if (this.studio)
+					this.studio.open(this.dir + "/" + file.name);
+			}
+		},
+		refresh: function () {
+			DashboardBridge.getFileInfo(this.dir).then((data) => {
+				this.dir = data.dir;
+				this.files = data.files;
+			});
+		}
+	},
+	created: function () {
+		this.refresh();
+	},
+	mounted: function () {
+		var that = this;
+		$(this.$refs.upload).on("dragover", function () {
+			$(that.$el).addClass("upload-over");
+		});
+
+		$(this.$refs.upload).on("dragleave", function (e) {
+			$(that.$el).removeClass("upload-over");
+		});
+
+		$(this.$refs.upload).on("change", function () {
+			$(that.$el).removeClass("upload-over");
+			$(that.$refs.upload).css({"pointer-events": "none"});
+			$(that.$el).removeClass("upload-ready");
+			var rawFiles = [];
+			var loads = this.files.length;
+			for (var i = 0; i < this.files.length; i++) {
+				((i) => {
+					var fr = new FileReader();
+					fr.onload = () => {
+						rawFiles.push([this.files[i].name, fr.result.replace(new RegExp("data:([^\/]*)\/([^;]*);base64,"), "")]);
+						loads--;
+						if (loads == 0)
+							DashboardBridge.upload(that.dir, rawFiles).then((files) => {
+								that.files = files.files;
+							});
+					};
+					fr.readAsDataURL(this.files[i]);
+				})(i);
+			}
+		});
+
+		var enterCount = 0;
+		$(document).on("dragenter", function () {
+			$(that.$refs.upload).css({"pointer-events": "all"});
+			$(that.$el).addClass("upload-ready");
+			enterCount++;
+		});
+
+		$(document).on("dragleave", function (e) {
+			enterCount--;
+			if (enterCount == 0) {
+				$(that.$refs.upload).css({"pointer-events": "none"});
+				$(that.$el).removeClass("upload-ready");
+			}
+		});
+	}
+}

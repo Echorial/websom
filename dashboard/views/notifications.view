@@ -1,0 +1,9 @@
+info {
+	"name": "dashboard-notifications"
+}
+
+template {
+	<div class="main card blue-grey">
+		<h2>Your notifications</h2>
+	</div>
+}

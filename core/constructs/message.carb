@@ -1,0 +1,51 @@
+class Websom.ClientMessage {
+	string message = "";
+	string href = "";
+	bool hadError = false;
+	<Websom.InputValidation>array validations = new <Websom.InputValidation>array();
+
+	void @construct() {
+
+	}
+
+	fixed Websom.ClientMessage quickError(string msg) {
+		var err = new Websom.ClientMessage();
+		err.message = msg;
+		err.hadError = true;
+		return err;
+	}
+
+	void navigate(string href) {
+		this.href = href;
+	}
+
+	void add(Websom.InputValidation validation) {
+		if (validation.hadError)
+			this.hadError = true;
+			
+		this.validations.push(validation);
+	}
+
+	string stringify() {
+		var <string>array anon = new <string>array();
+		var status = "success";
+		if (this.hadError)
+			status = "error";
+			
+		for (var int i in this.validations) {
+			if (this.validations[i].hadError)
+				status = "error";
+			
+			anon.push('"' + this.validations[i].stringify() + '"');
+		}
+
+		var add = "";
+
+		if (this.href.length > 0) {
+			add += ', "action": "navigate", "href": "' + this.href + '"';
+			status = "action";
+		}
+
+		return "{\"status\": \"" + status + "\", \"messages\": [" + anon.join(", ") + "], \"message\": " + Websom.Json.encode(this.message) + add + "}";
+	}
+}

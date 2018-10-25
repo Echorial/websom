@@ -1,0 +1,122 @@
+{
+	"name": "theme",
+	"description": "Ugly base theme for websom",
+	"key": "",
+	"resources": [
+		{
+			"name": "Main",
+			"type": "less",
+			"path": "./style/main.less"
+		},
+		{
+			"name": "Core Effect",
+			"type": "javascript",
+			"path": "./effect/effect.js"
+		},
+		{
+			"name": "btn",
+			"type": "view",
+			"path": "./view/button.view"
+		},
+		{
+			"name": "add-to",
+			"type": "view",
+			"path": "./view/addTo.view"
+		},
+		{
+			"name": "input-color",
+			"type": "view",
+			"path": "./view/color.view"
+		},
+		{
+			"name": "tabs",
+			"type": "view",
+			"path": "./view/tabs.view"
+		},
+		{
+			"name": "accordion",
+			"type": "view",
+			"path": "./view/accordion.view"
+		},
+		{
+			"name": "parallax",
+			"type": "view",
+			"path": "./view/parallax.view"
+		},
+		{
+			"name": "parallax-item",
+			"type": "view",
+			"path": "./view/parallaxItem.view"
+		},
+		{
+			"name": "item-title",
+			"type": "view",
+			"path": "./view/title.view"
+		},
+		{
+			"name": "chip",
+			"type": "view",
+			"path": "./view/chip.view"
+		},
+		{
+			"name": "sort",
+			"type": "view",
+			"path": "./view/sort.view"
+		},
+		{
+			"name": "icon",
+			"type": "view",
+			"path": "./view/icon.view"
+		},
+		{
+			"name": "small-loader",
+			"type": "view",
+			"path": "./view/smallLoader.view"
+		},
+		{
+			"name": "timestamp",
+			"type": "view",
+			"path": "./view/timestamp.view"
+		},
+		{
+			"name": "breadcrumbs",
+			"type": "view",
+			"path": "./view/breadcrumbs.view"
+		},
+		{
+			"name": "nav-view",
+			"type": "view",
+			"path": "./view/navView.view"
+		},
+		{
+			"name": "input-sort",
+			"type": "view",
+			"path": "./view/inputSort.view"
+		},
+		{
+			"name": "input-sort",
+			"type": "view",
+			"path": "./view/inputImage.view"
+		},
+		{
+			"name": "search",
+			"type": "view",
+			"path": "./view/search.view"
+		},
+		{
+			"name": "input-array",
+			"type": "view",
+			"path": "./view/inputArray.view"
+		},
+		{
+			"name": "card",
+			"type": "view",
+			"path": "./view/card.view"
+		},
+		{
+			"name": "gallery",
+			"type": "view",
+			"path": "./view/gallery.view"
+		}
+	]
+}

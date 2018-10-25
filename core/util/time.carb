@@ -1,0 +1,21 @@
+class Websom.Time {
+	fixed uint64 now() {
+		native php {
+			return time();
+		}
+
+		native javascript {
+			return Date.now();
+		}
+	}
+
+	fixed int year() {
+		native php {
+			return Date("Y");
+		}
+
+		native javascript {
+			return (new Date()).getFullYear();
+		}
+	}
+}

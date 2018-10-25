@@ -1,0 +1,81 @@
+info {
+	"name": "input-sort"
+}
+
+template {
+	<div style="display: inline-block">
+		<input :placeholder="placeholder" ref="searchBox" @keyup="search()" type="text" v-model="query" :class="{input: true, valid: valid, invalid: !valid}" />
+		<div class="input-drop card" ref="drop" v-if="initialSearch">
+			<div v-for="option in options" @click="setOption(option)" v-if="options.length > 0">
+				<component :class="{'blue': option[valueField] == inputValue}" style="cursor: pointer;" :is="view" :data="option"/>
+			</div>
+			<h3 v-if="options.length == 0" style="margin: 0">No results</h3>
+		</div>
+	</div>
+}
+
+client {
+	props: ["value", "container", "view", "query-field", "value-field", "placeholder", "display-field"],
+	data: function () {
+		return {
+			initialSearch: false,
+			valid: false,
+			options: [],
+			query: "",
+			inputValue: null
+		};
+	},
+	methods: {
+		setOption: function (option) {
+			this.valid = true;
+			if (!this.valueField in option)
+				throw new Error("key-name '" + this.valueField + "' not found in inputSort query data");
+
+			this.inputValue = option[this.valueField];
+			this.query = option[this.displayField] || this.query;
+			this.hideDrop();
+		},
+		hideDrop: function () {
+			var drop = $(this.$refs.drop);
+			drop.css("height", drop.height());
+			drop.css("overflow", "hidden");
+			$(this.$refs.drop).animate({height: 0, padding: 0}, 100);
+		},
+		search: function () {
+			this.initialSearch = true;
+			var that = this;
+			this.valid = false;
+			this.inputValue = "";
+			var qd = {};
+			qd[this.queryField] = this.query;
+			Websom.interface(this.container, "select", qd, function (docs) {
+				that.options = docs;
+				$(that.$refs.drop).removeAttr("style");
+				$(that.$refs.drop).css("width", $(that.$refs.searchBox).width() + "px");
+			});
+		},
+		getValue: function (value) {
+			value(this.inputValue);
+		}
+	},
+	mounted: function () {
+		var that = this;
+		$(document).on("click", () => { //TODO: Clean up on unmount
+			this.hideDrop();
+		});
+		this.inputValue = null;
+		if (this.value)
+			this.inputValue = this.value;
+
+		var qd = {};
+		qd[this.valueField] = this.inputValue;
+
+		if (this.inputValue != null)
+			Websom.interface(this.container, "select", qd, function (docs) {
+				if (docs.length > 0) {
+					that.query = docs[0][that.displayField];
+					that.valid = true;
+				}
+			});
+	}
+}

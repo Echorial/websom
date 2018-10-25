@@ -1,0 +1,11 @@
+info {
+	"name": "chip"
+}
+
+template {
+	<span class="chip"><img v-if="$options.propsData.image" v-bind:src="image" />{{content}}<span v-if="$options.propsData.close">X</span></span>
+}
+
+client {
+	props: ["close", "image", "content"]
+}

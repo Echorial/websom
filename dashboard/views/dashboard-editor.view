@@ -1,0 +1,80 @@
+info {
+	"name": "dashboard-editor"
+}
+
+template {
+	<div class="main">
+		<a class="button" v-if="data.studio" href="/websom.studio">Enter Studio</a>
+		<div class="dashboard-builder-main card blue-grey white-text" v-else-if="data.builder">
+			<div class="input-box"><span class="icon">
+				<icon fa>search</icon></span>
+				<input v-model="search" type="text" class="input" placeholder="Search"/>
+			</div>
+			<h3>Pages</h3>
+			<div class="dashboard-pages black-text">
+				<div class="card block hover shift" style="padding: .3em; cursor: pointer; width: 5%; min-width: 225px; display: inline-block" v-if="reg.test(page.name)" :data-tooltip="page.name" v-for="page in builder.pages">
+					<div class="title truncate">
+						<a :href="'/websom.builder/' + page.name"><div class="name">{{page.name}}</div></a><label>{{page.meta.handles}}</label>
+						<span class="icon right"><icon fa>file</icon></span>
+					</div>
+				</div>
+			</div>
+			<h3>Overrides</h3>
+			<div class="dashboard-overrides black-text">
+				<div class="card block hover shift" style="padding: .3em; cursor: pointer; width: 5%; min-width: 225px; display: inline-block" v-if="reg.test(override.name)" :data-tooltip="override.name" v-for="override in builder.website">
+					<div class="title">
+						<a :href="'/websom.builder/override/' + override.name"><div class="name truncate">{{override.name}}</div></a><label>website</label>
+						<span class="icon right"><icon fa>edit</icon></span>
+					</div>
+				</div>
+			</div>
+			<h3>Views</h3>
+			<div class="dashboard-views black-text">
+				<div class="card block hover shift" style="padding: .3em; cursor: pointer; width: 5%; min-width: 225px; display: inline-block" v-if="reg.test(view.name)" :data-tooltip="view.name" v-for="view in builder.views">
+					<div class="title">
+						<a :href="'/websom.builder/' + view.name"><div class="name truncate">{{view.name}}</div></a><label>{{view.module}}</label>
+						<span class="icon right"><icon fa>eye</icon></span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="dashboard-builder-main card blue-grey white-text" v-else-if="data.designer">
+			<div class="input-box"><span class="icon">
+				<icon fa>search</icon></span>
+				<input v-model="search" type="text" class="input" placeholder="Search"/>
+			</div>
+			<h3>Packs</h3>
+			<div class="dashboard-pages black-text">
+				<div class="card block hover shift" style="padding: .3em; cursor: pointer; width: 5%; min-width: 225px; display: inline-block" v-if="reg.test(pack.name)" :data-tooltip="pack.name" v-for="pack in designer.packs">
+					<div class="title truncate">
+						<a :href="'/websom.designer/' + pack.name"><div class="name">{{pack.name}}</div></a><label>/pack</label>
+						<span class="icon right"><icon fa>folder</icon></span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+client {
+	props: ["data"],
+	data: function () {
+		return {search: "", builder: {pages: [], overrides: [], views: []}, designer: {packs: []}};
+	},
+	computed: {
+		reg: function () {
+			return new RegExp(this.search);
+		}
+	},
+	mounted: function () {
+		if (this.data.builder) {
+			DashboardBridge.getBuilderViews().then((views) => {
+				this.builder = views;
+			});
+		}else if (this.data.designer) {
+			DashboardBridge.getPacks().then((packs) => {
+				this.designer.packs = packs;
+			});
+		}
+	}
+}

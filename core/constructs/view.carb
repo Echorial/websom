@@ -1,0 +1,210 @@
+class Websom.View {
+	Websom.Server server = null;
+
+	string engine = "vue"; // Vue for now
+	int type = 0; // Always 0
+
+	Websom.Render.View renderView = null;
+
+	map raw = null; //Raw parsed data
+
+	bool shallow = false;
+
+	map renderViewData = null;
+
+	string handles = "";
+	map meta = null; // info {} front part of .view
+	string template = ""; // Middle part of .view
+	map serverHandles = null; // Pulled out of data.methods.server
+	string client = ""; //Served with the template to the client.
+	string location = ""; //File location
+
+	Websom.Module owner = null;
+
+	`If this is owned by the website`
+	bool websiteView = false;
+
+	bool hasServerScript = false;
+	string phpScript = "";
+	string jsScript = "";
+	string carbonScript = "";
+
+	bool hasLocalExport = false; //If true the view service wont export
+
+	// Meta
+	bool isPage = false;
+	string name = ""; // File name or meta.name if provided
+
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	string render(Websom.Render.Context ctx) {
+		return this.server.render.renderView(this, ctx);
+	}
+
+	map quickParse(string raw) {
+
+	}
+
+	map parse(string raw) {
+		this.shallow = false;
+		var open = false;
+		var opens = 0;
+		var name = "";
+		var block = "";
+		var openChar = "{";
+		var closeChar = "}";
+		var escape = false;
+		var blocks = new map();
+		for (var int i = 0; i < raw.length; i++) {
+			var char = raw[i];
+			if (open == false) {
+				if (char != "\t" and char != openChar and char != "\n" and char != "\r")
+					name += char;
+				else if (char == openChar)
+					open = true;
+			}else{
+				if (char == closeChar) {
+					if (opens == 0) {
+						name = name.trimWhitespace();
+						blocks[name] = block;
+						open = false;
+						name = "";
+						block = "";
+					}else{
+						opens--;
+						block += char;
+					}
+				}else if (char == openChar) {
+					opens++;
+					block += char;
+				}else{
+					block += char;
+				}
+			}
+		}
+		return blocks;
+	}
+
+	Websom.Status loadFromFile(string location) {
+		this.location = location;
+		var raw = FileSystem.readSync(location, "utf8");
+		var output = this.parse(raw);
+		this.raw = output;
+
+		if ("info" in output) {
+			this.meta = Websom.Json.parse("{" + output["info"] + "}");
+
+			if ("name" in this.meta)
+				this.name = this.meta["name"];
+			else
+				return Websom.Status.singleError("View", "No name provided in view: '" + location + "'");
+
+			if ("handles" in this.meta)
+				this.handles = this.meta["handles"];
+		}else{
+			return Websom.Status.singleError("View", "No info provided in view: '" + location + "'");
+		}
+
+		if ("template" in output)
+			this.template = output["template"];
+
+		if ("client" in output)
+			this.client = output["client"];
+
+		if ("server php" in output) {
+			this.hasServerScript = true;
+			this.phpScript = output["server php"];
+		}
+
+		native javascript {
+			if ("server js" in output) {
+				this.hasServerScript = true;
+				this.jsScript = eval("function (view, server, request) {" + output["server js"] + "}");
+			}
+		}
+
+		if ("server carbon" in output) {
+			this.hasServerScript = true;
+			if (this.server.config.dev) {
+				native javascript {
+					var script = this.buildScript("javascript.source.memory", "WebsomPageScript" + this.name, "class WebsomPageScript" + this.name + " {fixed map run(Websom.View view, Websom.Server server, Websom.Request request) {" + output["server carbon"] + "}}");
+					require("fs").writeFileSync(this.server.config.root + "/pages/scripts_" + this.name + ".js", script + "module.exports = WebsomPageScript" + this.name + ".run;");
+					
+					var phpScript = this.buildScript("php.source.memory", "WebsomPageScript" + this.name, "class WebsomPageScript" + this.name + " {fixed map run(Websom.View view, Websom.Server server, Websom.Request request) {" + output["server carbon"] + "}}");
+					require("fs").writeFileSync(this.server.config.root + "/pages/scripts_" + this.name + ".php", phpScript + "<?php return function ($view, $server, $request) {return WebsomPageScript" + this.name + "::run($view, $server, $request);} ?>");
+				}
+			}
+		}
+	}
+
+	value map runServerScript(Websom.Request req) {
+		if (this.jsScript.length > 0) {
+			native javascript {
+				return this.jsScript(this, this.server, req);
+			}
+		}else if (this.hasServerScript) {
+			native javascript {
+				return require(this.server.config.root + "/pages/scripts_" + this.name + ".js")(this, this.server, req);
+			}
+
+			native php {
+				$func = require($this->server->config->root . "/pages/scripts_" . $this->name . ".php");
+				return $func($this, $this->server, $req);
+			}
+		}
+
+		native php {
+			//TODO: Add support for php view scripts
+			throw new Exception("Raw php view page scripts are not supported yet.");
+		}
+	}
+
+	string buildDev() {
+		var opts = "props: ['data'], ";
+		if (this.client.length > 0)
+			opts = this.client + ", ";
+		return "if (!('" + this.name + "' in Websom.views.loaded)) {Websom.views.loaded['" + this.name + "'] = Vue.component('" + this.name + "', {" + opts + "template: `" + this.template.replace("`", "\\`") + "`});}";
+	}
+	
+	#if platform.javascript
+
+		native string buildScript(string platform, string name, string raw)
+		{return "return require('../../core/util/native/carbonite.js').buildScript(" + context.arguments[0] + ", " + context.arguments[1] + ", " + context.arguments[2] + ")";}
+
+	#end if
+
+	void buildRenderView() {
+		if (this.shallow) { 
+			this.renderView = new Websom.Render.View(this);
+			this.renderView.deserialize(this.renderViewData);
+		}else{
+			this.renderView = new Websom.Render.View(this);
+			this.renderView.parse();
+		}
+	}
+
+	map serialize() {
+		var mp = new map();
+		
+		if (this.renderView == null)
+			this.buildRenderView();
+
+		mp["render"] = this.renderView.serialize();
+		
+		mp["meta"] = this.meta;
+
+		return mp;
+	}
+
+	void deserialize(map data) {
+		this.meta = data["meta"];
+		this.name = this.meta["name"];
+		
+		if ("handles" in this.meta)
+			this.handles = this.meta["handles"];
+
+		this.renderViewData = data["render"];
+	}
+}

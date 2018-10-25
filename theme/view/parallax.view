@@ -1,0 +1,9 @@
+info {
+	"name": "parallax"
+}
+
+template {
+	<div class="parallax">
+		<slot/>
+	</div>
+}

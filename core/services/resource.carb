@@ -1,0 +1,500 @@
+class Websom.Services.Resource inherits Websom.Service {
+	<string>array globalScripts = new <string>array();
+	<string>array globalStyles = new <string>array();
+
+	bool assetFontAwesome = false;
+
+	override Websom.Status start() {
+		
+	}
+
+	string buildViews(bool saveToFiles) { //TODO: Clean up
+		var viewStr = "";
+		for (var int i in this.server.module.modules) {
+			var module = this.server.module.modules[i];
+
+			var bridges = module.bridges;
+			for (var int b in bridges) {
+				var bridge = bridges[b];
+				var methods = new <string>array();
+				native javascript {
+					var client = bridge.clientMethods();
+					var server = bridge.serverMethods();
+					for (var c in client) {
+						methods.push(c + ": " + client[c]);
+					}
+					for (var s in server) {
+						methods.push(server[s] + ": function () {return new Promise((done) => {Websom.sendBridge('" + bridge.getName() + "', '" + server[s] + "', arguments, done);})}");
+					}
+				}
+				native php {
+					$client = $bridge->clientMethods();
+					$server = $bridge->serverMethods();
+					foreach ($client as $c => $val) {
+						$methods[] = ($c . ": " . $client[$c]);
+					}
+
+					foreach ($server as $s => $val) {
+						$methods[] = ($server[$s] . ": function () {return new Promise((done) ="."> {Websom.sendBridge('" . $bridge->name . "', '" . $server[$s] . "', arguments, done);})}");
+					}
+				}
+				
+				viewStr += bridge.getName() + " = {" + methods.join(", ") + "};";
+			}
+
+			if ("resources" in module.baseConfig) {
+				var <map>array raw = module.baseConfig["resources"];
+
+				for (var int r in raw) { //WARN: TODO: Add safety checks for valid resource structure
+					var res = raw[r];
+					var string type = "";
+					var string path = res["path"];
+
+					if (("type" in res) == false) {
+						var realPath = FileSystem.resolve(module.root + "/" + path);
+						if (FileSystem.isDir(realPath)) {
+							var files = FileSystem.readDirSync(realPath);
+							for (var int f in files) {
+								var file = files[f];
+								var splits = file.split(".");
+								if (splits.length > 1)
+									if (splits[splits.length - 1] == "view") {
+										var view = new Websom.View(this.server);
+										var viewErr = view.loadFromFile(realPath + "/" + file);
+										/*if (viewErr != null)
+											return viewErr;*/
+										
+										view.hasLocalExport = true;
+
+										viewStr += view.buildDev();
+									}
+							}
+						}
+					}else{
+						type = res["type"];
+						if (type == "view") {
+							var view = new Websom.View(this.server);
+							var viewErr = view.loadFromFile(FileSystem.resolve(module.root + "/" + path));
+							/*if (viewErr != null)
+								return viewErr;*/
+							
+							view.hasLocalExport = true;
+
+							viewStr += view.buildDev();
+						}
+					}
+				}
+			}
+
+			if (saveToFiles) {
+				FileSystem.writeSync(this.server.config.resources + "/module-view-" + module.name + ".js", viewStr);
+				viewStr = "";
+			}
+		}
+
+		if (saveToFiles == false)
+			return viewStr;
+	}
+
+	`Minifies and writes all website css, and js to the folder path under the names css.css and js.js`
+	void exportToFolder(string path, <void, bool, string>function callback) {
+		var resources = this.collect();
+		var unbuilt = resources.length + this.server.theme.themes.length;
+
+		var error = false;
+		var errMsg = "";
+
+		var totalJs = this.buildViews(false);
+		var totalCss = "";
+
+		for (var int i in this.server.view.pages) {
+			var page = this.server.view.pages[i];
+			totalJs += page.buildDev();
+		}
+
+		for (var int i in this.server.view.views) {
+			var view = this.server.view.views[i];
+			totalJs += view.buildDev();
+		}
+
+		var finish = void () => {
+			FileSystem.writeSync(path + "/js.js", totalJs);
+			FileSystem.writeSync(path + "/css.css", totalCss);
+			callback(error, errMsg);
+		};
+
+		for (var int i in this.server.theme.themes) {
+			var theme = this.server.theme.themes[i];
+
+			theme.build(void (string err, string js, string css) => {
+				totalJs += js;
+				totalCss += css;
+				unbuilt--;
+				if (unbuilt <= 0)
+					finish();
+			});
+		}
+
+		var builtJs = void (bool hadError, string content) => {
+			if (hadError) {
+				error = true;
+				errMsg = content;
+			}
+
+			unbuilt--;
+			totalJs += content + "\n\n";
+
+			if (unbuilt <= 0) {
+				finish();
+			}
+		};
+
+		var builtCss = void (bool hadError, string content) => {
+			if (hadError) {
+				error = true;
+				errMsg = content;
+			}
+
+			unbuilt--;
+			totalCss += content;
+
+			if (unbuilt <= 0) {
+				finish();
+			}
+		};
+
+		for (var int i in resources) {
+			var resource = resources[i];
+			if (resource.type == "less" or resource.type == "css") {
+				resource.build(builtCss);
+			}else if(resource.type == "javascript") {
+				resource.build(builtJs);
+			}else{
+				unbuilt--;
+				if (unbuilt <= 0) {
+					finish();
+				}
+			}
+		}
+	}
+
+	`Builds an array of Websom.Resource objects from theme, module and server configs.`
+	<Websom.Resource>array collect() {
+		var that = this;
+		var output = new <Websom.Resource>array();
+
+		var buildPackage = void (string typeStr, string name, string root, <map>array raw) => {
+			for (var int r in raw) { //WARN: TODO: Add safety checks for valid resource structure
+				var res = raw[r];
+				var string type = "";
+				var string path = res["path"];
+
+				if (("type" in res) == false) {
+					var realPath = FileSystem.resolve(root + "/" + path);
+					if (FileSystem.isDir(realPath)) {
+						var files = FileSystem.readDirSync(realPath);
+						for (var int f in files) {
+							var file = files[f];
+							var splits = file.split(".");
+							if (splits.length > 1)
+								if (splits[splits.length - 1] == "view")
+									output.push(Websom.Resource.make(that.server, "view", typeStr + "-" + name, realPath + "/" + file));
+						}
+					}
+				}else{
+					type = res["type"];
+					var realPath = FileSystem.resolve(root + "/" + path);
+					if (FileSystem.isDir(realPath)) {
+						var files = FileSystem.readDirSync(realPath);
+						for (var int f in files) {
+							var file = files[f];
+							output.push(Websom.Resource.make(that.server, type, typeStr + "-" + name, realPath + "/" + file));
+							output[output.length - 1].raw = res;
+						}
+					}else{
+						var resource = Websom.Resource.make(that.server, type, typeStr + "-" + name, realPath);
+
+						if ("loadOrder" in res) {
+							var int cast = res["loadOrder"];
+							resource.order = cast;
+						}
+
+						output.push(resource); //TODO: Maybe add relative load ordering with unshift
+					}
+				}
+			}
+		};
+
+		for (var int i in this.server.module.modules) {
+			var module = this.server.module.modules[i];
+
+			if ("resources" in module.baseConfig) {
+				var <map>array raw = module.baseConfig["resources"];
+
+				buildPackage("module", module.name, module.root, raw);
+			}
+		}
+
+		/*for (var int i in this.server.theme.themes) {
+			var theme = this.server.theme.themes[i];
+
+			if ("resources" in theme.config) {
+				var <map>array raw = theme.config["resources"];
+
+				buildPackage("theme", theme.name, theme.root, raw);
+			}
+		}*/
+		
+		return output;
+	}
+
+	`Builds all of the core resources for the server.`
+	Websom.Status build(bool dev `If false each file will be concatenated into one output.`) {
+		if (FileSystem.exists(this.server.config.resources) == false)
+			FileSystem.makeDir(this.server.config.resources);
+
+		var files = this.collect();
+		var err = this.buildViews(true);
+
+		if (err != null)
+			return Websom.Status.singleError("View", err);
+
+		if (dev) {
+			var client = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/client.js");
+			var input = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/input.js");
+			var theme = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/theme.js");
+			FileSystem.writeSync(this.server.config.resources + "/client.js", client.read() + theme.read() + input.read());
+
+			for (var int i in files) {
+				var base = FileSystem.basename(files[i].file);
+				var path = files[i].owner + "-" + base;
+				if (files[i].raw != null)
+					if ("toPath" in files[i].raw) {
+						var toPath = files[i].raw["toPath"];
+						path = toPath + "/" + base;
+						if (FileSystem.exists(this.server.config.resources + "/" + toPath) == false)
+							FileSystem.makeDir(this.server.config.resources + "/" + toPath);
+					}
+
+				files[i].buildToFile(this.server.config.resources + "/" + path); //WARN: No slash at end + duplicate file names override
+			}
+		}
+	}
+
+	`Builds an html string that includes all of the resources for the current dev enviroment`
+	string include(bool dev) {
+		var output = '<script src="' + this.server.config.clientResources + '/jquery.min.js"></script>';
+
+		if (dev) {
+			var files = this.collect();
+
+			for (var int i in files) {
+				output += files[i].toHtmlInclude() + "\n";
+			}
+
+			for (var int i in this.server.module.modules)
+				output += "<script src='" + this.server.config.clientResources + "/module-view-" + this.server.module.modules[i].name + ".js'></script>";
+		}
+
+		if (this.assetFontAwesome)
+			output += '<link rel="stylesheet" href="https:/' + '/use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">';
+
+		return output;
+	}
+
+	`Makes an array of Websom.Resource based on a resource <map>array. Example [{"type": "javascript", "path": "./somePath.js"}]`
+	<Websom.Resource>array compile(string owner, string basePath, <map>array resources) {
+		var <Websom.Resource>array output = new <Websom.Resource>array();
+		
+		for (var int i in resources) {
+			var raw = resources[i];
+			if ("type" in raw and "path" in raw) {
+				var realPath = FileSystem.resolve(basePath + "/" + raw["path"]);
+				if (FileSystem.exists(realPath)) {
+					if (FileSystem.isDir(realPath)) {
+						var files = FileSystem.readDirSync(realPath);
+						for (var int f in files) {
+							var file = files[f];
+							output.push(Websom.Resource.make(this.server, raw["type"], owner, realPath + "/" + file)); //TODO: Rewrite resource system
+							output[output.length].raw = raw;
+						}
+					}else
+						output.push(Websom.Resource.make(this.server, raw["type"], owner, realPath));
+				}else
+					output.push(Websom.Resource.invalid(this.server, owner, realPath));
+			}else if ("path" in raw) {
+				var realPath = FileSystem.resolve(basePath + "/" + raw["path"]);
+				if (FileSystem.isDir(realPath)) {
+					var files = FileSystem.readDirSync(realPath);
+					for (var int f in files) {
+						var file = files[f];
+						var splits = file.split(".");
+						if (splits.length > 1)
+							if (splits[splits.length - 1] == "view")
+								output.push(Websom.Resource.make(this.server, "view", owner, realPath + "/" + file));
+					}
+				}
+			}else{
+				output.push(Websom.Resource.invalid(this.server, owner, "Unkown")); //Bad error reporting
+			}
+		}
+
+		return output;
+	}
+}
+
+class Websom.Resource {
+	Websom.Server server = null;
+	string owner = "";
+	string file = "";
+	string type = "resource";
+	int order = 0;
+	bool isInvalid = false;
+	string reference = "";
+
+	map raw = null;
+
+	void @construct(Websom.Server server, string owner, string file) {
+		this.owner = owner;
+		this.file = file;
+		this.server = server;
+	}
+
+	fixed Websom.Resource make(Websom.Server server, string type, string owner, string file) {
+		if (type == "javascript") {
+			return new Websom.Resources.Javascript(server, owner, file);
+		}else if (type == "css") {
+			return new Websom.Resources.Css(server, owner, file);
+		}else if (type == "less") {
+			return new Websom.Resources.Less(server, owner, file);
+		}else if (type == "view") {
+			return new Websom.Resources.View(server, owner, file);
+		}else if (type == "file") {
+			return new Websom.Resources.File(server, owner, file);
+		}else{
+			var invalid = new Websom.Resource(server, owner, file);
+			invalid.isInvalid = true;
+			return invalid;
+		}
+	}
+
+	fixed Websom.Resource invalid(Websom.Server server, string owner, string path) {
+		var invalid = new Websom.Resource(server, owner, path);
+		invalid.isInvalid = true;
+		return invalid;
+	}
+
+	string read() {
+		return FileSystem.readSync(this.file, "utf8");
+	}
+
+	string rawRead() { // This should return Memory.Buffer
+		return FileSystem.readSync(this.file, null); // Hack for node/php
+	}
+
+	abstract string toHtmlInclude();
+
+	abstract Websom.Status buildToFile(string absolutePath);
+
+	`callback(bool hadError, string result "result will contain the error message if hadError = true")`
+	abstract void build(<void, bool, string>function callback);
+}
+
+namespace Websom.Resources {}
+
+class Websom.Resources.Javascript inherits Websom.Resource {
+	override string type = "javascript";
+
+	Websom.Status buildToFile(string path) {
+		FileSystem.writeSync(path, this.read());
+	}
+
+	string toHtmlInclude() {
+		return '<script src="' + this.server.config.clientResources + '/' + this.owner + '-' + FileSystem.basename(this.file) + '"></script>';
+	}
+
+	void build(<void, bool, string>function callback) {
+		callback(false, this.read());
+	}
+}
+
+class Websom.Resources.File inherits Websom.Resource {
+	override string type = "file";
+
+	Websom.Status buildToFile(string path) {
+		FileSystem.writeSync(path, this.rawRead());
+	}
+
+	string toHtmlInclude() {
+		return '';
+	}
+
+	void build(<void, bool, string>function callback) {
+		callback(false, this.read());
+	}
+}
+
+`Implemented as a tracker for theme/module views`
+class Websom.Resources.View inherits Websom.Resource {
+	override string type = "view";
+
+	Websom.Status buildToFile(string path) {
+		
+	}
+
+	string toHtmlInclude() {
+		return "";
+	}
+
+	void build(<void, bool, string>function callback) {
+		var view = new Websom.View(this.server);
+		view.loadFromFile(this.file);
+		callback(false, view.buildDev());
+	}
+}
+
+class Websom.Resources.Css inherits Websom.Resource {
+	override string type = "css";
+
+	Websom.Status buildToFile(string path) {
+		FileSystem.writeSync(path, this.read());
+	}
+
+	string toHtmlInclude() {
+		return '<link rel="stylesheet" href="' + this.server.config.clientResources + '/' + this.owner + '-' + FileSystem.basename(this.file) + '"/>';
+	}
+
+	void build(<void, bool, string>function callback) {
+		callback(false, this.read());
+	}
+}
+
+class Websom.Resources.Less inherits Websom.Resource {
+	override string type = "less";
+
+	Websom.Status buildToFile(string path) {
+		this.build(void (bool err, string content) => {
+			FileSystem.writeSync(path, content);
+		});
+	}
+
+	string toHtmlInclude() {
+		return '<link rel="stylesheet" href="' + this.server.config.clientResources + '/' + this.owner + '-' + FileSystem.basename(this.file) + '"/>';
+	}
+
+	void build(<void, bool, string>function callback) {
+		native javascript {
+			var lessBuilder = require("../../core/util/native/less.js"); //Output in native/javascript
+			
+			lessBuilder.compileLess(this.reference, this.file, callback);
+		}
+
+		native php {
+			$path = realpath(dirname(__FILE__) . "/../../core/util/native/less.php");
+			$lessBuilder = require($path);
+
+			$func = $lessBuilder["compileLess"];
+			$func($this->file, $callback);
+		}
+	}
+}

@@ -1,0 +1,40 @@
+#include "services"
+#include "constructs"
+#include "constructs/render"
+#include "constructs/controls"
+#include "util"
+#include "standard/standard.carb"
+#include "databases"
+
+class Websom.Service {
+	Websom.Server server = null;
+
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	`Called at the start of the websom server(php for each page load)`
+	Websom.Status start() {
+
+	}
+
+	`Called when the server stops(Only node)`
+	Websom.Status stop() {
+
+	}
+
+	`Called at the end of a page load(Only php)`
+	Websom.Status end() {
+
+	}
+}
+
+namespace Websom.Services {}
+
+#script Carbon
+
+	Carbon.on("inherits.Websom.Service", bool (Carbon.Class base, Carbon.Class cls) => {
+		print("Building " + cls.route + " service");
+	});
+
+#end script

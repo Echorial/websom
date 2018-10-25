@@ -1,0 +1,9 @@
+platform = "php.source"
+
+output = "~native/php/websom.php"
+
+entry = "websom.carb"
+
+type = "package"
+
+autoCache = true

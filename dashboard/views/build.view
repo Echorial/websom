@@ -1,0 +1,30 @@
+info {
+	"name": "dashboard-build"
+}
+
+template {
+	<div class="main white-text card blue-grey">
+		<h1>Websom build</h1>
+		<h3>Build resources</h3>
+		<button class="button" @click="exportResources()">Build</button>
+		<h3>Load containers</h3>
+		<button class="button" @click="loadContainers()">Load</button>
+		<div class="card black-text">{{message}}</div>
+	</div>
+}
+
+client {
+	data: () => {return {message: "No message"}},
+	methods: {
+		exportResources: () => {
+			DashboardBridge.exportResources().then((data) => {
+				Websom.Theme.toast("Exported");
+			});
+		},
+		loadContainers: () => {
+			DashboardBridge.loadContainers().then((data) => {
+				this.message = data;
+			});
+		}
+	}
+}

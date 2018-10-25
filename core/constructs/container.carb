@@ -1,0 +1,800 @@
+#include "containers"
+
+namespace Websom.Containers {}
+
+`Websom.Container is the base class for all Websom.Data serializers.
+TODO: Add more
+@note Not finished`
+class Websom.Container {
+	Websom.Server server = null;
+	string name = "";
+	Websom.DataInfo dataInfo = null;
+
+	Websom.Container parentContainer = null;
+
+	void realize(Websom.Database db, <void, string>function done);
+
+	void insert(Websom.Data data, <void, string, primitive>function inserted);
+
+	void insertFromInterface(Websom.InterfaceOptions opts, Websom.Input input, map values, Websom.ClientMessage message, Websom.FieldInfo fieldInfo, Websom.Data parentData, Websom.CallContext ctx);
+	void updateFromInterface(Websom.InterfaceOptions opts, Websom.DatabaseSelect update, Websom.Data obj, Websom.Input input, map values, Websom.ClientMessage message);
+
+	void checkRestrictions(Websom.InterfaceOptions opts, Websom.Input inp, string mode, Websom.FieldInfo field, <void, bool>function callback) {
+		for (var int i in opts.restricts) {
+			var r = opts.restricts[i];
+
+			if (r.field == field.realName and ((r.mode == "global") or (r.mode == mode))) {
+				if (r.simple) {
+					var map ct = this.server.input.restrictHandlers;
+					if (r.key in ct) {
+						var <void, string, Websom.Request, <void, bool>function>function handler = this.server.input.restrictHandlers[r.key];
+						handler(r.value, inp.request, void (bool passed) => {
+							callback(passed);
+						});
+
+						return null;
+					}else{
+						Exception.throw("Custom restriction " + r.key + " not found in request to container " + this.name);
+					}
+				}else{
+					if (r.callback != null) {
+						r.callback(void (bool passed) => {
+							callback(passed);
+						});
+					}else{
+						Exception.throw("Restrict callback on field " + field.realName + " in container interface " + this.name + " is null. Did you forget interface.to(void () => {})?");
+					}
+
+					return null;
+				}
+			}
+		}
+
+		callback(true);
+	}
+
+	void interfaceInsert(Websom.InterfaceOptions opts, Websom.Input input) {
+		var that = this;
+		if (opts.canInsert) {
+			if (opts.overrideInsert != null) {
+				opts.overrideInsert(input);
+			}else{
+				if (opts.mustLogin)
+					if (this.server.userSystem.isLoggedIn(input.request) == false) {
+						var msg = Websom.ClientMessage.quickError("Please login.");
+						input.send(msg.stringify());
+						return null;
+					}
+				
+				var v = new Websom.DataValidator(this.dataInfo);
+				v.validate(input, void (Websom.InputValidation msg) => {
+					if (msg.hadError) {
+						input.sendError(msg.stringify());
+					}else{
+						var dones = 0;
+						var map values = input.raw;
+						var clientMessage = new Websom.ClientMessage();
+						clientMessage.message = opts.baseSuccess;
+						dones += opts.controls.length + opts.insertControls.length;
+						var checkDone = void () => {
+							if (dones == 0) {
+								if (clientMessage.hadError)
+									input.send(clientMessage.stringify());
+								else
+									that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
+							}
+						};
+						var runControl = void (Websom.Control control) => {
+							control.validate(input, void (Websom.InputValidation cMsg) => {
+								dones--;
+								if (cMsg != null and cMsg.hadError) {
+									clientMessage.add(cMsg);
+									checkDone();
+								}else
+									control.fill(input, values, void () => {
+										checkDone();
+									});
+							});
+						};
+						for (var int i in opts.controls) {
+							var control = opts.controls[i];
+							runControl(control);
+						}
+						for (var int i in opts.insertControls) {
+							var control = opts.insertControls[i];
+							runControl(control);
+						}
+						if (opts.controls.length + opts.insertControls.length == 0)
+							if (dones == 0)
+								that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
+					}
+				});
+			}
+		}else{
+			if (this.server.config.dev) {
+				input.send("Invalid(Dev: This container has no insert interface)");
+			}else{
+				input.send("Invalid");
+			}
+		}
+	}
+
+	void interfaceSelect(Websom.InterfaceOptions opts, Websom.Input input, Websom.CallContext ctx) {
+		
+	}
+
+	trust void interfaceSend(Websom.InterfaceOptions opts, Websom.Input input) {
+		var that = this;
+		if (opts.canInterface) { //TODO: Detect public key
+			if (("publicId" in input.raw) and ("route" in input.raw) and ("data" in input.raw)) {
+				var obj = that.dataInfo.spawn(that.server);
+				obj.websomServer = this.server;
+				obj.loadFromPublicKey(that, input.raw["publicId"], void (string err) => {
+					var talkingTo = obj;
+					if ("sub" in input.raw) { //Talking to component, TODO: Setup <Websom.Data>array interfacing
+						native javascript {
+							if (typeof input.raw["sub"] == "string") {
+								var splits = input.raw["sub"].split(".");
+								for (var i = 0; i < splits.length; i++)
+									if (talkingTo[splits[i]].getField) {
+										talkingTo = talkingTo[splits[i]];
+									}else{
+										break;
+									}
+							}
+						}
+
+						native php {
+							if (gettype($input->raw["sub"])) {
+								$splits = explode(".", $input->raw["sub"]);
+								for ($i = 0; $i < count($splits); $i++) {
+									$split = $splits[$i];
+									if (method_exists($talkingTo->$split, "getField")) {
+										$talkingTo = $talkingTo->$split;
+									}else{
+										break;
+									}
+								}
+							}
+						}
+					}
+
+					talkingTo.onInputInterface(input, input.raw["route"], input.raw["data"], void (map response) => {
+						input.send(Websom.Json.encode(response));
+					});
+				});
+			}else{
+				if (this.server.config.dev) {
+					input.send("Invalid(Dev: No 'publicId', 'route', or 'data' key found in query)");
+				}else{
+					input.send("Invalid");
+				}
+			}
+		}
+	}
+
+	trust void interfaceUpdate(Websom.InterfaceOptions opts, Websom.Input input) { //TODO: Merge with interfaceInsert
+		var that = this;
+		if (opts.canUpdate) {
+			if (opts.overrideUpdate != null) {
+				opts.overrideUpdate(input);
+			}else{
+				if (opts.mustLogin or opts.mustOwnUpdate)
+					if (this.server.userSystem.isLoggedIn(input.request) == false) {
+						var cMsg = Websom.ClientMessage.quickError("Please login.");
+						input.send(cMsg.stringify());
+						return null;
+					}
+				
+				var v = new Websom.DataValidator(this.dataInfo);
+				v.validate(input, void (Websom.InputValidation msg) => {
+					if (msg.hadError) {
+						input.sendError(msg.stringify());
+					}else{
+						var dones = 0;
+						var map values = input.raw;
+						var clientMessage = new Websom.ClientMessage();
+						clientMessage.message = opts.baseSuccess;
+						dones += opts.controls.length + opts.updateControls.length;
+						var Websom.Containers.Table cast = that;
+						var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update(); //TODO: Update for publicKey field info
+						var obj = that.dataInfo.spawn(that.server);
+						var checkDone = void () => {
+							if (dones == 0) {
+								if (clientMessage.hadError)
+									input.send(clientMessage.stringify());
+								else
+									that.updateFromInterface(opts, update, obj, input, values, clientMessage);
+							}
+						};
+						obj.loadFromPublicKey(that, input.raw["publicId"], void (string err) => {
+							var shouldContinue = true;
+							var doContinue = void () => {
+								var runControl = void (Websom.Control control) => {
+									control.validate(input, void (Websom.InputValidation cMsg) => {
+										dones--;
+										if (cMsg != null and cMsg.hadError) {
+											clientMessage.add(cMsg);
+											checkDone();
+										}else
+											control.fill(input, values, void () => {
+												checkDone();
+											});
+									});
+								};
+								for (var int i in opts.controls) {
+									var control = opts.controls[i];
+									runControl(control);
+								}
+								for (var int i in opts.updateControls) {
+									runControl(opts.updateControls[i]);
+								}
+								if (opts.controls.length + opts.updateControls.length == 0)
+									if (dones == 0)
+										that.updateFromInterface(opts, update, obj, input, values, clientMessage);
+							};
+
+							if (opts.mustOwnUpdate) { //TODO: Find the owner key
+								that.server.userSystem.getLoggedIn(input.request, void (Websom.Standard.UserSystem.User user) => {
+									native javascript {
+										if (user.id != obj.owner.id) {
+											shouldContinue = false;
+										}
+									}
+
+									native php {
+										if ($user->id != $obj->owner->id) {
+											$shouldContinue = false;
+										}
+									}
+
+									if (shouldContinue == false) {
+										var cMsg = Websom.ClientMessage.quickError("You do not own this.");
+										input.send(cMsg.stringify());
+									}else{
+										doContinue();
+									}
+								});
+							}else{
+								doContinue();
+							}
+							
+						});
+					}
+				});
+			}
+		}else{
+			if (this.server.config.dev) {
+				input.send("Invalid(Dev: This container has no update interface)");
+			}else{
+				input.send("Invalid");
+			}
+		}
+	}
+
+	<Websom.InterfaceOptions>array interfaces = new <Websom.InterfaceOptions>array();
+
+	force Websom.InterfaceChain interface(string route) {
+		return new Websom.InterfaceChain(this, route);
+	}
+
+	force void interface(Websom.InterfaceOptions opts) {
+		this.interfaces.push(opts);
+	}
+
+	Websom.InterfaceOptions getInterface(string route) {
+		for (var int i in this.interfaces)
+			if (this.interfaces[i].route == route)
+				return this.interfaces[i];
+		return null;
+	}
+
+	Websom.Data getDataFromRoute(string route) {
+		native javascript {
+			var splits = route.split(".");
+			var cur = global;
+			for (var split of splits)
+				cur = cur[split];
+
+			return cur;
+		}
+
+		native php {
+			$clsName = str_replace(".", "_", $route);
+			return $clsName;
+		}
+	}
+
+	Websom.InputHandler registerSubContainer(Websom.FieldInfo field, Websom.DataInfo routeInfo) {
+		var that = this;
+		var name = this.name + "_" + field.fieldName;
+		var subContainer = new Websom.Containers.Table(this.server, name, routeInfo);
+		subContainer.parentContainer = this;
+
+		for (var int i in this.interfaces) {
+			var interface = this.interfaces[i];
+			if (interface.subs[field.fieldName] != null) {
+				subContainer.interface(interface.subs[field.fieldName]);
+			}
+		}
+
+		if (subContainer.interfaces.length > 0) {
+			var handler = subContainer.register();
+			handler.containerInterface = subContainer;
+			return handler;
+		}
+	}
+
+	Websom.InputHandler register() {
+		var that = this;
+
+		for (var int i in this.dataInfo.fields) {
+			var f = this.dataInfo.fields[i];
+			if (f.singleLink and f.isPrimitive == false) {
+				var t = Websom.DataInfo.getDataInfoFromRoute(f.typeRoute);
+				var fi = this.getDataFromRoute(f.typeRoute);
+				if ("Component" in t.attributes) {
+					var name = this.name + "_" + f.fieldName;
+					var componentContainer = new Websom.Containers.Table(that.server, name, t);
+
+					var close = void (Websom.Data fix, Websom.DataInfo type, Websom.FieldInfo field) => {
+						var getContainer = Websom.Container (string fieldName) => { //TODO: Check if field is valid
+							var Websom.FieldInfo fieldInfo = null;
+							for (var int fii in type.fields) {
+								if (type.fields[fii].realName == fieldName)
+									fieldInfo = type.fields[fii];
+							}
+
+							var Websom.DatabaseFlags.Linked linked = fieldInfo.structure.getFlag("linked");
+							var fieldType = Websom.DataInfo.getDataInfoFromRoute(linked.fieldType);
+							var subContainer = new Websom.Containers.Table(that.server, name + "_" + fieldInfo.fieldName, fieldType);
+
+							return subContainer;
+						};
+
+						native javascript {
+							fi.registerInterfaces(that, componentContainer, getContainer);
+						}
+
+						native php {
+							$fi::registerInterfaces($that, $componentContainer, $getContainer);
+						}
+					};
+
+					close(f, t, fi);
+				}
+			}else if (f.typeRoute == "array" and "NoLoad" in f.attributes) {
+				var Websom.DatabaseFlags.Linked linked = f.structure.getFlag("linked");
+				var t = Websom.DataInfo.getDataInfoFromRoute(linked.fieldType);
+				this.registerSubContainer(f, t);
+			}
+		}
+
+		for (var int i in this.interfaces) {
+			var opts = this.interfaces[i];
+			for (var int c in opts.controls) {
+				opts.controls[c].container = this;
+			}
+
+			for (var int c in opts.selectControls) {
+				opts.selectControls[c].container = this;
+			}
+
+			for (var int c in opts.updateControls) {
+				opts.updateControls[c].container = this;
+			}
+
+			for (var int c in opts.insertControls) {
+				opts.insertControls[c].container = this;
+			}
+		}
+		
+		var handler = this.server.input.register(this.name, void (Websom.Input input) => {
+			if (("_w_type" in input.raw) and ("_w_route" in input.raw)) {
+				var string type = input.raw["_w_type"];
+				var string route = input.raw["_w_route"];
+				var opts = that.getInterface(route);
+				if (opts != null) {
+					that.checkAuth(opts, input, type, void (bool success) => {
+						if (success) {
+							if (type == "insert") {
+								that.interfaceInsert(opts, input);
+							}else if (type == "update") {
+								that.interfaceUpdate(opts, input);
+							}else if (type == "select") {
+								that.interfaceSelect(opts, input, new Websom.CallContext());
+							}else if (type == "interface") {
+								that.interfaceSend(opts, input);
+							}else{
+								input.request.code(400);
+								if (that.server.config.dev) {
+									input.send("Invalid(Dev: Interface of type '" + type + "' not found)");
+								}else{
+									input.send("Invalid");
+								}
+							}
+						}else{
+							input.request.code(403);
+							input.send("Unauthorized");
+						}
+					});
+				}else{
+					input.request.code(400);
+					if (that.server.config.dev) {
+						input.send("Invalid(Dev: No interface found with the route '" + route + "')");
+					}else{
+						input.send("Invalid");
+					}
+				}
+			}else{
+				input.request.code(400);
+				if (that.server.config.dev) {
+					input.send("Invalid(Dev: No '_w_type' or '_w_route' found in query)");
+				}else{
+					input.send("Invalid");
+				}
+			}
+		});
+		handler.containerInterface = this;
+		return handler;
+	}
+
+	void checkAuth(Websom.InterfaceOptions opts, Websom.Input input, string type, <void, bool>function callback) {
+		if (opts.hasAuth) {
+			var perms = "";
+			if (type == "insert") {
+				perms = opts.insertPermission;
+			}else if (type == "update") {
+				perms = opts.updatePermission;
+			}else if (type == "select") {
+				perms = opts.selectPermission;
+			}
+			if (perms.length > 0) {
+				if (input.request.session.get("dashboard") != null) {
+					callback(true); //WARN:
+				}else if (input.server.userSystem.isLoggedIn(input.request)) {
+					input.server.userSystem.getLoggedIn(input.request, void (Websom.Standard.UserSystem.User user) => {
+						user.hasPermission(perms, void (bool yes) => {
+							callback(yes);
+						});
+					});
+				}else{
+					callback(false);
+				}
+			}else{
+				callback(true);
+			}
+		}else{
+			callback(true);
+		}
+	}
+
+	void loadFromSelect(Websom.DatabaseSelect select, <void, <Websom.Data>array>function callback) {
+
+	}
+
+	void expose(Websom.Request req, <Websom.Data>array datas, <void, <map>array>function callback) {
+
+	}
+
+	void loadFromId(uint64 id, <void, Websom.Data>function callback) {
+		
+	}
+}
+
+class Websom.InterfaceOptions {
+	string route = "";
+	bool canInsert = false;
+
+	<Websom.InputRestriction>array restricts = new <Websom.InputRestriction>array();
+
+	<Websom.InterfaceOptions>map subs = new <Websom.InterfaceOptions>map();
+	
+	bool canInterface = true;
+	bool canSelect = false;
+	bool hasPublicIdSelect = true;
+	bool canLoadMore = true;
+	bool multipart = false;
+
+	bool canUpdate = false;
+	bool mustLogin = false;
+	bool mustOwnUpdate = false;
+
+	bool autoPublicId = false;
+	bool autoTimestamp = false;
+	bool autoOwn = false;
+
+	bool hasAuth = false;
+
+	string permission = "";
+	string selectPermission = "";
+	string updatePermission = "";
+	string insertPermission = "";
+
+	<string>array uniqueKeys = new <string>array();
+
+	string group = "";
+
+	string baseSuccess = "Success";
+	string baseError = "Error";
+
+	int maxSelect = 25;
+
+	<void, map, Websom.Data, <void, map>function>function selectExpose = null;
+
+	<void, Websom.Input>function overrideInsert = null;
+	<void, Websom.Input>function overrideSelect = null;
+	<void, Websom.Input>function overrideUpdate = null;
+
+	<void, Websom.Input, Websom.DatabaseInsert, <void, string>function>function onInsert = null;
+	<void, Websom.Input, Websom.Data, Websom.ClientMessage, <void, Websom.ClientMessage>function>function successInsert = null;
+	<void, Websom.Input, Websom.DatabaseSelect, <void, string>function>function onSelect = null;
+	<void, Websom.Input, Websom.DatabaseSelect, <void, string>function>function onUpdate = null;
+	<void, Websom.Input, Websom.Data, Websom.ClientMessage, <void, Websom.ClientMessage>function>function successUpdate = null;
+
+	`If true the container will automatically dectect if the user is logged in and check if they own the document`
+	bool onlyUpdateIfOwner = false;
+
+	<Websom.Control>array controls = new <Websom.Control>array();
+	<Websom.Control>array insertControls = new <Websom.Control>array();
+	<Websom.Control>array selectControls = new <Websom.Control>array();
+	<Websom.Control>array updateControls = new <Websom.Control>array();
+
+	void @construct(string route) {
+		this.route = route;
+	}
+
+	void expose(<void, map, Websom.Data, <void, map>function>function func) {
+		this.selectExpose = func;
+	}
+
+	Websom.FieldControl spawnControl(string cls, Websom.FieldInfo field) {
+		native javascript {
+			var root = global;
+			for (var split of cls.split("."))
+				root = root[split];
+
+			return new root(field.realName, field.fieldName, field);
+		}
+
+		native php {
+			return new $cls($field->realName, $field->fieldName, $field);
+		}
+	}
+
+	void authPermission(string perm) {
+		this.hasAuth = true;
+		this.permission = perm;
+	}
+
+	void autoControl(Websom.DataInfo info) {
+		for (var int i in info.fields) {
+			var field = info.fields[i];
+			if (field.structure.hasFlag("edit")) {
+				if (field.isPrimitive)
+					this.controls.push(field.structure.type.autoControl(field));
+				else if (field.isComplex)
+					this.controls.push(this.spawnControl(field.controlClass, field));
+			}
+		}
+	}
+}
+
+
+`Base class for InputInterface restrictions`
+class Websom.InputRestriction {
+	string mode = "global";
+	bool simple = false;
+	string field = "";
+	string key = "";
+	string value = "";
+	<void, <void, bool>function>function callback = null;
+
+	void @construct(string mode, string field) {
+		this.mode = mode;
+		this.field = field;
+	}
+}
+
+header class Websom.Control {
+	`@note server is only available if message is called.`
+	Websom.Server server = null;
+
+	`@note container is only available if message is called.`
+	Websom.Container container = null;
+
+
+	`@warn validate is only called on insert and update`
+	void validate(Websom.Input input, <void, Websom.InputValidation>function done);
+
+	void fill(Websom.Input input, map values, <void>function done);
+
+	void filter(Websom.Input input, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done);
+
+	`Called when a Websom.Data is successfully inserted`
+	void insert(Websom.Input input, Websom.Data data, primitive key) {}
+
+	`Called when a Websom.Data is successfully updated`
+	void update(Websom.Input input, Websom.Data data) {}
+
+	`This is called on interface controls when an interface message is not routed to a Websom.Data entity.
+	
+	@note If this message name was not handled by this control pass null into send.`
+	void message(Websom.Input input `Current client context sending this message`,
+				string name `Name of message`,
+				map data `Raw data sent by client`,
+				<void, map>function send `Sends the data to the client`) {
+					send(null);
+				}
+
+	`If this control is passed into Websom.InputChain.use the control is expected to modify the chain and set up its own success and/or error listener.`
+	void use(Websom.InputChain inputChain) {
+		
+	}
+}
+
+header class Websom.MessageControl inherits Websom.Control {
+	void validate(Websom.Input input, <void, Websom.InputValidation>function done) {
+		done(null);
+	}
+
+	void fill(Websom.Input input, map values, <void>function done) {
+		done();
+	}
+
+	void filter(Websom.Input input, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+		done(null);
+	}
+}
+
+header class Websom.FieldControl inherits Websom.Control {
+	bool required = false;
+	string name = "";
+	string field = "";
+	string logic = "or";
+	Websom.FieldInfo fieldInfo = null;
+	
+	void @construct(string field) {
+		this.name = field;
+		this.field = field;
+	}
+
+	void @construct(string field, string logic) {
+		this.name = field;
+		this.field = field;
+		this.logic = logic;
+	}
+
+	void @construct(string name, string field, Websom.FieldInfo fieldInfo) {
+		this.name = name;
+		this.field = field;
+		this.fieldInfo = fieldInfo;
+	}
+
+	void validate(Websom.Input input, <void, Websom.InputValidation>function done) {
+		if (this.name in input.raw) {
+			this.validateField(input, input.raw[this.name], done);
+		}else if (this.required) {
+			done(new Websom.InputValidation(true, "Missing field " + this.name));
+		}else{
+			done(new Websom.InputValidation(false, ""));
+		}
+	}
+
+	void fill(Websom.Input input, map values, <void>function done) {
+		this.fillField(input.raw[this.name], values);
+		done();
+	}
+
+	void filter(Websom.Input input, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+		if (this.name in input.raw) {
+			if (this.logic == "and")
+				select.and();
+			else
+				select.or();
+
+			var val = this.filterField(input.raw[this.name], select, done);
+		}else if (this.required) {
+			done(new Websom.InputValidation(true, "Missing field " + this.name));
+		}else{
+			done(null);
+		}
+	}
+
+	void validateField(Websom.Input input, primitive value, <void, Websom.InputValidation>function done) {
+		done(new Websom.InputValidation(false, ""));
+	}
+
+	void fillField(primitive value, map values) {}
+
+	void filterField(primitive value, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {}
+}
+
+namespace Websom.Controls {}
+
+class Websom.Controls.Search inherits Websom.FieldControl {
+	override void filterField(primitive value, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+		select.where(this.field).wildLike(value);
+		done(null);
+	}
+}
+
+class Websom.Controls.Component inherits Websom.Control {
+	Websom.Containers.Table parentContainer = null;
+	Websom.Containers.Table componentContainer = null;
+
+	void @construct(Websom.Containers.Table parentContainer, Websom.Containers.Table componentContainer) {
+		this.parentContainer = parentContainer;
+		this.componentContainer = componentContainer;
+	}
+
+	void validate(Websom.Input input, <void, Websom.InputValidation>function done) {
+		var that = this;
+		if (("parent" in input.raw) and (input.raw["parent"].typeAsString() == "string")) {
+			this.parentContainer.from().where("publicId").equals(input.raw["parent"])
+				.run(void (string err, <map>array docs) => {
+					if (err != null) {
+						done(new Websom.InputValidation(true, "Server error"));
+					}else{
+						if (docs.length > 0) {
+							that.componentContainer.from().where("parentId").equals(docs[0]["id"])
+								.run(void (string err2, <map>array docs2) => {
+									if (err2 != null or docs2.length == 0) {
+										done(new Websom.InputValidation(true, "Parent value not found"));
+									}else{
+										input.raw[that.parentContainer.table + "parentId"] = docs2[0]["id"];
+										done(null);
+									}
+								});
+						}else{
+							done(new Websom.InputValidation(true, "Parent value not found"));
+						}
+					}
+				});
+		}else{
+			done(new Websom.InputValidation(true, "Invalid parent value"));
+		}
+	}
+
+	void fill(Websom.Input input, map values, <void>function done) {
+		values["parentId"] = input.raw[this.parentContainer.table + "parentId"];
+		done();
+	}
+
+	void filter(Websom.Input input, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) { //TODO: Use public key field
+		var that = this;
+		if (("parent" in input.raw) and (input.raw["parent"].typeAsString() == "string")) {
+			this.parentContainer.from().where("publicId").equals(input.raw["parent"])
+				.run(void (string err, <map>array docs) => {
+					if (err != null) {
+						done(new Websom.InputValidation(true, "Server error"));
+					}else{
+						if (docs.length > 0) {
+							that.componentContainer.from().where("parentId").equals(docs[0]["id"])
+								.run(void (string err2, <map>array docs2) => {
+									if (err2 != null or docs2.length == 0) {
+										done(new Websom.InputValidation(true, "Parent value not found"));
+									}else{
+										select.where("parentId").equals(docs2[0]["id"]);
+										done(null);
+									}
+								});
+						}else{
+							done(new Websom.InputValidation(true, "Parent value not found"));
+						}
+					}
+				});
+		}else{
+			done(new Websom.InputValidation(true, "Invalid parent value"));
+		}
+	}
+}
+
+class Websom.CallContext {
+	bool subContainerCall = false;
+	Websom.Data data = null;
+	
+	void @construct() {
+
+	}
+}

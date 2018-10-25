@@ -1,0 +1,21 @@
+{
+	"name": "websom",
+	"version": "1.0.0",
+	"description": "",
+	"main": "native/javascript/websom.js",
+	"author": "Echorial(https://www.echorial.com)",
+	"license": "MIT",
+	"dependencies": {
+		"argon2": "^0.17.2",
+		"carbonite": "^0.1.1",
+		"cheerio": "^1.0.0-rc.2",
+		"express": "^4.16.2",
+		"express-session": "*",
+		"less": "^3.0.1",
+		"multer": "^1.4.1",
+		"mysql": "*",
+		"nodemailer": "^4.6.3",
+		"npm": "^6.4.1",
+		"session-file-store": "*"
+	}
+}

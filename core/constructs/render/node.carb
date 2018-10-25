@@ -1,0 +1,29 @@
+class Websom.Render.Node {
+	bool isText = false;
+
+	string render(Websom.Render.Context ctx) {
+		
+	}
+
+	map serialize();
+
+	fixed Websom.Render.Node deserialize(Websom.Server server, map data) {
+		var string type = data["t"];
+		if (type == "e") {
+			var e = new Websom.Render.Element(server, data["n"]);
+			e.deserializeChildren(server, data["c"]);
+			e.attributes = data["a"];
+			return e;
+		}else if (type == "t") {
+			var t = new Websom.Render.Text(data["c"]);
+			return t;
+		}else if (type == "r") {
+			var e = new Websom.Render.ViewRef(server, server.render.findView(data["n"]));
+			e.deserializeChildren(server, data["c"]);
+			e.attributes = data["a"];
+			return e;
+		}
+
+		return null;
+	}
+}

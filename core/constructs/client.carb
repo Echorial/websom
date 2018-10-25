@@ -1,0 +1,13 @@
+class Websom.Client {
+	string address = "";
+	string port = "";
+	string family = "";
+
+	string localAddress = "";
+	string localPort = "";
+
+	void @construct(string address, string port) {
+		this.address = address;
+		this.port = port;
+	}
+}

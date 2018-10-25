@@ -1,0 +1,164 @@
+namespace Dashboard {}
+
+class Dashboard.Module inherits Websom.Standard.Dashboard.Module {
+	override Websom.Status start() {
+		var that = this;
+
+		native javascript {
+			//console.log("Dashboard ready");
+		}
+
+		this.register(new Websom.Standard.Dashboard.Tab("Home", "Home", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-home";
+			rtn["image"] = "/resources/dashboard/Websom.svg";
+
+			rtn["sub"] = new map();
+			
+			rtn["sub"]["Account"] = new map();
+			rtn["sub"]["Account"]["view"] = "dashboard-account";
+
+			rtn["sub"]["Notifications"] = new map();
+			rtn["sub"]["Notifications"]["view"] = "dashboard-notifications";
+
+			rtn["sub"]["Build"] = new map();
+			rtn["sub"]["Build"]["view"] = "dashboard-build";
+
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Stats", "Stats", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-stats";
+			rtn["image"] = "/resources/dashboard/Analytics.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Modules", "Modules", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-modules";
+			rtn["image"] = "/resources/dashboard/Modules.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Themes", "Themes", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-themes";
+			rtn["image"] = "/resources/dashboard/Themes.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Builder", "Builder", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-editor";
+			rtn["image"] = "/resources/dashboard/Builder.svg";
+			rtn["studio"] = false;
+			rtn["builder"] = true;
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Designer", "Designer", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-editor";
+			rtn["image"] = "/resources/dashboard/Builder.svg";
+			rtn["studio"] = false;
+			rtn["designer"] = true;
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Studio", "Studio", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-editor";
+			rtn["image"] = "/resources/dashboard/Studio.svg";
+			rtn["studio"] = true;
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Pages", "Pages", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-pages";
+			rtn["image"] = "/resources/dashboard/Pages.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Security", "Security", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-security";
+			rtn["image"] = "/resources/dashboard/Locked.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Files", "Files", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-studio-explorer";
+			rtn["image"] = "/resources/dashboard/Files.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Database", "Database", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-database";
+			rtn["image"] = "/resources/dashboard/Database.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Containers", "Containers", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-containers";
+			rtn["image"] = "/resources/dashboard/Buckets.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("Buckets", "Buckets", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-buckets";
+			rtn["image"] = "/resources/dashboard/File.svg";
+			return rtn;
+		}));
+
+		this.register(new Websom.Standard.Dashboard.Tab("User System", "UserSystem", map (Websom.Request req) => {
+			var rtn = new map();
+			rtn["view"] = "dashboard-module";
+			rtn["image"] = "/resources/dashboard/Modules.svg";
+			rtn["module"] = "UserSystem";
+			rtn["sub"] = new map();
+			
+			rtn["sub"]["Users"] = new map();
+			rtn["sub"]["Users"]["view"] = "user-system-user-search";
+
+			rtn["sub"]["Groups"] = new map();
+			rtn["sub"]["Groups"]["view"] = "user-system-group-editor";
+			return rtn;
+		}));
+
+		this.server.router.quickRoute("/websom.dashboard", "dashboard");
+		this.server.router.quickRoute("/websom.studio", "dashboard-studio");
+		var builder = this.server.router.quickRoute("/websom.builder", "dashboard-builder");
+		builder.greedy = true;
+
+		var designer = this.server.router.quickRoute("/websom.designer", "dashboard-designer");
+		designer.greedy = true;
+	}
+
+	Websom.Standard.Dashboard.Tab register(Websom.Standard.Dashboard.Tab tab) {
+		this.tabs.push(tab);
+	}
+
+	map mapTabs(Websom.Request req) {
+		var rtn = new map();
+		for (var int i in this.tabs) {
+			rtn[this.tabs[i].display] = this.tabs[i].handler(req);
+		}
+		return rtn;
+	}
+}
+
+class Websom.Standard.Dashboard.Tab inherits Websom.Standard.Dashboard.Tab {
+	void @construct(string name, string display, <map, Websom.Request>function handler) {
+		this.name = name;
+		this.display = display;
+		this.handler = handler;
+	}
+}
+
+#include "src"

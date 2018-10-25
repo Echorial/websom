@@ -1,0 +1,32 @@
+info {
+	"name": "dashboard-containers"
+}
+
+template {
+	<div style="height: 100%" class="main">
+		<div v-for="(container, index) in containers" style="margin-top: 0px;" class="config-main card expandable blue-grey white-text" :key="index">
+			<h2 class="white-text"><icon fa>table</icon> {{container.module}}.{{container.name}}</h2>
+
+			<div class="expand">
+				<div class="card black-text" style="margin: 0; padding: .5em;">
+					Coming soon
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+client {
+	props: ["data"],
+	data: function () {
+		return {
+			mode: 0,
+			containers: []
+		};
+	},
+	mounted: function () {
+		DashboardBridge.getContainers().then((data) => {
+			this.containers = data;
+		});
+	}
+}

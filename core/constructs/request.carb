@@ -1,0 +1,132 @@
+class Websom.Request {
+	Websom.Server server = null;
+	Websom.Client client = null;
+	bool sent = false;
+	string path = "";
+
+	`Stored for javascript context, and php response codes`
+	Websom.Response response = null;
+
+	void jsRequest = null;
+
+	Websom.Session session = null;
+
+	void @construct(Websom.Server server, Websom.Client client) {
+		this.server = server;
+		this.client = client;
+		this.response = new Websom.Response();
+		this.session = new Websom.Session(this);
+	}
+
+	`Sets the response code`
+	void code(int code) {
+		this.response.code = code;
+
+		native javascript {
+			this.response.jsResponse.status(code);
+		}
+
+		native php {
+			http_response_code($code);
+		}
+	}
+
+	`Sends the content over to the client`
+	void send(string content) {
+		if (this.sent)
+			return null; //TODO: Setup throw
+
+		native javascript {
+			this.response.jsResponse.send(content);
+		}
+
+		native php {
+			echo $content;
+		}
+
+		this.sent = true;
+	}
+
+	void redirect(string route) {
+		native javascript {
+			this.response.jsResponse.redirect(route);
+		}
+
+		native php {
+			header("Location: " . $route);
+		}
+	}
+
+	void download(string name, string path, string type) {
+		native javascript {
+			const fs = require("fs");
+			this.response.jsResponse.type(type);
+			this.response.jsResponse.setHeader("Content-disposition", "attachment; filename=" + name);
+			fs.createReadStream(path).pipe(this.response.jsResponse);
+		}
+
+		native php {
+			header('Content-Type: application/pdf');
+			header("Content-Disposition: attachment; filename=" . $name);
+			header("Content-Length: " . filesize($path));
+
+			readfile($path);
+		}
+	}
+
+	void getUser(<void, Websom.Standard.UserSystem.User>function callback) {
+		if (this.server.userSystem != null) {
+			this.server.userSystem.getLoggedIn(this, callback);
+		}else{
+			callback(null);
+		}
+	}
+}
+
+class Websom.Session {
+	Websom.Request request = null;
+
+	void @construct(Websom.Request req) {
+		this.request = req;
+	}
+
+
+	void set(string key, primitive value) {
+		native javascript {
+			this.request.jsRequest.session[key] = value;
+			if (this.request.jsRequest.method == "POST") {
+				this.request.jsRequest.session.save();
+			}
+		}
+
+		native php {
+			if (!isset($_SESSION)) session_start();
+			$_SESSION[$key] = $value;
+		}
+	}
+
+	void delete(string key) {
+		native javascript {
+			delete this.request.jsRequest.session[key];
+		}
+
+		native php {
+			if (!isset($_SESSION)) session_start();
+			unset($_SESSION[$key]);
+		}
+	}
+
+	primitive get(string key) {
+		native javascript {
+			return this.request.jsRequest.session[key] || null;
+		}
+
+		native php {
+			if (!isset($_SESSION)) session_start();
+			if (isset($_SESSION[$key]))
+				return $_SESSION[$key];
+			else
+				return NULL;
+		}
+	}
+}

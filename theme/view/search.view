@@ -1,0 +1,35 @@
+info {
+	"name": "search",
+	"type": "control"
+}
+
+template {
+	<div>
+		<input v-if="layout == 'default'" :placeholder="placeholder" type="text" class="input" v-on:keyup="emit()" />
+		<div v-else-if="layout == 'full'" class="input-box">
+			<span class="icon"><icon fa>search</icon></span>
+			<input :placeholder="placeholder" type="text" class="input" v-on:keyup="emit()" />
+		</div>
+	</div>
+}
+
+client {
+	props: {
+		layout: {
+			type: String,
+			default: "default"
+		},
+		placeholder: {
+			type: String,
+			default: "Search"
+		}
+	},
+	methods: {
+		emit: function () {
+			$(this.$el).trigger('controlChange');
+		},
+		value: function (callback) {
+			callback($(this.$el).find("input").val());
+		}
+	}
+}

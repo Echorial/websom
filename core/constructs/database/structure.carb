@@ -1,0 +1,296 @@
+class Websom.DatabaseStructure {
+	Websom.Database database = null;
+	string table = "";
+
+	<Websom.DatabaseField>array fields = new <Websom.DatabaseField>array();
+
+	void @construct(Websom.Database database, string table) {
+		this.database = database;
+		this.table = table;
+	}
+
+	Websom.DatabaseStructure field(string name, Websom.DatabaseType type) {
+		var field = new Websom.DatabaseField(name, type);
+		this.fields.push(field);
+		return this;
+	}
+
+	Websom.DatabaseStructure flag(Websom.DatabaseFlag flag) {
+		if (this.fields.length > 0)
+			this.fields[this.fields.length - 1].flags.push(flag);
+		
+		return this;
+	}
+
+	Websom.DatabaseStructure run(<void, string>function callback) {
+		this.database.runStructure(this, callback);
+	}
+}
+
+namespace Websom.DatabaseFlags {}
+
+class Websom.DatabaseFlag {
+	string type = "flag";
+
+	void @construct() {
+
+	}
+}
+
+class Websom.DatabaseFlags.AutoIncrement inherits Websom.DatabaseFlag {
+	override string type = "autoIncrement";
+}
+
+class Websom.DatabaseFlags.Primary inherits Websom.DatabaseFlag {
+	override string type = "primary";
+}
+
+class Websom.DatabaseFlags.Edit inherits Websom.DatabaseFlag {
+	override string type = "edit";
+}
+
+class Websom.DatabaseFlags.Linked inherits Websom.DatabaseFlag {
+	override string type = "linked";
+	string name = "";
+	string linkType = "";
+	string fieldType = "";
+
+	override void @construct(string name, string linkType, string fieldType) {
+		this.name = name;
+		this.linkType = linkType;
+		this.fieldType = fieldType;
+	}
+}
+
+class Websom.DatabaseFlags.Unsigned inherits Websom.DatabaseFlag {
+	override string type = "unsigned";
+}
+
+class Websom.DatabaseField {
+	string name = "";
+	Websom.DatabaseType type = null;
+
+	<Websom.DatabaseFlag>array flags = new <Websom.DatabaseFlag>array();
+
+	void @construct(string name, Websom.DatabaseType type) {
+		this.name = name;
+		this.type = type;
+	}
+
+	bool hasFlag(string name) {
+		for (var int i in this.flags)
+			if (this.flags[i].type == name)
+				return true;
+		return false;
+	}
+
+	Websom.DatabaseFlag getFlag(string name) {
+		for (var int i in this.flags)
+			if (this.flags[i].type == name)
+				return this.flags[i];
+		return null;
+	}
+}
+
+namespace Websom.DatabaseTypes {
+
+}
+
+class Websom.DatabaseType {
+	string type = "";
+
+	void @construct() {
+
+	}
+
+	Websom.Control autoControl(Websom.FieldInfo info) {}
+}
+
+class Websom.DatabaseTypes.Varchar inherits Websom.DatabaseType {
+	override string type = "varchar";
+
+	int length = 0;
+
+	override void @construct(int length) {
+		this.length = length;
+	}
+
+	override Websom.Control autoControl(Websom.FieldInfo field) {
+		return new Websom.Controls.String(field.realName, field.fieldName, field);
+	}
+}
+
+class Websom.DatabaseTypes.Text inherits Websom.DatabaseType {
+	override string type = "text";
+
+	override Websom.Control autoControl(Websom.FieldInfo field) {
+		return new Websom.Controls.String(field.realName, field.fieldName, field);
+	}
+}
+
+class Websom.Controls.String inherits Websom.FieldControl {
+	override void validateField(Websom.Input input, primitive value, <void, Websom.InputValidation>function done) {
+		if (value.typeAsString() == "string") {
+			var string val = value;
+			var ok = true;
+			if ("Min" in this.fieldInfo.attributes) {
+				var int min = this.fieldInfo.attributes["Min"];
+				if (val.length < min) {
+					done(new Websom.InputValidation(true, "Length must be greater than " + min));
+					ok = false;
+				}
+			}
+
+			if ("Length" in this.fieldInfo.attributes) {
+				var int max = this.fieldInfo.attributes["Length"];
+				if (val.length > max) {
+					done(new Websom.InputValidation(true, "Length must be less than " + max));
+					ok = false;
+				}
+			}
+
+			if ("Match" in this.fieldInfo.attributes) {
+				var string match = this.fieldInfo.attributes["Match"];
+				if (val.test(match) == false) {
+					var err = "Value must match " + match;
+					if ("MatchError" in this.fieldInfo.attributes)
+						err = this.fieldInfo.attributes["MatchError"];
+
+					done(new Websom.InputValidation(true, err, this.fieldInfo));
+					ok = false;
+				}
+			}
+
+			if (ok)
+				done(new Websom.InputValidation(false, ""));
+		}else
+			done(new Websom.InputValidation(true, "Not a string type"));
+	}
+
+	override void fillField(primitive value, map values) {
+		values[this.field] = value;
+	}
+
+	override void filterField(float value, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+		select.where(this.field).equals(value);
+		done(null);
+	}
+}
+
+class Websom.DatabaseTypes.BigInt inherits Websom.DatabaseType {
+	override string type = "bigInt";
+
+	override Websom.Control autoControl(Websom.FieldInfo field) {
+		return new Websom.Controls.Number(field.realName, field.fieldName, field);
+	}
+}
+
+class Websom.DatabaseTypes.Int inherits Websom.DatabaseType {
+	override string type = "int";
+
+	override Websom.Control autoControl(Websom.FieldInfo field) {
+		return new Websom.Controls.Number(field.realName, field.fieldName, field);
+	}
+}
+
+class Websom.DatabaseTypes.Float inherits Websom.DatabaseType {
+	override string type = "float";
+
+	override Websom.Control autoControl(Websom.FieldInfo field) {
+		return new Websom.Controls.Number(field.realName, field.fieldName, field);
+	}
+}
+
+class Websom.Controls.Number inherits Websom.FieldControl {
+	override void validateField(Websom.Input input, primitive value, <void, Websom.InputValidation>function done) {
+		if (value.typeAsString() == "float" or value.typeAsString() == "integer") {
+			var float val = value;
+			var ok = true;
+			if ("Min" in this.fieldInfo.attributes) {
+				var float min = this.fieldInfo.attributes["Min"];
+				if (val < min) {
+					done(new Websom.InputValidation(true, "Number must be greater than " + min));
+					ok = false;
+				}
+			}
+
+			if ("Max" in this.fieldInfo.attributes) {
+				var float max = this.fieldInfo.attributes["Max"];
+				if (val > max) {
+					done(new Websom.InputValidation(true, "Number must be less than " + max));
+					ok = false;
+				}
+			}
+
+			if (ok)
+				done(new Websom.InputValidation(false, ""));
+		}else{
+			if (this.fieldInfo.structure.hasFlag("linked")) {
+				var array val = value;
+				var Websom.DatabaseFlags.Linked link = this.fieldInfo.structure.getFlag("linked");
+				var subInfo = Websom.DataInfo.getDataInfoFromRoute(link.fieldType);
+				var dv = new Websom.DataValidator(subInfo);
+				var valids = val.length;
+				var Websom.InputValidation firstError = null;
+				for (var int i in val) {
+					var inp = new Websom.Input("", val[i], input.request);
+					dv.validate(inp, void (Websom.InputValidation validation) => {
+						valids--;
+						if (validation.hadError)
+							if (firstError == null)
+								firstError = validation;
+						if (valids == 0) {
+							if (firstError != null) {
+								done(firstError);
+							}else
+								done(new Websom.InputValidation(false, ""));
+						}
+					});
+				}
+			}else{
+				done(new Websom.InputValidation(true, "Not a number type"));
+			}
+		}
+	}
+
+	override void fillField(primitive value, map values) {
+		values[this.field] = value;
+	}
+
+	override void filterField(float value, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+		select.where(this.field).equals(value);
+		done(null);
+	}
+}
+
+class Websom.DatabaseTypes.Bool inherits Websom.DatabaseType {
+	override string type = "bool";
+
+	override Websom.Control autoControl(Websom.FieldInfo field) {
+		return new Websom.Controls.Bool(field.realName, field.fieldName, field);
+	}
+}
+
+class Websom.Controls.Bool inherits Websom.FieldControl {
+	override void validateField(Websom.Input input, primitive value, <void, Websom.InputValidation>function done) {
+		if (value.typeAsString() == "boolean")
+			done(new Websom.InputValidation(false, ""));
+		else
+			done(new Websom.InputValidation(true, "Not a boolean type"));
+	}
+
+	override void fillField(primitive value, map values) {
+		values[this.field] = value;
+	}
+
+	override void filterField(primitive value, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
+		var int val = 0;
+
+		if (value == true)
+			val = 1;
+
+		select.where(this.field).equals(val);
+
+		done(null);
+	}
+}

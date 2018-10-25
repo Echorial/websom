@@ -1,0 +1,160 @@
+class Websom.Render.Element inherits Websom.Render.Node {
+	string name = "";
+
+	map attributes = null;
+	<Websom.Render.Node>array children = null;
+
+	void @construct(Websom.Server server, string name) {
+		this.name = name;
+		this.children = new <Websom.Render.Element>array();
+		this.attributes = new map();
+	}
+
+	override string render(Websom.Render.Context ctx) {
+		if (this.name == "slot") {
+			var children = "";
+			
+			if (ctx.slot != null)
+				for (var int i in ctx.slot) {
+					children += ctx.slot[i].render(ctx.slotContext);
+				}
+
+			return children;
+		}
+
+		var children = "";
+		for (var int i in this.children) {
+			children += this.children[i].render(ctx);
+		}
+
+		var attrs = "";
+		for (var string key in this.attributes) {
+			if (key[0] == ":") {
+				attrs += " " + key + '="' + ctx.find(this.attributes[key]) + '"';
+			}else{
+				attrs += " " + key + '="' + this.attributes[key] + '"';
+			}
+		}
+
+		return "<" + this.name + attrs + ">" + children + "</" + this.name + ">";
+	}
+
+	fixed Websom.Render.Element parse(Websom.Server server, string html) {
+		native javascript {
+			let content = require("cheerio").load(html);
+			return this.makeFromObj(server, content.root()[0].children[0].children[1].children[0]);
+		}
+
+		native php {
+			$content = new DOMDocument();
+			libxml_use_internal_errors(true);
+			$content->loadHTML($html);
+			libxml_clear_errors();
+			return self::makeFromObj($server, $content->documentElement->childNodes[0]->childNodes[0]);
+		}
+	}
+
+	trust fixed Websom.Render.Node makeFromObj(Websom.Server server, primitive arg) {
+		var isText = false;
+		var textContent = "";
+
+		native javascript {
+			if (arg.type == "text") {
+				isText = true;
+				textContent = arg.data;
+			}
+		}
+
+		native php {
+			if ($arg->nodeType == XML_TEXT_NODE) {
+				$isText = true;
+				$textContent = $arg->textContent;
+			}
+		}
+
+		if (isText) {
+			return new Websom.Render.Text(textContent);
+		}else {
+			var nodeName = "";
+
+			native php {
+				$nodeName = $arg->nodeName;
+			}
+
+			native javascript {
+				nodeName = arg.tagName;
+			}
+
+			var Websom.Render.Element elem = null;
+
+			var renderView = server.render.findView(nodeName);
+			if (renderView != null) {
+				elem = new Websom.Render.ViewRef(server, renderView);
+			}else{
+				elem = new Websom.Render.Element(server, nodeName);
+			}
+
+			var children = new array();
+
+			native php {
+				if ($arg->attributes)
+				foreach ($arg->attributes as $node) {
+					$elem->attributes[$node->nodeName] = $node->nodeValue;
+				}
+
+				$children = $arg->childNodes;
+			}
+
+			native javascript {
+				elem.attributes = arg.attribs;
+				children = arg.childNodes;
+			}
+
+			for (var int i in children) {
+				native php {
+					if ($children[$i]->nodeType == XML_COMMENT_NODE)
+						continue;
+				}
+				native javascript {
+					if (children[i].type == "comment")
+						continue;
+				}
+				elem.children.push(Websom.Render.Element.makeFromObj(server, children[i]));
+			}
+
+			return elem;
+		}
+	}
+
+	map serialize() {
+		return this.basicSerialize();
+	}
+
+	void deserializeChildren(Websom.Server server, <map>array children) {
+		this.children = new <Websom.Render.Node>array();
+
+		for (var int i in children) {
+			var child = children[i];
+
+			this.children.push(Websom.Render.Node.deserialize(server, child));
+		}
+	}
+
+	map basicSerialize() {
+		var mp = new map();
+		mp["t"] = "e";
+		mp["n"] = this.name;
+		var children = new <map>array();
+		
+		for (var int i in this.children) {
+			var child = this.children[i];
+			children.push(child.serialize());
+		}
+
+		mp["c"] = children;
+
+		mp["a"] = this.attributes;
+		
+		return mp;
+	}
+}

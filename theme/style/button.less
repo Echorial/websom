@@ -1,0 +1,46 @@
+.theme {
+	.button {
+		text-rendering: auto;
+		letter-spacing: normal;
+		word-spacing: normal;
+		text-transform: uppercase;
+		text-indent: 0px;
+		text-shadow: none;
+		text-align: start;
+		margin: 0;
+		font: 400 13.3333px Arial;
+
+		transition: background .3s, box-shadow .3s;
+		border: .05em solid @primary-border;
+		border-radius: @round-small - .1em;
+		overflow: hidden;
+		background: @primary-button;
+		color: @primary-button-text;
+		position: relative;
+		.theme-base > .action;
+		.theme-base > .no-outline;
+
+		padding: .7em .9em;
+
+		font-weight: bold;
+		.theme-base > .shadow;
+
+		&:active {
+			
+		}
+
+		&:hover {
+			background: @primary-button-hover;
+			.theme-base > .shadow-2;
+		}
+	}
+
+	.ripple-effect {
+		border-radius: 5000px;
+		position: absolute;
+		background: rgba(240, 248, 255, 0.29);
+		display: inline;
+		transition: 1.2s;
+		pointer-events: none;
+	}
+}

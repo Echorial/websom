@@ -1,0 +1,106 @@
+namespace Websom.OAuth {}
+
+class Websom.OAuth.Response {
+	bool failed = false;
+	string errorMessage = "";
+	map data = null;
+
+	trust void @construct(string errorMessage, map data) {
+		this.data = data;
+		if (this.errorMessage != null or errorMessage.length != 0)
+			this.failed = true;
+
+		this.errorMessage = errorMessage;
+	}
+}
+
+class Websom.OAuth.Client {
+	string clientId = "";
+	string pass = "";
+	string token = "";
+	string tokenUrl = "";
+	uint64 expiration = -1;	
+	string grantType = "client_credentials";
+
+	bool stored = false;
+	bool storeExpired = true;
+
+	void @construct(string tokenUrl, string clientId, string pass) {
+		this.clientId = clientId;
+		this.tokenUrl = tokenUrl;
+		this.pass = pass;
+	}
+
+	`Stores the client token in a file`
+	void store(string filename) {
+		this.stored = true;
+
+		if (FileSystem.exists(filename)) {
+			var raw = Websom.Json.parse(FileSystem.readSync(filename, "utf8"));
+
+			var uint64 cast = raw["expires"];
+			if (Websom.Time.now() > cast) {
+				// Expired
+				this.storeExpired = true;
+			}else{
+				this.storeExpired = false;
+				this.token = raw["token"];
+			}
+		}
+	}
+
+	void post(string url, map data, <void, Websom.OAuth.Response>function callback) {
+		native php {
+			if ($this->storeExpired) { 
+				$ch = curl_init();
+				curl_setopt($ch, CURLOPT_URL, $this->tokenUrl);
+				curl_setopt($ch, CURLOPT_HEADER, false);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				curl_setopt($ch, CURLOPT_POST, true);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_USERPWD, $this->clientId.":".$this->pass);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=" . $this->grantType);
+				
+				$error = curl_error($ch);
+				$response = null;
+
+				if ($error) {
+					$response = new Websom_OAuth_Response($error, []);
+				}else{
+					$cdata = curl_exec($ch);
+					$response = new Websom_OAuth_Response(null, json_decode($cdata, false));
+				}
+
+				curl_close($ch);
+
+				if ($response->failed) {
+					callback($response);
+					return;
+				}
+
+				$this->token = $response->data["access_token"];
+			}
+
+			$curl = curl_init($url);
+            curl_setopt($curl, CURLOPT_POST, false);
+            curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($curl, CURLOPT_HEADER, false);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($curl, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $this->token,
+                'Accept: application/json',
+                'Content-Type: application/json'
+			]);
+            $cdata = curl_exec($curl);
+			$error = curl_error($ch);
+            curl_close($curl);
+			
+			if ($error) {
+				$callback(new Websom_OAuth_Response($error, []));
+			}else{
+				$callback(new Websom_OAuth_Response(null, json_decode($cdata, false)));
+			}
+		}
+	}
+}

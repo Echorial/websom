@@ -1,0 +1,112 @@
+`@note The AddTo control increments arrayIndex, but does not update old entries.`
+class Websom.Controls.AddTo inherits Websom.MessageControl {
+	string fieldName = "";
+	string listFieldName = "";
+
+	Websom.Containers.Table collection = null;
+	Websom.Containers.Table item = null;
+
+	<void, Websom.Request, Websom.Data, Websom.Data, <void, bool>function>function check = null;
+
+	void @construct(Websom.Containers.Table collection, Websom.Containers.Table item, string listFieldName, string fieldName, <void, Websom.Request, Websom.Data, Websom.Data, <void, bool>function>function check) {
+		this.collection = collection;
+		this.item = item;
+		this.listFieldName = listFieldName;
+		this.check = check;
+		this.fieldName = fieldName;
+	}
+
+	void @construct(Websom.Containers.Table collection, Websom.Containers.Table item, string listFieldName, string fieldName) {
+		this.collection = collection;
+		this.item = item;
+		this.listFieldName = listFieldName;
+		this.fieldName = fieldName;
+	}
+
+	override void message(Websom.Input inp, string name, map data, <void, map>function send) {
+		/*if (this.server.userSystem.isLoggedIn(inp.request)) {
+			if (name == "add") {
+				send(null);
+
+				return null;
+			}else if (name == "get") {
+				var Websom.Containers.Table cast = this.container;
+				var select = cast.from();
+				this.query(inp.request, select, void () => {
+					this.container.loadFromSelect(select, void (<Websom.Data>array containerItems) => {
+						this.container.expose(inp.request, containerItems, void (<map>array docs) => {
+							var mp = new map();
+							mp["documents"] = docs;
+							send(mp);
+						});
+					});
+				});
+			}
+		}*/
+		send(null);
+	}
+
+	trust void addTo(Websom.Data collection, Websom.Data item) {
+		var that = this;
+		var Websom.Containers.Table list = collection.getFieldContainer(this.listFieldName);
+		var int itemId = item.getField("id");
+
+		var select = list.from()
+			.where("parentId").equals(collection.getField("id"))
+			.and()
+			.where(this.fieldName).equals(itemId);
+		
+		select.run(void (string err, <map>array datas) => {
+				if (err == null) {
+					if (datas.length > 0) { // Item already exists in this collection.
+						select.delete().run(void (string delErr, <map>array delData) => {
+
+						});
+					}else{ // Item is not added to this collection.
+						var int curId = collection.getField(that.listFieldName);
+						list.into()
+							.set("arrayIndex", curId + 1)
+							.set(that.fieldName, itemId)
+							.set("parentId", collection.getField("id"))
+							.run(void (string addErr, int newId) => {
+
+							});
+						var Websom.Containers.Table containerCast = collection.websomContainer;
+						
+						containerCast.from()
+							.where("id").equals(collection.getField("id"))
+							.set(that.listFieldName, curId + 1)
+							.update()
+							.run(void (string upErr, <map>array upData) => {
+
+							});
+					}
+				}
+			});
+	}
+
+	override void use(Websom.InputChain ic) {
+		var that = this;
+
+		ic.key("collection")
+			.is(this.collection)
+		.key("item")
+			.is(this.item)
+		.success(void (Websom.Input input, map data) => {
+			if (that.check != null) {
+				that.check(input.request, data["collection"], data["item"], void (bool shouldContinue) => {
+					if (shouldContinue) {
+						var Websom.Data collection = data["collection"];
+						var Websom.Data item = data["item"];
+						that.addTo(collection, item);
+					}else
+						input.sendError("Invalid input");
+				});
+			}else{
+				var Websom.Data collection = data["collection"];
+				var Websom.Data item = data["item"];
+				that.addTo(collection, item);
+			}
+		});
+	}
+}

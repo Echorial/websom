@@ -1,0 +1,86 @@
+info {
+	"name": "input-array",
+	"type": "control"
+}
+
+template {
+	<div class="input-array">
+		<transition-group name="list" tag="div">
+			<div :class="'array-item list' + ' ' + (itemClass || '')" v-for="(item, index) in items" :data-index="index" :key="item.arrayIndex">
+				<slot :data.sync="item"></slot>
+			</div>
+		</transition-group>
+		<div class="center"><button class="button add-item" @click="add()">{{addText || "Add"}}</button></div>
+	</div>
+}
+
+client {
+	props: ["data-default", "data", "value", "item-class", "add-text"],
+	data: function () {return {items: [], arrayIndex: 0}},
+	methods: {
+		getNonNestedChildren: function (elem) {
+			var $elem = $(elem);
+			return $elem.find("[key-name]").filter(function () {
+				var parent = $(this).closest(".array-item")[0];
+				return elem == parent;
+			});
+		},
+		getFromChildren: function (done) {
+			var that = this;
+			$(this.$el).find("> div > .array-item").each(function (index) {
+				var dones = 0;
+				$(this).children().each(function () {
+					if (this.__vue__)
+						dones++;
+				});
+				var children = that.getNonNestedChildren(this);
+				children.each(function () {
+					if (this.__vue__) {
+						this.__vue__.getValue((val) => {
+							that.getItems()[index][$(this).attr("key-name")] = val;
+							dones--;
+						});
+					}else{
+						that.getItems()[index][$(this).attr("key-name")] = Websom.Input.getNativeValue(this);
+					}
+				});
+			});
+		},
+		getItems: function () {
+			if (this.data)
+				return this.data;
+			else
+				return this.items;
+		},
+		add: function () {
+			this.items.push(JSON.parse(this.dataDefault));
+			this.arrayIndex++;
+			this.items[this.items.length - 1].arrayIndex = this.arrayIndex;
+			$(this.$el).trigger("input", [this.getItems()]);
+		},
+		getValue: function (done) {
+			this.getFromChildren();
+			done(this.getItems());
+		}
+	},
+	mounted: function () {
+		if (typeof this.value === "object")
+			this.data = JSON.parse(JSON.stringify(this.value));
+
+		this.items = this.getItems();
+		for (var i = 0; i < this.items.length; i++)
+			this.items[i].arrayIndex = i;
+		
+		this.arrayIndex += this.items.length - 1;
+
+		var that = this;
+		$(this.$el).on("click", "> div > .array-item .remove-item", function (e) {
+			var item = $(this).closest(".array-item");
+			item.css("width", item.width());
+
+			var index = parseInt($(item).attr("data-index"));
+			that.items.splice(index, 1);
+			e.stopPropagation();
+		});
+	}
+}

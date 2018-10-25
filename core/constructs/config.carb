@@ -1,0 +1,149 @@
+class Websom.Config {
+	map data = null;
+
+	bool https = false;
+
+	`Website name`
+	string name = "";
+
+	`This is for the theme-color meta tag`
+	string brandColor = "white";
+
+	string url = "localhost";
+
+	`Should Websom will tell the browser about the manifest file.`
+	bool hasManifest = true;
+
+	`By default websom expects the manifest to be in the resources folder.`
+	string manifestPath = "/resources/manifest.json";
+
+	`Website directory containing modules, resources, etc.`
+	string root = "";
+
+	bool sslVerifyPeer = true;
+
+	`Raw bucket data taken from the bucket.json file referenced in config.ini`
+	map bucket = null;
+
+	`Absolute bucket file location(optional)`
+	string bucketFile = "";
+
+	`The output file that Websom should put built js in.`
+	string javascriptOutput = "";
+
+	`The output file used to put compiled css assets in.`
+	string cssOutput = "";
+
+	`Directory for output resource files`
+	string resources = "";
+
+	`Directory for resource files that you can hook into and authenticate requests`
+	string restrictedResources = "";
+
+	`Absolute path to dir of this config file. Used in relative path solving for root and js/css output.`
+	string absolute = "";
+
+	`The default theme to use for pages without a theme in info`
+	string defaultTheme = "";
+
+	`Directory used to store caches.`
+	string cache = "";
+
+	`If dev mode is on.`
+	bool dev = false;
+
+	bool devSendMail = false;
+
+	`This will force server-side rendering. Mostly used for testing.`
+	bool forceSsr = false;
+
+	`Path to use when linking client resources on a page`
+	string clientResources = "";
+
+	`Location of the database config file`
+	string databaseFile = "";
+
+	void @construct() {
+		
+	}
+
+	`Constructs a config object based on the file located at $path`
+	fixed Websom.Config load(string path) {
+		var out = Websom.Ini.parse(path);
+		var config = new Websom.Config();
+		
+		config.name = out["name"];
+		config.absolute = FileSystem.dirName(path) + "/"; //WARN: TODO: Resolve the path, adding / is temp.
+		config.root = FileSystem.resolve(config.absolute + out["website"]);
+		config.javascriptOutput = out["javascript"];
+		config.cssOutput = out["css"];
+
+		if ("https" in out)
+			if (out["https"] === "1")
+				config.https = true;
+
+		if ("theme" in out)
+			config.defaultTheme = out["theme"];
+
+		if ("brandColor" in out)
+			config.brandColor = out["brandColor"];
+
+		if ("manifest" in out)
+			if (out["manifest"] !== "1")
+				config.hasManifest = false;
+
+		if ("forceSsr" in out)
+			if (out["forceSsr"] === "1")
+				config.forceSsr = true;
+		
+		if ("sslVerifyPeer" in out)
+			if (out["sslVerifyPeer"] !== "1")
+				config.sslVerifyPeer = false;
+
+		if ("manifestPath" in out)
+			config.manifestPath = out["manifestPath"];
+
+		if ("bucket" in out) {
+			var string file = out["bucket"];
+			config.bucketFile = FileSystem.resolve(FileSystem.dirName(path) + "/" + file);
+			config.bucket = Websom.Json.parse(FileSystem.readSync(config.bucketFile, "utf8"));
+		}
+
+		if ("resources" in out) {
+			config.resources = out["resources"];
+			if (FileSystem.exists(config.resources) == false)
+				config.resources = FileSystem.resolve(config.absolute + out["resources"]);
+		}else
+			config.resources = FileSystem.resolve(config.absolute + "./resources");
+
+		if ("restrictedResources" in out) {
+			config.restrictedResources = out["restrictedResources"];
+			if (FileSystem.exists(config.restrictedResources) == false)
+				config.restrictedResources = FileSystem.resolve(config.absolute + out["restrictedResources"]);
+		}else
+			config.resources = FileSystem.resolve(config.absolute + "./private");
+
+		if ("clientResources" in out)
+			config.clientResources = out["clientResources"];
+
+		if ("database" in out) {
+			var string file = out["database"];
+			config.databaseFile = FileSystem.resolve(FileSystem.dirName(path) + "/" + file);
+		}
+
+		if ("dev" in out)
+			if (out["dev"] === "1")
+				config.dev = true;
+			
+		if ("url" in out)
+				config.url = out["url"];
+
+		if ("devSendMail" in out)
+			if (out["devSendMail"] === "1")
+				config.devSendMail = true;
+
+		config.cache = config.root + "/tmp/cache/";
+
+		return config;
+	}
+}

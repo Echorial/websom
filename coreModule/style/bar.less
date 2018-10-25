@@ -1,0 +1,24 @@
+.rich-text-bar {
+	overflow: auto;
+	border-bottom: 1px solid #E0E0E0;
+
+	> span, > i {
+		padding: 7.5px;
+		cursor: pointer;
+		transition: .5s;
+		font-weight: bold;
+	}
+
+	> span:hover, > i:hover {
+		color: dodgerblue;
+	}
+}
+
+div.card.rich-text {
+	margin: 0;
+	padding: 0;
+}
+
+div.card.rich-text > textarea {
+	background: hsl(0, 0%, 99%);
+}

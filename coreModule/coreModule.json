@@ -1,0 +1,20 @@
+{
+	"name": "coreModule",
+	"id": "coreModule",
+	"version": "1.0",
+	"author": "Websom",
+	"license": "MIT",
+	"repo": "url",
+	"Website": "https://echorial.com",
+	"supports": {
+		"javascript": "*",
+		"php": "*"
+	},
+	"resources": [
+		{"path": "views/"},
+		{"type": "less", "path": "style/bar.less"}
+	],
+	"assets": [
+		{"name": "font-awesome"}
+	]
+}

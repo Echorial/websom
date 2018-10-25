@@ -1,0 +1,20 @@
+info {
+	"name": "parallax-item"
+}
+
+template {
+	<div class="parallax-item" :style="start + 'height: ' + height">
+		<slot/>
+	</div>
+}
+
+client {
+	data: () => { return {start: "", height: ""}; },
+	mounted: function () {
+		this.start = this.$attrs.start;
+		if ("square" in this.$attrs)
+			this.height = $(this.$el).width() + "px";
+		else
+			this.height = this.$attrs["parallax-height"];
+	}
+}

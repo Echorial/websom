@@ -1,0 +1,29 @@
+class Websom.Render.ViewRef inherits Websom.Render.Element {
+	Websom.Render.View view = null;
+
+	override void @construct(Websom.Server server, Websom.Render.View view) {
+		this.view = view;
+		this.children = new <Websom.Render.Node>array();
+		this.attributes = new map();
+	}
+
+	override string render(Websom.Render.Context ctx) {
+		var newCtx = new Websom.Render.Context();
+		newCtx.slot = this.children;
+		newCtx.slotContext = ctx;
+		for (var string key in this.attributes) {
+			if (key[0] == ":") {
+				newCtx.props[key.substr(1, key.length - 1)] = ctx.find(this.attributes[key]);
+			}else{
+				newCtx.props[key] = ctx.find(this.attributes[key]);
+			}
+		}
+		return this.view.render(newCtx); //TODO: Pass children and props
+	}
+
+	map serialize() {
+		var mp = this.basicSerialize();
+		mp["t"] = "r";
+		return mp;
+	}
+}

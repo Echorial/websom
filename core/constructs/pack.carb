@@ -1,0 +1,139 @@
+`Represents a pack`
+class Websom.Pack {
+	Websom.Server server = null;
+
+	`Theme name taken from the config`
+	string name = "";
+
+	`Absolute path to the directory of this pack.`
+	string root = "";
+
+	`Config map parsed out of the pack.json file.`
+	map config = null;
+
+	void @construct(Websom.Server server, string name, string root, map config) {
+		this.server = server;
+		this.name = name;
+		this.root = root;
+		this.config = config;
+	}
+
+	`Server calls on start.`
+	Websom.Status start() {
+		
+	}
+
+	string include() {
+		var dir = this.server.config.clientResources + "/pack/" + this.name;
+
+		var css = '<link rel="stylesheet" type="text/css" href="' + dir + '/pack.css"/>';
+
+		return '<script src="' + dir + '/pack.js"></script>' + css;
+	}
+
+	void write(string js, string css) {
+		var dir = this.server.config.resources + "/pack/" + this.name;
+
+		if (FileSystem.exists(dir) == false)
+			FileSystem.makeDir(dir);
+
+		FileSystem.writeSync(dir + "/pack.js", js);
+		FileSystem.writeSync(dir + "/pack.css", css);
+	}
+
+	void buildAndSave(<void, string>function callback `callback(string err)`) {
+		var that = this;
+		this.build(void (string err, string js, string css) => {
+			that.write(js, css);
+			callback(err);
+		});
+	}
+
+	<Websom.View>array getViews() {
+		var views = new <Websom.View>array();
+		var <map>array resources = this.config["resources"];
+
+		var outputs = this.server.resource.compile("Pack." + this.name, this.root, resources);
+		
+		for (var int i in outputs) {
+			var resource = outputs[i];
+			if (resource.type == "view") {
+				var view = new Websom.View(this.server);
+				view.loadFromFile(resource.file);
+				
+				views.push(view);
+			}
+		}
+
+		return views;
+	}
+
+	void build(<void, string, string, string>function callback `callback(string err, string js, string css)`) {
+		var that = this;
+		var dones = 0;
+		var css = "";
+		var js = "";
+		var err = "";
+
+		var doneJs = void (bool hadError, string results) => {
+			dones--;
+			js += results;
+
+			if (hadError) {
+				err += results + "\n";
+			}
+
+			if (dones == 0) {
+				//that.write(js, css);
+				callback(err, js, css);
+			}
+		};
+
+		var doneCss = void (bool hadError, string results) => {
+			dones--;
+			css += results;
+
+			if (hadError) {
+				err += results + "\n\n";
+			}
+
+			if (dones == 0) {
+				callback(err, js, css);
+			}
+		};
+
+		var <map>array resources = this.config["resources"];
+
+		var outputs = this.server.resource.compile("Pack." + this.name, this.root, resources);
+		dones = outputs.length;
+		
+		for (var int i in outputs) {
+			var resource = outputs[i];
+			if (resource.type == "javascript") {
+				resource.build(doneJs);
+			}else if (resource.type == "less") {
+				resource.reference = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../theme/style/main.less");
+				resource.build(doneCss);
+			}else if (resource.type == "css") {
+				resource.build(doneCss);
+			}else if (resource.type == "view") {
+				var view = new Websom.View(this.server);
+				var viewErr = view.loadFromFile(resource.file);
+				if (viewErr != null)
+					err += viewErr.display() + "\n";
+				
+				view.hasLocalExport = true;
+
+				doneJs(false, view.buildDev()); //TODO: Update for buildProduction
+				//TODO: Keep track of views in this or send to view service
+				
+			}else if (resource.isInvalid) {
+				err += "Invalid resource: '" + resource.file + "'\n";
+				dones--;
+				if (i == outputs.length - 1)
+					if (dones == 0)
+						callback(err, js, css);
+			}
+		}
+	}
+}

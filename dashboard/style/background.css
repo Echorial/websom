@@ -1,0 +1,36 @@
+.dashboard-background {
+	background: linear-gradient(1deg, #1252aa, #091b7f, #5000d5);
+	background-size: 600% 600%;
+
+	-webkit-animation: dashboard-grad 35s ease infinite;
+	-moz-animation: dashboard-grad 35s ease infinite;
+	animation: dashboard-grad 35s ease infinite;
+
+	/* Old
+	background: linear-gradient(217deg, #00BCD4, rgba(255,0,0,0) 70.71%), linear-gradient(127deg, #0D47A1, rgba(0,255,0,0) 70.71%), linear-gradient(336deg, rgba(0,0,255,.8), rgba(0,0,255,0) 70.71%);
+	*/
+}
+
+@-webkit-keyframes dashboard-grad {
+    0%{background-position:78% 0%}
+    50%{background-position:23% 100%}
+    100%{background-position:78% 0%}
+}
+@-moz-keyframes dashboard-grad {
+    0%{background-position:78% 0%}
+    50%{background-position:23% 100%}
+    100%{background-position:78% 0%}
+}
+@keyframes dashboard-grad { 
+    0%{background-position:78% 0%}
+    50%{background-position:23% 100%}
+    100%{background-position:78% 0%}
+}
+
+div.lm_content.editor-check {
+    background-color: white;
+    background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+

@@ -1,0 +1,402 @@
+#script Carbon
+
+var datas = [];
+var bridge = [];
+
+Carbon.on("inherits.Websom.Bridge", void (Carbon.Class base, Carbon.Class cls) => {
+	bridge.push(cls);
+});
+
+Carbon.on("inherits.Websom.Data", void (Carbon.Class base, Carbon.Class cls) => {
+	if (cls.route != "Websom.StandardData")
+		datas.push(cls);
+});
+
+var getPrimaryKey = string (Carbon.Class cls) => {
+	var rtn = "";
+	for (var int i = 0; i < cls.members.length; i += 1) {
+		var member = cls.members.index(i);
+		if (member.hasFlag("primary"))
+			rtn = member.name; //WARN: Does not work on fieldName
+	}
+	return rtn;
+};
+
+var buildLoadMember = string (Carbon.Member member) => {
+	var fieldName = member.name;
+
+	var returned = false;
+
+	if (member.hasFlag("linked")) {
+		if (member.output.reference.route == "array") {
+			var tt = member.output.templates.index(0);
+			var template = tt.reference.route;
+			var tbl = member.name + "Container.table + '_" + member.name + "'";
+			var loadRows = "var tempContainer = new Websom.Containers.Table(that.websomContainer.server, " + tbl + ", " + template + ".getDataInfo()); dones += rows.length; for (var int i in rows) {var inst = new " + template + "(that.websomContainer.server); inst.websomParentData = that; inst.websomFieldInfo = dataInfo.getField('" + member.name + "'); inst.websomContainer = tempContainer; that." + member.name + ".push(inst); inst.setField('arrayIndex', rows[i]['arrayIndex']); if (rows.length > 0) inst.callLoadFromMap(rows[i], checkDone); else checkDone('');}";
+			var select = "var Websom.Containers.Table " + member.name + "Container = this.websomContainer; this.websomContainer.server.database.primary.from(" + tbl + ").where('parentId').equals(raw['id']).order('arrayIndex', 'ASC').run(void (string err, <map>array rows) => {" + loadRows + " checkDone('');});";
+			returned = true;
+			return select;
+		}
+
+		var refed = typeOf(member.output.reference.getAttribute("Linked")) != "null";
+		if (returned == false)
+		if (refed == false)
+		if (member.output.reference.descendantOf(Carbon.findClass("primitive")) == false) {
+			var template = member.output.reference.route;
+			var tbl = member.name + "Container.table + '_" + member.name + "'";
+			var noLoad = "checkDone('Unable to load property " + member.name + "');";
+			if (typeOf(member.output.reference.getAttribute("Component")) != "null")
+				noLoad = "var Websom.Data instCast = inst; inst.setField('parentId', raw['id']); instCast.insert(void (string iErr, primitive key) => { inst.setField('id', key); if (iErr != null) checkDone(iErr); else checkDone(''); });";
+
+			var loadRows = "var tempContainer = new Websom.Containers.Table(that.websomContainer.server, " + tbl + ", " + template + ".getDataInfo()); dones += 1; var inst = new " + template + "(that.websomContainer.server); inst.websomParentData = that; inst.websomFieldInfo = dataInfo.getField('" + member.name + "'); inst.websomContainer = tempContainer; that." + member.name + " = inst; if (rows.length > 0) {inst.callLoadFromMap(rows[0], checkDone);}else{" + noLoad + "}";
+			
+			var select = "var Websom.Containers.Table " + member.name + "Container = this.websomContainer; this.websomContainer.server.database.primary.from(" + tbl + ").where('parentId').equals(raw['id']).run(void (string err, <map>array rows) => {" + loadRows + " checkDone('');});"; //TODO: Use primary key
+			returned = true;
+			return select;
+		}
+	}
+	if (typeOf(member.output.reference.getAttribute("Linked")) != "null") {
+		if (returned == false) {
+			var tbl = member.output.reference.getAttribute("Linked");
+			var primary = getPrimaryKey(member.output.reference);
+			var load = "var tempContainer = new Websom.Containers.Table(that.websomContainer.server, '" + tbl.value + "', " + member.output.reference.route + ".getDataInfo()); var inst = new " + member.output.reference.route + "(that.websomContainer.server); inst.websomParentData = that; inst.websomFieldInfo = dataInfo.getField('" + member.name + "'); inst.websomContainer = tempContainer; that." + member.name + " = inst; if (rows.length > 0) inst.callLoadFromMap(rows[0], checkDone); else checkDone('');";
+			returned = true;
+			return "this.websomContainer.server.database.primary.from('" + tbl.value + "').where('" + primary + "').equals(raw['" + fieldName + "']).run(void (string err, <map>array rows) => {" + load + "});";
+		}
+	}
+
+	if (returned == false)
+	if (member.output.reference.descendantOf(Carbon.findClass("primitive"))) {
+		if (member.hasFlag("linked") == false) {
+			returned = true;
+			if (member.output.reference.route == "bool")
+				return "this." + member.name + " = raw['" + fieldName + "'] == 1;";
+
+			if (member.output.reference.route != "bool")
+				return "this." + member.name + " = raw['" + fieldName + "'];";
+		}
+	}
+
+	if (returned == false) {
+		var load = "this." + member.name + ".read(raw['" + fieldName + "']);";
+		
+		return "this." + member.name + " = new " + member.output.reference.route + "(this.websomServer); " + load;
+	}
+};
+
+var valToStr = string (primitive val) => {
+	if (typeOf(val) == "string")
+		return '"' + val + '"';
+	if (typeOf(val) == "number")
+		return val.toString();
+
+	if (typeOf(val) == "bool") {
+		if (val)
+			return "true";
+		if (val == false)
+			return "false";
+	}
+};
+
+var buildInfoMember = string (Carbon.Member member) => {
+	var fieldName = member.name;
+	var structure = "var " + member.name + "Structure = new Websom.DatabaseField('" + fieldName + "', null);";
+	var isPrimitive = true;
+	var singleLink = false;
+	var doneWithStructure = false;
+
+	if (member.output.reference.descendantOf(Carbon.findClass("Websom.Data"))) {
+		//TODO: Find primary
+		isPrimitive = false;
+	}
+
+	if (member.output.reference.descendantOf(Carbon.findClass("primitive"))) {
+		if (member.output.reference.route == "string") {
+			var length = member.getAttribute("Length");
+			if (typeOf(length) == "null") {
+				structure += member.name + "Structure.type = new Websom.DatabaseTypes.Text();";
+			}
+			if (typeOf(length) != "null") {
+				var str = length.value.toString();
+				structure += member.name + "Structure.type = new Websom.DatabaseTypes.Varchar(" + str + ");";
+			}
+		}
+		if (member.output.reference.route == "int") {
+			if (member.hasFlag("big"))
+				structure += member.name + "Structure.type = new Websom.DatabaseTypes.BigInt();";
+			if (member.hasFlag("big") == false)
+				structure += member.name + "Structure.type = new Websom.DatabaseTypes.Int();";
+		}
+		if (member.output.reference.route == "int64") {
+			structure += member.name + "Structure.type = new Websom.DatabaseTypes.BigInt();";
+		}
+		if (member.output.reference.route == "uint64") {
+			structure += member.name + "Structure.type = new Websom.DatabaseTypes.BigInt();";
+			structure += member.name + "Structure.flags.push(new Websom.DatabaseFlags.Unsigned());";
+		}
+		if (member.output.reference.route == "float") {
+			structure += member.name + "Structure.type = new Websom.DatabaseTypes.Float();";
+		}
+		if (member.output.reference.route == "bool") {
+			structure += member.name + "Structure.type = new Websom.DatabaseTypes.Bool();";
+		}
+		if (member.output.reference.route == "array") { //TODO: Scan for external
+			if (member.hasFlag("linked"))
+				structure += member.name + "Structure.type = new Websom.DatabaseTypes.Int();";
+		}
+		doneWithStructure = true;
+	}
+	
+	if (member.hasFlag("autoIncrement")) {
+		structure += member.name + "Structure.flags.push(new Websom.DatabaseFlags.AutoIncrement());";
+	}
+
+	if (member.hasFlag("edit")) {
+		structure += member.name + "Structure.flags.push(new Websom.DatabaseFlags.Edit());";
+	}
+
+	if (member.hasFlag("primary")) {
+		structure += member.name + "Structure.flags.push(new Websom.DatabaseFlags.Primary());";
+	}
+
+	if (member.hasFlag("linked")) {
+		if (doneWithStructure == false) {
+			structure += member.name + "Structure.type = new Websom.DatabaseTypes.Int();";
+			singleLink = true;
+			isPrimitive = false;
+			doneWithStructure = true;
+		}
+		
+		var type = "single";
+		var template = member.output.reference.route;
+		if (member.output.reference.route == "array") {
+			type = "array";
+			var tt = member.output.templates.index(0);
+			template = tt.reference.route;
+		}
+		if (member.output.reference.route == "map") {
+			type = "map";
+			var tt = member.output.templates.index(0);
+			template = tt.reference.route;
+		}
+		structure += member.name + "Structure.flags.push(new Websom.DatabaseFlags.Linked(null, '" + type + "', '" + template + "'));";
+	}
+
+	if (typeOf(member.output.reference.getAttribute("Linked")) != "null") {
+		singleLink = true;
+		var to = member.output.reference.getAttribute("Linked");
+		structure += member.name + "Structure.type = new Websom.DatabaseTypes.Int();"; //TODO: Look for primary key and use that type
+		structure += member.name + "Structure.flags.push(new Websom.DatabaseFlags.Linked('" + to.value + "', null, null));";
+	}
+
+	if (typeOf(member.output.reference.getAttribute("Structure")) != "null") {
+		var to = member.output.reference.getAttribute("Structure");
+		var length = member.getAttribute("Length");
+		var str = "";
+		if (typeOf(length) == "null") {
+			var tLength = member.output.reference.getAttribute("Length");
+			str = tLength.value.toString();
+		}
+
+		if (typeOf(length) != "null") {
+			str = length.value.toString();
+		}
+		structure += member.name + "Structure.type = new Websom.DatabaseTypes.Varchar(" + str + ");";
+	}
+
+	var info = structure + "info.fields.push(new Websom.FieldInfo('" + member.name + "', '" + fieldName + "', '" + member.output.reference.route + "', " + member.name + "Structure));";
+	
+	if (typeOf(member.output.reference.getAttribute("Structure")) != "null") {
+		info += "info.fields[info.fields.length - 1].isComplex = true;";
+		if (typeOf(member.output.reference.getAttribute("Control")) != "null") {
+			var control = member.output.reference.getAttribute("Control");
+			var className = control.value;
+			info += "info.fields[info.fields.length - 1].controlClass = '" + className + "';";
+		}
+	}
+
+	if (singleLink) {
+		info += "info.fields[info.fields.length - 1].singleLink = true;";
+	}
+
+	if (isPrimitive == false) {
+		info += "info.fields[info.fields.length - 1].isPrimitive = false;";
+	}
+
+	if (member.hasFlag("server")) {
+		info += "info.fields[info.fields.length - 1].onlyServer = true;";
+	}
+
+	if (typeOf(member.getAttribute("CanBeNull")) != "null") {
+		info += "info.fields[info.fields.length - 1].canBeNull = true;";
+	}
+
+	var attrs = member.attributes;
+	for (var int i = 0; i < attrs.length; i += 1) {
+		var attr = attrs.index(i);
+		var val = valToStr(attr.value);
+		info += "info.fields[info.fields.length - 1].attributes['" + attr.key + "'] = " + val + ";";
+	}
+	
+	return info;
+};
+
+Carbon.on("classes.end", void () => {
+	var bridgeBuilder = "";
+	for (var int b = 0; b < bridge.length; b += 1) {
+		var br = bridge.index(b);
+		Carbon.Property.eval("override string name = '" + br.route + "';", br);
+		var client = "var map methods = new map();";
+		var server = [];
+		var bm = 0;
+		for (var int bm = 0; bm < br.members.length; bm += 1) {
+			var member = br.members.index(bm);
+			if (member.type == "method") {
+				if (typeOf(member.getAttribute("Server")) != "null") {
+					server.push('"' + member.name + '"');
+				}
+				if (typeOf(member.getAttribute("Client")) != "null") {
+					client += "methods['" + member.name + "'] = " + websomEncode(websomNative(member)) + ";";
+				}
+			}
+		}
+
+		Carbon.Method.eval("override map clientMethods() {" + client + " return methods;}", br);
+		Carbon.Method.eval("phpNoRef override <string>array serverMethods() {return [" + server.join(", ") + "];}", br);
+		bridgeBuilder += "bridges.push(new " + br.route + "(this.server));";
+	}
+
+	var module = getWebsomRegister();
+	Carbon.Method.eval("override <Websom.Bridge>array setupBridges() {var bridges = new <Websom.Bridge>array(); " + bridgeBuilder + " return bridges;}", module);
+
+
+	for (var int i = 0; i < datas.length; i += 1) {
+		var data = datas.index(i);
+		var loadFromMap = data.getMember("loadFromMap");
+
+		var route = data.route;
+		if (data.reroute.length > 0)
+			route = data.reroute;
+		
+		if (data.hasMember("getInfo") == false) {
+			var infos = [];
+			var members = data.members;
+			
+			var m = 0;
+			for (var int m = 0; m < members.length; m += 1) {
+				var member = members.index(m);
+				if (member.hasFlag("field")) {
+					infos.push(buildInfoMember(member));
+				}
+			}
+
+			var infoMod = "";
+			if (typeOf(data.getAttribute("Linked")) != "null") {
+				var linked = data.getAttribute("Linked");
+				infoMod += "info.linked = true; info.linkTable = " + linked.value + ";"; //WARN
+			}
+
+			var attrSet = "";
+			
+			var attrs = data.attributes;
+			var j = 0;
+			for (var int j = 0; j < attrs.length; j += 1) {
+				var attr = attrs.index(j);
+				var val = valToStr(attr.value);
+				attrSet += "info.attributes['" + attr.key + "'] = " + val + ";";
+			}
+
+			Carbon.Method.eval("fixed Websom.DataInfo getInfo() {var info = new Websom.DataInfo('" + route + "'); " + attrSet + infos.join("") + " return info;}", data);
+		}
+
+		var interfaces = [];
+
+		for (var int j = 0; j < data.members.length; j += 1) {
+			var member = data.members.index(j);
+			if (typeOf(member.getAttribute("Interface")) != "null") {
+				var interfaceAttr = member.getAttribute("Interface");
+				interfaces.push("if (route == '" + interfaceAttr.value + "') {this." + member.name + "(input, data, respond);}");
+			}
+		}
+
+		if (interfaces.length > 0) {
+			var interfaceStr = interfaces.join("else");
+			Carbon.Method.eval("void onInputInterfaceAuto(Websom.Input input, string route, map data, <void, map>function respond) {" + interfaceStr + "else{respond(null);}}", data);
+		}
+
+		if (data.hasMember("loadFromMap") == false) {
+			var loads = [];
+			var waitLoads = [];
+			var members = data.members;
+			var m = 0; //Carbide not clearing m
+			var isSync = true;
+			var memSyncs = 0;
+			for (var int m = 0; m < members.length; m += 1) {
+				var memSync = true;
+				var member = members.index(m);
+				
+				if (typeOf(member.getAttribute("NoLoad")) == "null")
+				if (member.hasFlag("linked")) {
+					isSync = false;
+					memSync = false;
+				}
+
+				if (typeOf(member.getAttribute("NoLoad")) == "null")
+				if (typeOf(member.output.reference.getAttribute("Linked")) != "null") {
+					isSync = false;
+					memSync = false;
+				}
+
+				/*if (member.output.reference.descendantOf(Carbon.findClass("Websom.Data"))) {
+					memSync = false;
+					isSync = false;
+				}*/
+					
+				if (member.hasFlag("field")) {
+					if (memSync == false)
+						memSyncs += 1;
+
+					if (typeOf(member.getAttribute("NoLoad")) == "null") { //TODO: Check for false values
+						if (memSync == false)
+							waitLoads.push(buildLoadMember(member));
+						
+						if (memSync)
+							loads.push(buildLoadMember(member));
+					}
+				}
+			}
+			var end = ""; //WARN: "if (dones == 0) done('');";
+			if (isSync)
+				end = "dones++; checkDone('');";
+			var strs = memSyncs.toString();
+			Carbon.Method.eval("void loadFromMap(map raw, <void, string>function done) {var that = this; var dataInfo = " + route + ".getDataInfo(); var dones = " + strs + "; var checkDone = void (string err) => {dones--;if (dones == 0) {done(err);}}; " + loads.join("") + waitLoads.join("") + end + "}", data);
+		}
+
+		if (data.hasMember("read") == false)
+			Carbon.Method.eval("void read(string content, <void, string>function done) {var parsed = new map(); this.loadFromMap(parsed, done);}", data);
+
+		var exposed = "";
+		var em = 0;
+		for (var int em = 0; em < data.members.length; em += 1) {
+			var member = data.members.index(em);
+
+			if (typeOf(member.getAttribute("NoLoad")) == "null")
+			if (member.hasFlag("expose")) {
+				if (member.output.reference.descendantOf(Carbon.findClass("primitive"))) {
+					if (member.output.reference.route != "array") {
+						exposed += "raw['" + member.name + "'] = this." + member.name + ";";
+					}
+					if (member.output.reference.route == "array") {
+						exposed += "var " + member.name + "Array = new array(); for (var int i in this." + member.name + ") {" + member.name + "Array.push(this." + member.name + "[i].exposeToClient());} raw['" + member.name + "'] = " + member.name + "Array;";
+					}
+				}
+				if (member.output.reference.descendantOf(Carbon.findClass("primitive")) == false) {
+					exposed += "raw['" + member.name + "'] = this." + member.name + ".exposeToClient();";
+				}
+			}
+		}
+		Carbon.Method.eval("map exposeToClientBase() {var raw = new map(); " + exposed + " return raw;}", data);
+	}
+});
+
+#end script

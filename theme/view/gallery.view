@@ -1,0 +1,28 @@
+info {
+	"name": "gallery"
+}
+
+template {
+	<div class="gallery">
+		<div ref="slides" class="slides">
+			<div class="slide" style="opacity: 1"><img :src="data[currentSlide].url"></div>
+		</div>
+		<div class="thumbs">
+			<div class="thumb"><img @click="set(index)" :src="image.url" v-for="(image, index) in data"/></div>
+		</div>
+	</div>
+}
+
+client {
+	props: ["data", "auto"],
+	data: function () {
+		return {currentSlide: 0};
+	},
+	methods: {
+		set: function (index) {
+			/*var width = $(this.$el).width();
+			$(this.$refs.slides).animate({scrollLeft: width * index}, 400);*/
+			this.currentSlide = index;
+		}
+	}
+}

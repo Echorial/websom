@@ -1,0 +1,26 @@
+info {
+	"name": "view-toolbox"
+}
+
+template {
+	<div>
+		<card class="editor-block" data-type="dynamic" data-node="div">
+			div
+		</card>
+		<card v-for="(block, name) in blocks" v-if="typeof block.display == 'function'" class="editor-block" data-type="block" :data-node="name">
+			<div v-html="block.display()"></div>
+			{{name}}
+		</card>
+	</div>
+}
+
+client {
+	computed: {
+		blocks: function () {
+			return window.Websom.Editor.Blocks;
+		}
+	},
+	created: function () {
+		Websom.Editor.listenForToolbox();
+	}
+}

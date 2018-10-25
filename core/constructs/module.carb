@@ -1,0 +1,66 @@
+`
+Base class for all Websom modules including standard interfaces.
+A module is like a plugin providing generic tools for users to install and use seamlessly with other modules.
+TODO: Add examples and mor docs
+`
+header class Websom.Module {
+	Websom.Server server = null;
+
+	`Content of moduleName.json file at module root`
+	map baseConfig = null;
+
+	<Websom.Container>array containers = new <Websom.Container>array();
+	<Websom.Bridge>array bridges = new <Websom.Bridge>array();
+
+	`Display name of module`
+	string name = "";
+
+	`Unique id for module(typically the name of the module)`
+	string id = "";
+
+	`Absolute module root directory. @note This is loaded dynamically by the module service.`
+	string root = "";
+
+	string version = "";
+
+	string author = "";
+
+	string license = "";
+
+	string repo = "";
+
+	`Base constructor that should not be overriden(use spawn instead)`
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	`This is used to send(string key, primitive value) client data every route request. Access this data on the client via Websom.Client[key]`
+	bool clientData(Websom.Request req, <void, string, primitive>function send) {
+		return false;
+	}
+
+	`Called as soon as the module is constructed(in Websom.Services.Module.start/reload). This method is not safe as other utils and services may not be initialized yet.`
+	Websom.Status spawn(map config) {
+		this.baseConfig = config;
+		this.name = config["name"];
+		this.id = config["id"];
+	}
+
+	`Called after the server has started(before listening) services and utils. @note If you need to access another module after the start cycle use Websom.Module.loaded`
+	Websom.Status start() {
+
+	}
+
+	`Called when the modules are reloading, use this to clean up any resources. @warn Other modules may have stopped already, so they will be lost to the module service.`
+	Websom.Status stop() {
+		
+	}
+
+	phpNoRef <Websom.Container>array setupData() {
+
+	}
+
+	phpNoRef <Websom.Bridge>array setupBridge() {
+
+	}
+}

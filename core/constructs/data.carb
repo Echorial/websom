@@ -1,0 +1,749 @@
+header class Websom.Data {
+	override Websom.Server websomServer = null;
+
+	`@note Only applied when containerUpdate or containerInsert are called`
+	override Websom.FieldInfo websomFieldInfo = null;
+
+	`@note Only applied when containerUpdate or containerInsert are called`
+	override Websom.Data websomParentData = null;
+
+	override Websom.Container websomContainer = null;
+
+	void @construct(Websom.Server server) {
+		this.websomServer = server;
+	}
+
+	void read(primitive value) {} //Sync io for inline Websom.Data
+	primitive write() {}
+
+	override trust void setField(string name, everything value) {
+		native javascript {
+			this[name] = value;
+		}
+
+		native php {
+			$this->$name = $value;
+		}
+	}
+
+	Websom.Containers.Table getContainer(string realFieldName) {
+		var info = this.fetchFieldInfo();
+
+		for (var int i in info.fields) {
+			var field = info.fields[i];
+			if (field.realName == realFieldName) {
+				var Websom.Containers.Table thisTable = this.websomContainer;
+				if (field.structure.hasFlag("linked")) {
+					var Websom.DatabaseFlags.Linked linked = field.structure.getFlag("linked");
+					var typeInfo = Websom.DataInfo.getDataInfoFromRoute(linked.fieldType);
+					return new Websom.Containers.Table(this.websomServer, thisTable.table + "_" + field.fieldName, typeInfo);
+				}
+			}
+		}
+		return null;
+	}
+
+	override void onInputInterface(Websom.Input input, string route, map data, <void, map>function respond) {
+		native javascript {
+			if (this.onInputInterfaceAuto)
+				this.onInputInterfaceAuto(input, route, data, respond);
+			else
+				respond(null);
+		}
+
+		native php {
+			if (method_exists($this, "onInputInterfaceAuto"))
+				$this->onInputInterfaceAuto($input, $route, $data, $respond);
+			else
+				$respond(null);
+		}
+	}
+
+	everything getField(string name) {
+		native javascript {
+			return this[name];
+		}
+		
+		native php {
+			return property_exists($this, $name) ? $this->$name : null;
+		}
+	}
+
+	primitive getPublicId() {
+		return this.getField("publicId"); //TODO: Use publicKey flag from dataInfo
+	}
+
+	void callLoadFromMap(map raw, <void, string>function callback) {
+		native javascript {
+			return this.loadFromMap(raw, callback);
+		}
+
+		native php {
+			return $this->loadFromMap($raw, $callback);
+		}
+	}
+
+	fixed Websom.DataInfo getDataInfo() {
+		native javascript {
+			return this.getInfo();
+		}
+
+		native php {
+			return self::getInfo();
+		}
+	}
+
+	//abstract void loadFromMap(map data, <void, string>function done) {}
+	void fromPrimary(primitive key, <void, string>function done) {}
+
+	void loadFromPublicKey(Websom.Containers.Table parent, primitive key, <void, string>function done) {
+		var that = this;
+		that.websomContainer = parent;
+		parent.server.database.primary.from(parent.table).where("publicId").equals(key).run(void (string err, <map>array res) => {
+			if (res.length == 0)
+				done("No data found");
+			else
+				that.callLoadFromMap(res[0], done);
+		});
+	}
+
+	void loadFromId(Websom.Containers.Table parent, primitive id, <void, string>function done) {
+		var that = this;
+		that.websomContainer = parent;
+		parent.server.database.primary.from(parent.table).where("id").equals(id).run(void (string err, <map>array res) => {
+			if (res.length == 0)
+				done("No data found");
+			else
+				that.callLoadFromMap(res[0], done);
+		});
+	}
+
+	`Called on components to setup any sub interfaces`
+	fixed void registerInterfaces(Websom.Container parent, Websom.Containers component, <Websom.Container, string>function getFieldContainer) {
+
+	}
+
+	override fixed void spawnFromId(Websom.Server server, string table, primitive id, <void, string, Websom.Data>function done) {
+		var Websom.DataInfo dataInfo = null;
+		native javascript {
+			dataInfo = this.getInfo();
+		}
+
+		native php {
+			$dataInfo = self::getInfo();
+		}
+
+		var container = new Websom.Containers.Table(server, table, dataInfo);
+		var data = dataInfo.spawn(server);
+		data.websomContainer = container;
+		data.loadFromId(container, id, void (string err) => {
+			done(err, data);
+		});
+	}
+
+	//abstract fixed Websom.DataInfo getInfo() {}
+
+	`Override this method to customize the data exposed to the client before sending`
+	void onSend(Websom.Request req, map exposed, <void, map>function send) {
+		this.onComponentSend(req, exposed, send);
+	}
+
+	void onComponentSend(Websom.Request req, map data, <void, map>function send) {
+		var info = this.fetchFieldInfo();
+		var componentFields = new <Websom.FieldInfo>array();
+
+		for (var int i in info.fields) {
+			var field = info.fields[i];
+			if (field.singleLink) {
+				var fieldType = Websom.DataInfo.getDataInfoFromRoute(field.typeRoute);
+				if ("Component" in fieldType.attributes)
+					if (this.getField(field.realName) != null)
+						componentFields.push(field);
+			}
+		}
+
+		var completed = componentFields.length;
+
+		if (completed == 0) {
+			send(data);
+			return null;
+		}
+
+		var checkSend = void () => {
+			completed--;
+			if (completed == 0)
+				send(data);
+		};
+
+		for (var int i in componentFields) {
+			var field = componentFields[i];
+			var Websom.Data component = this.getField(field.realName);
+			component.onSend(req, data[field.realName], void (map newData) => {
+				data[field.realName] = newData;
+				checkSend();
+			});
+		}
+	}
+
+	fixed Websom.DatabaseStructure structureTable() {
+
+	}
+
+	
+	Websom.Container getFieldContainer(string fieldName) {
+		var dataInfo = this.fetchFieldInfo();
+		var fieldInfo = dataInfo.getField(fieldName);
+		var Websom.DatabaseFlags.Linked link = fieldInfo.structure.getFlag("linked");
+		if (link == null) {
+			return null;
+		}
+		
+		var Websom.Containers.Table cast = this.websomContainer;
+
+		return new Websom.Containers.Table(this.websomServer, cast.table + "_" + fieldName, Websom.DataInfo.getDataInfoFromRoute(link.fieldType));
+	}
+
+	void nativeLoadFromMap(map raw, <void, string>function done) {
+		native javascript {
+			this.loadFromMap(raw, done);
+		}
+
+		native php {
+			$this->loadFromMap($raw, $done);
+		}
+	}
+
+	override map exposeToClient() {
+		native javascript {
+			return this.exposeToClientBase();
+		}
+
+		native php {
+			return $this->exposeToClientBase();
+		}
+	}
+
+	override void linkedExpose() {
+		
+	}
+
+	Websom.DataInfo fetchFieldInfo() {
+		var Websom.DataInfo info = null;
+		
+		native javascript {
+			info = this.constructor.getInfo();
+		}
+
+		native php {
+			$info = self::getInfo();
+		}
+
+		return info;
+	}
+
+	Websom.FieldInfo getPrimary() {
+		var fi = this.fetchFieldInfo();
+		for (var int i in fi.fields) {
+			var field = fi.fields[i];
+			for (var int f in field.structure.flags) {
+				if (field.structure.flags[f].type == "primary")
+					return field;
+			}
+		}
+
+		return null;
+	}
+
+	primitive getFieldFromName(string realName) {
+		native javascript { return this[realName]; }
+		native php { return $this->$realName; }
+	}
+
+	void containerInsert(Websom.Input input, Websom.Container container, Websom.DatabaseInsert insert, map data, <void>function done) {
+		done();
+	}
+	
+	void containerUpdate(Websom.Input input, Websom.Container container, Websom.DatabaseSelect update, map data, <void>function done) {
+		done();
+	}
+
+	void update(<void, string>function done) {
+		if (this.websomContainer) {
+			var field = this.getPrimary();
+			var Websom.Containers.Table cast = this.websomContainer;
+			var table = "unkown";
+			table = cast.table;
+			if (field) {
+				var update = this.websomContainer.server.database.primary.from(table)
+				.where(field.fieldName).equals(this.getFieldFromName(field.realName)).update();
+				this.buildUpdate(update);
+				update.run(void (string err, <map>array docs) => {
+					done(err);
+				});
+			}
+				
+		}
+	}
+
+	void insert(<void, string, primitive>function done) {
+		if (this.websomContainer) {
+			var Websom.Containers.Table cast = this.websomContainer;
+			var table = "unkown";
+			table = cast.table;
+			var insert = this.websomContainer.server.database.primary.into(table);
+			this.buildInsert(insert);
+			insert.run(void (string err, primitive key) => {
+				done(err, key);
+			});
+		}
+	}
+
+	void buildInsert(Websom.DatabaseInsert insert) {
+		var Websom.DataInfo info = this.fetchFieldInfo();
+
+
+		//WARN: TODO: Parent id hack
+		native javascript {
+			if (this.parentId)
+				insert.set("parentId", this.parentId);
+		}
+
+		native php {
+			if (property_exists($this, "parentId"))
+				$insert->set("parentId", $this->parentId);
+		}
+
+		for (var int i in info.fields) {
+			var field = info.fields[i];
+			var primitive value = null;
+			
+			native javascript {
+				value = this[field.realName];
+			}
+
+			native php {
+				$real = $field->realName;
+				$value = $this->$real;
+			}
+
+			var type = value.typeAsString();
+
+			if (type == "integer" or type == "float" or type == "string")
+				insert.set(field.fieldName, value);
+			else if (type == "boolean") {
+				var setVal = 0;
+				if (value) setVal = 1;
+				insert.set(field.fieldName, setVal);
+			}
+		}
+	}
+
+	void buildUpdate(Websom.DatabaseSelect select) {
+		var Websom.DataInfo info = this.fetchFieldInfo();
+
+		//WARN: TODO: Parent id hack
+		native javascript {
+			if (this.parentId)
+				update.set("parentId", this.parentId);
+		}
+
+		native php {
+			if (property_exists($this, "parentId"))
+				$update->set("parentId", $this->parentId);
+		}
+
+		for (var int i in info.fields) {
+			var field = info.fields[i];
+			var primitive value = null;
+			
+			native javascript {
+				value = this[field.realName];
+			}
+
+			native php {
+				$real = $field->realName;
+				$value = $this->$real;
+			}
+
+			var type = value.typeAsString();
+
+			if (type == "integer" or type == "float" or type == "string")
+				select.set(field.fieldName, value);
+			else if (type == "boolean") {
+				var setVal = 0;
+				if (value) setVal = 1;
+				select.set(field.fieldName, setVal);
+			}
+		}
+	}
+}
+
+header class Websom.DataInfo {
+	map info = null;
+	string name = "";
+	
+	bool linked = false;
+	string linkedTable = "";
+
+	map attributes = new map();
+
+	<Websom.FieldInfo>array fields = new <Websom.FieldInfo>array();
+
+	void @construct(string name) {
+		this.name = name;
+	}
+
+	void loadFromMap(map info) {
+		this.info = info;
+	}
+
+	Websom.FieldInfo getField(string name) {
+		for (var int i in this.fields) {
+			if (this.fields[i].realName == name)
+				return this.fields[i];
+		}
+		return null;
+	}
+
+	bool hasField(string name) {
+		for (var int i in this.fields) {
+			if (this.fields[i].realName == name)
+				return true;
+		}
+		return false;
+	}
+
+	Websom.DatabaseStructure buildStructure() {
+		var str = new Websom.DatabaseStructure(null, "");
+
+		for (var int i in this.fields) {
+			var hasField = true;
+			
+			if (this.fields[i].singleLink) {
+				var subInfo = Websom.DataInfo.getDataInfoFromRoute(this.fields[i].typeRoute);
+				if ("Component" in subInfo.attributes) {
+					hasField = false;
+					for (var int j = 0; j < subInfo.fields.length; j++) {
+						var sField = subInfo.fields[j];
+						if ("Parent" in sField.attributes) {
+							str.fields.push(sField.structure);
+						}
+					}
+				}
+			}
+
+			if (("Parent" in this.fields[i].attributes))
+				hasField = false;
+			
+			if (hasField)
+				str.fields.push(this.fields[i].structure);
+		}
+		
+		return str;
+	}
+
+	Websom.Data spawn(Websom.Server server) {
+		native javascript {
+			var splits = this.name.split(".");
+			var cur = global;
+			for (var split of splits)
+				cur = cur[split];
+
+			return new cur(server);
+		}
+
+		native php {
+			$clsName = str_replace(".", "_", $this->name);
+			return new $clsName($server);
+		}
+	}
+
+	fixed Websom.DataInfo getDataInfoFromRoute(string route) {
+		native javascript {
+			var splits = route.split(".");
+			var cur = global;
+			for (var split of splits)
+				cur = cur[split];
+
+			return cur.getInfo();
+		}
+
+		native php {
+			$clsName = str_replace(".", "_", $route);
+			return $clsName::getInfo();
+		}
+	}
+
+	<Websom.DatabaseStructure>array buildLinkedStructures(string parentName) {
+		var strs = new <Websom.DatabaseStructure>array();
+		
+		for (var int i in this.fields) {
+			var field = this.fields[i];
+			for (var int f in field.structure.flags) {
+				var flag = field.structure.flags[f];
+				if (flag.type == "linked") {
+					var Websom.DatabaseFlags.Linked linked = flag;
+					if (linked.name == null) {
+						var dataInfo = Websom.DataInfo.getDataInfoFromRoute(linked.fieldType);
+						var str = dataInfo.buildStructure();
+						
+						if (linked.linkType == "array") {
+							if ("Linked" in dataInfo.attributes) {
+								str = new Websom.DatabaseStructure(null, "");
+								var id = new Websom.DatabaseField("id", new Websom.DatabaseTypes.Int());
+								id.flags.push(new Websom.DatabaseFlags.Primary());
+								id.flags.push(new Websom.DatabaseFlags.AutoIncrement());
+								str.fields.push(id);
+								str.fields.push(new Websom.DatabaseField("linkedId", new Websom.DatabaseTypes.Int()));
+							}
+
+							str.fields.push(new Websom.DatabaseField("parentId", new Websom.DatabaseTypes.Int()));
+							str.fields.push(new Websom.DatabaseField("arrayIndex", new Websom.DatabaseTypes.Int()));
+						}else if (linked.linkType == "map") {
+							str.fields.push(new Websom.DatabaseField("parentId", new Websom.DatabaseTypes.Int()));
+							str.fields.push(new Websom.DatabaseField("mapKey", new Websom.DatabaseTypes.Varchar(256)));
+						}else if ("Component" in dataInfo.attributes) {
+							str.fields.push(new Websom.DatabaseField("parentId", new Websom.DatabaseTypes.Int()));
+						}
+
+						if (("Linked" in dataInfo.attributes) == false) {
+							var subs = dataInfo.buildLinkedStructures(field.realName); //WARN: BUG: TODO: Use fieldName
+							for (var int s in subs) {
+								var sub = subs[s];
+								sub.table = field.realName + "_" + sub.table;
+								strs.push(sub);
+							}
+						}
+
+						str.table = field.realName;
+						strs.push(str);
+					}
+				}
+			}
+		}
+		
+		return strs;
+	}
+
+	trust string expose(map raw) {
+		var <string>array out = new <string>array();
+		
+		for (var int i in this.fields) {
+			var field = this.fields[i];
+
+			if (field.expose) {
+				var type = raw[field.fieldName].typeAsString();
+				if (type == "string") {
+					var string cast = raw[field.fieldName];
+					out.push('"' + field.realName + '": ' + Websom.Json.encode(cast));
+				}else if (type == "bool") {
+					var val = "false";
+					if (raw[field.fieldName] == 1)
+						val = "true";
+
+					out.push('"' + field.realName + '": ' + val);
+				}else if (type == "float" or type == "integer") {
+					out.push('"' + field.realName + '": ' + raw[field.fieldName]);
+				}
+			}
+		}
+
+		return "{" + out.join(", ") + "}";
+	}
+}
+
+header class Websom.FieldInfo {
+	string realName = "";
+	string fieldName = "";
+	string typeRoute = "";
+	string controlClass = ""; //Used for autoControl
+	bool isPrimitive = true;
+	bool isComplex = false;
+	bool onlyServer = false;
+	bool singleLink = false;
+	bool canBeNull = false;
+	
+	bool expose = true; //TODO: Change to false
+	map attributes = new map();
+	Websom.DatabaseField structure = null;
+	void default = null;
+	
+	void @construct(string realName, string fieldName, string typeRoute, Websom.DatabaseField structure) {
+		this.realName = realName;
+		this.fieldName = fieldName;
+		this.typeRoute = typeRoute;
+		this.structure = structure;
+	}
+
+	bool isComponent() {
+		if (this.singleLink) {
+			var Websom.DatabaseFlags.Linked linked = this.structure.getFlag("linked");
+			if (linked != null and linked.fieldType != null) {
+				var dataInfo = Websom.DataInfo.getDataInfoFromRoute(linked.fieldType);
+				if ("Component" in dataInfo.attributes)
+					return true;
+				else
+					return false;
+			}else
+				return false;
+		}else{
+			return false;
+		}
+	}
+}
+
+class Websom.DataValidator inherits Websom.InputValidator {
+	Websom.DataInfo info = null;
+
+	void @construct(Websom.DataInfo info) {
+		this.info = info;
+	}
+
+	void validate(Websom.Input input, <void, Websom.InputValidation>function pass) {
+		var that = this;
+		var Websom.InputValidation first = null; //TODO: Retain multiple errors and optionally display
+		var waits = this.info.fields.length;
+
+		var done = void (Websom.InputValidation iv) => {
+			if (first == null)
+				first = iv;
+			waits--;
+
+			if (waits == 0) {
+				if (first == null)
+					first = new Websom.InputValidation(false, "");
+				
+				pass(first);
+			}
+		};
+
+		for (var int ii in this.info.fields) {
+			var close = void (int i) => {
+				var field = that.info.fields[i];
+				if (field.realName in input.raw) {
+					if (field.structure.hasFlag("edit") == false) {
+						
+					}else
+						if (field.isPrimitive and field.isComplex == false and field.singleLink == false) { //If its an inline, pass validation off to the control
+							var typeCompare = field.typeRoute;
+							if (typeCompare == "bool") {
+								typeCompare = "boolean";
+								input.raw[field.realName] = input.raw[field.realName] == "true";
+							}
+
+							if (typeCompare == "int") {
+								input.raw[field.realName] = string.parseInt(input.raw[field.realName]);
+
+								native javascript {
+									if (input.raw[field.realName] == NaN) {
+										done(new Websom.InputValidation(true, "Invalid type", field));
+										return null;
+									}
+								}
+							}else if (typeCompare == "float") {
+								input.raw[field.realName] = string.parseFloat(input.raw[field.realName]);
+
+								native javascript {
+									if (input.raw[field.realName] == NaN) {
+										done(new Websom.InputValidation(true, "Invalid type", field));
+										return null;
+									}
+								}
+							}else if (input.raw[field.realName].typeAsString() != typeCompare) {
+								done(new Websom.InputValidation(true, "Invalid type", field));
+								return null;
+							}
+
+							if ("Length" in field.attributes) {
+								var int max = field.attributes["Length"];
+								var string cast = input.raw[field.realName];
+								if (cast.length > max) {
+									done(new Websom.InputValidation(true, "Value length must be less than " + max, field));
+									return null;
+								}
+							}
+
+							if ("Min" in field.attributes) {
+								var int min = field.attributes["Min"];
+								if (field.typeRoute == "string") {
+									var string cast = input.raw[field.realName];
+									if (cast.length < min) {
+										done(new Websom.InputValidation(true, "Value length must be more than " + min, field));
+										return null;
+									}
+								}else{
+									//This works for float and int
+									var int cast = input.raw[field.realName];
+									if (cast < min) {
+										done(new Websom.InputValidation(true, "Value must be more than " + min, field));
+										return null;
+									}
+								}
+							}
+
+							if ("Max" in field.attributes) {
+								var int cast = input.raw[field.realName];
+								var int max = field.attributes["Max"];
+								if (cast > max) {
+									done(new Websom.InputValidation(true, "Value must be less than " + max, field));
+									return null;
+								}
+							}
+
+							if ("Match" in field.attributes) {
+								var string cast = input.raw[field.realName];
+								var string reg = field.attributes["Match"];
+								if (cast.test(reg) == false) {
+									var err = "Value must match " + reg;
+									if ("MatchError" in field.attributes)
+										err = field.attributes["MatchError"];
+
+									done(new Websom.InputValidation(true, err, field));
+									return null;
+								}
+							}
+						}else if (field.singleLink) {
+							if (input.raw[field.realName].typeAsString() != "string" and input.raw[field.realName].typeAsString() != "integer") {
+								done(new Websom.InputValidation(true, "Invalid type", field));
+								return null;
+							}
+
+							var linkInfo = Websom.DataInfo.getDataInfoFromRoute(field.typeRoute);
+							var Websom.DatabaseFlags.Linked linked = field.structure.getFlag("linked");
+							var linkedTable = linked.name;
+							var Websom.Containers.Table tbl = new Websom.Containers.Table(input.server, linkedTable, linkInfo);
+							var obj = linkInfo.spawn(input.server);
+							obj.websomContainer = tbl;
+							obj.websomServer = tbl.server;
+							var close2 = void (Websom.FieldInfo ffield) => {
+								obj.loadFromPublicKey(tbl, input.raw[ffield.realName], void (string err) => {
+									if (err.length > 0) {
+										done(new Websom.InputValidation(true, "No " + ffield.realName + " found", ffield)); //TODO: Use displayName instead of realName
+										return null;
+									}
+
+									input.raw[ffield.realName] = obj.getField("id"); //WARN: Ref hack //TODO: Search for primary
+
+									//TODO: Add linked validation hook on Websom.Data obj
+								});
+							};
+							close2(field);
+						}
+				}else if (field.canBeNull == false) {
+					if (field.structure.hasFlag("edit")) {
+						if (field.typeRoute == "array") {
+							input.raw[field.fieldName] = new array();
+							done(null);
+						}else{
+							done(new Websom.InputValidation(true, "No value", field));
+							return null;
+						}
+					}
+				}
+
+				done(null);
+			};
+			close(ii);
+		}
+	}
+}

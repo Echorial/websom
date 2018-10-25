@@ -1,0 +1,14 @@
+info {
+	"name": "dashboard-studio"
+}
+
+template {
+	<div></div>
+}
+
+client {
+	created: function () {
+		var studio = new Websom.Studio();
+		studio.setup();
+	}
+}

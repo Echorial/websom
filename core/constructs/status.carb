@@ -1,0 +1,93 @@
+`Websom.Status is the standard way of passing Errors, Warnings, Infos, and Notices around. These can be displayed within an html document, console error, javascript error, and more.`
+class Websom.Status {
+	<Websom.Notice>array notices = new <Websom.Notice>array();
+
+	bool hadError = false;
+
+	void @construct() {
+		
+	}
+
+	void inherit(Websom.Status status) {
+		if (status == null)
+			return null;
+
+		for (var int i in status.notices) {
+			this.notices.push(status.notices[i]);
+		}
+
+		this.hadError = status.hadError;
+	}
+
+	Websom.Notice give(string module, string message) {
+		var notice = new Websom.Notice(module, message);
+		this.notices.push(notice);
+		return notice;
+	}
+
+	Websom.Notice give(int level, string module, string message) {
+		var notice = new Websom.Notice(module, message);
+		notice.level = level;
+		this.notices.push(notice);
+
+		if (level == 4) {
+			this.hadError = true;
+		}
+
+		return notice;
+	}
+
+	string display() {
+		if (this.notices.length == 0)
+			return "Ok";
+		
+		var out = "";
+		if (this.hadError)
+			out += ":Websom: :Error:\n";
+
+		for (var int i in this.notices)
+			out += this.notices[i].display();
+
+		return out;
+	}
+
+	void clear() {
+		for (var int i = this.notices.length - 1; i >= 0; i--) {
+			this.notices.pop();
+		}
+	}
+
+	fixed Websom.Status singleError(string module, string error) {
+		var status = new Websom.Status();
+		status.give(4, module, error);
+		return status;
+	}
+}
+
+`These are stored within Websom.Status.`
+class Websom.Notice {
+	`Not used as of yet.`
+	int code = 0;
+
+	`Notice category.`
+	string module = "";
+
+	`Basic message string.`
+	string message = "";
+
+	int line = 0;
+	int column = 0;
+	int offset = 0;
+
+	`Level of notice, Error(Red): 4, Warning(Orange): 3, Notice(Blue): 2, Info(Green): 1.`
+	int level = 2;
+
+	void @construct(string module, string message) {
+		this.module = module;
+		this.message = message;
+	}
+
+	string display() {
+		return this.module + ": " + this.message;
+	}
+}

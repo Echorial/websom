@@ -1,0 +1,90 @@
+info {
+	"name": "view-properties"
+}
+
+template {
+	<div v-if="typeof studio.selected == 'object'">
+		<card class="grey darken-2 white-text">{{studio.selected.nodeName()}}</card>
+		<card class="grey darken-3" style="padding: .1em">
+			<div class="editor-head">Properties</div>
+			<div class="editor-group">
+				<div v-for="(prop, name) in getProps()" v-if="prop.type == 'attribute'" class="editor-prop">
+					<label>{{name}}</label>
+					<div :data-prop="name"></div>
+				</div>
+			</div>
+			<br>
+			<div class="editor-head">Attributes</div>
+			<div class="editor-group">
+				<div v-for="(attr, name) in studio.selected.attributes" class="editor-prop">
+					<label>{{name}}</label>
+					<div><input type="text" class="editor-input" v-model="studio.selected.attributes[name]" @change="studio.selected.vue.$forceUpdate()"/></div>
+				</div>
+				<div class="editor-prop">
+					<label @click="addAttribute()" style="cursor: pointer;">+ Add</label>
+					<div><input name="newAttr" type="text" class="editor-input" placeholder="Attribute name"/></div>
+				</div>
+			</div>
+		</card>
+		<card class="grey darken-3" style="padding: .1em" v-for="(prop, name) in getProps()" v-if="prop.type == 'custom'">
+			<label class="white-text">{{name}}</label><br>
+			<div :data-prop="name"></div>
+		</card>
+	</div>
+}
+
+client {
+	props: ["studio", "state"],
+	computed: {
+		selected: function () {
+			return this.studio.selected;
+		}
+	},
+	methods: {
+		addAttribute: function () {
+			var val = $(this.$el).find("input[name='newAttr']").val();
+			if (val.length == 0)
+				return;
+
+			$(this.$el).find("input[name='newAttr']").val("");
+			this.studio.selected.attributes[val] = "";
+			this.$forceUpdate();
+		},
+		getProps: function () {
+			return this.studio.selected.props();
+		},
+		createControl: function (name, prop) {
+			if (prop.valueType) {
+				var control = window.Websom.Editor.ValueTypes[prop.valueType];
+				var val = null;
+				if (prop.type == "attribute") {
+					val = this.studio.selected.realElement.attributes.getNamedItem(prop.name).value;
+				}
+				var container = $(this.$el).find("[data-prop='" + name +"']");
+				container.append(control.create(prop, prop.fill(this.studio.selected)));
+				control.listen(container.children()[0], () => {
+					if (prop.type == "attribute") {
+						this.studio.selected.attributes[prop.name] = control.get(container.children()[0]);
+						this.studio.selected.vue.$forceUpdate();
+					}else if (prop.type == "custom") {
+						prop.update(this.studio.selected, container.children()[0]);
+						this.studio.selected.vue.$forceUpdate();
+					}
+				});
+			}
+		}
+	},
+	updated: function () {
+		$(this.$el).find("[data-prop]").children().remove();
+		var props = this.getProps();
+		for (var name in props) {
+			var prop = props[name];
+			this.createControl(name, prop);
+		}
+	},
+	watch: {
+		selected: function (n, o) {
+			
+		}
+	}
+}

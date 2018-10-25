@@ -1,0 +1,54 @@
+class Websom.Bucket {
+	Websom.Server server = null;
+	map raw = null;
+	string name = "";
+
+	void @construct(Websom.Server server, string name, map raw) {
+		this.server = server;
+		this.raw = raw;
+		this.name = name;
+		this.created();
+	}
+
+	void created() {
+
+	}
+	
+	fixed Websom.Bucket make(Websom.Server server, string name, string type, map raw) {
+		if (type == "local") {
+			return new Websom.Buckets.Local(server, name, raw);
+		}
+	}
+
+	void write(string file, string content, <void, string>function done);
+
+	void read(string file, <void, bool, string>function done);
+
+	void makeDir(string dir, <void, bool>function done);
+}
+
+namespace Websom.Buckets {}
+
+class Websom.Buckets.Local inherits Websom.Bucket {
+	string realPath = "";
+	
+	override void created() {
+		var string path = this.raw["path"];
+		this.realPath = FileSystem.resolve(this.server.config.root + "/" + path) + "/";
+	}
+
+	trust void write(string file, string content, <void, string>function done) {
+		FileSystem.writeSync(this.realPath + file, content);
+		done("");
+	}
+
+	void read(string file, <void, bool, string>function done) {
+		done(true, FileSystem.readSync(this.realPath + file, "utf8"));
+	}
+
+	void makeDir(string dir, <void, bool>function done) {
+		if (FileSystem.exists(this.realPath + dir) == false)
+			FileSystem.makeDir(this.realPath + dir);
+		done(true);
+	}
+}

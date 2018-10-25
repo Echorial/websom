@@ -1,0 +1,17 @@
+info {
+	"name": "item-title"
+}
+
+template {
+	<h1 v-if="!editMode" class="item-title">{{data}}</h1>
+	<input v-else ref="input" type="text" :name="name" :value="data" class="input" :placeholder="placeholder || 'Title'"/>
+}
+
+client {
+	props: ["name", "data", "edit-mode", "placeholder"],
+	methods: {
+		getValue: function (val) {
+			val(this.$refs.input.value);
+		}
+	}
+}

@@ -1,0 +1,13 @@
+class Websom.Response {
+	int code = 0;
+	string body = "";
+	string message = "";
+
+	#if platform.javascript
+		void jsResponse = null;
+	#end if
+
+	void @construct() {
+		
+	}
+}

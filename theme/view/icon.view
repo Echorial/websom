@@ -1,0 +1,21 @@
+info {
+	"name": "icon"
+}
+
+template {
+	<i v-if="type == 'fa'" :class="'fas fa-' + (name || icon)"></i>
+}
+
+client {
+	props: ["icon"],
+	data: function () {
+		return {name: null, type: ""};
+	},
+	mounted: function () {
+		if (this.$slots.default && this.$slots.default.length > 0)
+			this.name = this.$slots.default[0].text;
+		this.type = "";
+		if ("fa" in this.$vnode.data.attrs)
+			this.type = "fa";
+	}
+}

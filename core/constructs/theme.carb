@@ -1,0 +1,130 @@
+`Theme is used internally by websom and should not be extended.`
+class Websom.Theme {
+	Websom.Server server = null;
+
+	`Theme name taken from the dir name.`
+	string name = "";
+
+	`This is a unique name for the theme and should be lower case. theme-"keyname" css cls.`
+	string key = "";
+
+	`Absolute root path directory of this theme.`
+	string root = "";
+
+	`Config map parsed out of the root/"themeName".json file.`
+	map config = null;
+
+	void @construct(Websom.Server server, string name, string root, map config) {
+		this.server = server;
+		this.name = name;
+		this.root = root;
+		this.config = config;
+		
+		if ("key" in this.config)
+			this.key = this.config["key"];
+	}
+
+	`Server calls on start.`
+	Websom.Status start() { //Reserved for future use
+		
+	}
+
+	string prefix() {
+		if (this.key.length > 0)
+			return "theme-" + this.key;
+		return "theme";
+	}
+
+	string include() {
+		var dir = this.server.config.clientResources + "/" + this.prefix();
+
+		return '<script src="' + dir + '/theme.js"></script><link rel="stylesheet" type="text/css" href="' + dir + '/theme.css"/>';
+	}
+
+	void write(string js, string css) {
+		var dir = this.server.config.resources + "/" + this.prefix();
+
+		if (FileSystem.exists(dir) == false)
+			FileSystem.makeDir(dir);
+
+		FileSystem.writeSync(dir + "/theme.js", js);
+		FileSystem.writeSync(dir + "/theme.css", css);
+	}
+
+	void buildAndSave(<void, string>function callback `callback(string err)`) {
+		var that = this;
+		this.build(void (string err, string js, string css) => {
+			that.write(js, css);
+			callback(err);
+		});
+	}
+
+	void build(<void, string, string, string>function callback `callback(string err, string js, string css)`) {
+		var that = this;
+		var dones = 0;
+		var css = "";
+		var js = "";
+		var err = "";
+
+		var doneJs = void (bool hadError, string results) => {
+			dones--;
+			js += results;
+
+			if (hadError) {
+				err += results + "\n";
+			}
+
+			if (dones == 0) {
+				//that.write(js, css);
+				callback(err, js, css);
+			}
+		};
+
+		var doneCss = void (bool hadError, string results) => {
+			dones--;
+			css += results;
+
+			if (hadError) {
+				err += results + "\n\n";
+			}
+
+			if (dones == 0) {
+				callback(err, js, css);
+			}
+		};
+
+		var <map>array resources = this.config["resources"];
+
+		var outputs = this.server.resource.compile("Theme." + this.name, this.root, resources);
+		dones = outputs.length;
+		
+		for (var int i in outputs) {
+			var resource = outputs[i];
+			if (resource.type == "javascript") {
+				resource.build(doneJs);
+			}else if (resource.type == "less") {
+				resource.reference = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../theme/style/main.less");
+				resource.build(doneCss);
+			}else if (resource.type == "css") {
+				resource.build(doneCss);
+			}else if (resource.type == "view") {
+				var view = new Websom.View(this.server);
+				var viewErr = view.loadFromFile(resource.file);
+				if (viewErr != null)
+					err += viewErr.display() + "\n";
+				
+				view.hasLocalExport = true;
+
+				doneJs(false, view.buildDev()); //TODO: Update for buildProduction
+				//TODO: Keep track of views in this or send to view service
+				
+			}else if (resource.isInvalid) {
+				err += "Invalid resource: '" + resource.file + "'\n";
+				dones--;
+				if (i == outputs.length - 1)
+					if (dones == 0)
+						callback(err, js, css);
+			}
+		}
+	}
+}
