@@ -1,5 +1,17 @@
 {
-    "require": {
-        "paypal/rest-api-sdk-php": "*"
+    "name": "echorial/websom",
+    "description": "A web framework built in carbon",
+    "version": "1.0.0",
+    "homepage": "https://www.echorial.com/websom",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "AskingQuestions",
+            "email": "askingquestions@echorial.com",
+            "role": "Developer"
+        }
+    ],
+    "autoload": {
+        "files": ["native/php/websom.php"]
     }
 }

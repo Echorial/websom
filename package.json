@@ -1,7 +1,7 @@
 {
 	"name": "websom",
 	"version": "1.0.0",
-	"description": "",
+	"description": "A web framework built in carbon",
 	"main": "native/javascript/websom.js",
 	"author": "Echorial(https://www.echorial.com)",
 	"license": "MIT",

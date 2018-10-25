@@ -26,7 +26,7 @@ $ npm install websom
 ```
 ## PHP
 ```bash
-$ composer require websom
+$ composer require echorial/websom
 ```
 
 ## Building
