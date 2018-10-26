@@ -71,7 +71,11 @@ class Websom.Services.Input inherits Websom.Service {
 			}
 		}
 
-		return "<script>Websom.inputValidation = {" + strs.join(", ") + ", " + this.inputTypes.join(", ") + "};</script>";
+		var string seg = "";
+		if (this.inputTypes.length > 0)
+			seg = ", ";
+		
+		return "<script>Websom.inputValidation = {" + strs.join(", ") + seg + this.inputTypes.join(", ") + "};</script>";
 	}
 
 	`Registers a custom restriction for input interfaces`

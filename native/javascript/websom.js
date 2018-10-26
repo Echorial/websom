@@ -790,7 +790,11 @@ Websom.Services.Input.prototype.buildClientValidation = function () {
 					}
 				}
 			}
-		return "<script>Websom.inputValidation = {" + strs.join(", ") + ", " + this.inputTypes.join(", ") + "};</script>";
+		var seg = "";
+		if (this.inputTypes.length > 0) {
+			seg = ", ";
+			}
+		return "<script>Websom.inputValidation = {" + strs.join(", ") + seg + this.inputTypes.join(", ") + "};</script>";
 	}
 }
 
@@ -1323,7 +1327,7 @@ Websom.Services.Module.prototype.start = function () {
 	if (arguments.length == 0) {
 		var dir = this.server.config.root + "/modules/";
 		if (Oxygen.FileSystem.exists(dir) == false) {
-			return Websom.Status.singleError("Services.Module", "Unable to find modules directory");
+			Oxygen.FileSystem.makeDir(dir);
 			}
 		return this.reload(dir);
 	}
@@ -1435,6 +1439,9 @@ Websom.Services.Pack.prototype.reload = function () {
 			}
 		var packs = Oxygen.FileSystem.readDirSync(path);
 		for (var i = 0; i < packs.length; i++) {
+			if (packs[i] == "." || packs[i] == "..") {
+				continue;
+				}
 			var packDir = path + packs[i];
 			if (Oxygen.FileSystem.isDir(packDir)) {
 				var configFile = packDir + "/pack.json";
@@ -1472,7 +1479,7 @@ Websom.Services.Pack.prototype.start = function () {
 	if (arguments.length == 0) {
 		var dir = this.server.config.root + "/packs/";
 		if (Oxygen.FileSystem.exists(dir) == false) {
-			return Websom.Status.singleError("Services.Pack", "Unable to find packs directory within website root.");
+			Oxygen.FileSystem.makeDir(dir);
 			}
 		return this.reload(dir);
 	}
@@ -1784,6 +1791,9 @@ Websom.Services.Resource.prototype.build = function () {
 			return Websom.Status.singleError("View", err);
 			}
 		if (dev) {
+			if (Oxygen.FileSystem.exists(this.server.config.resources + "/jquery.min.js") == false) {
+				Oxygen.FileSystem.writeSync(this.server.config.resources + "/jquery.min.js", Oxygen.FileSystem.readSync(this.server.websomRoot + "/client/javascript/jquery.min.js", "utf8"));
+				}
 			var client = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/client.js");
 			var input = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/input.js");
 			var theme = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/theme.js");
@@ -2783,6 +2793,16 @@ Websom.Services.Theme.prototype.load = function () {
 		
 			if (this.server.config.dev) {
 				var fs = require("fs");
+				if (!fs.existsSync(this.server.config.resources + "/" + theme.prefix())) {                                 
+					theme.buildAndSave((err) => {
+						if (err.length > 0) {
+							console.log("Error while building theme " + theme.name + " : " + err);
+						}else{
+							console.log("New theme built " + theme.name);
+						}
+					});
+				}
+
 				console.log("Setup watch on theme " + config.name);
 				
 				fs.watch(themeDir, {recursive: true}, (type, file) => {
@@ -2847,7 +2867,7 @@ Websom.Services.Theme.prototype.start = function () {
 	if (arguments.length == 0) {
 		var dir = this.server.config.root + "/themes/";
 		if (Oxygen.FileSystem.exists(dir) == false) {
-			return Websom.Status.singleError("Services.Theme", "Unable to find themes directory within website root.");
+			Oxygen.FileSystem.makeDir(dir);
 			}
 		var themeDir = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(this.server.scriptPath) + "/../../theme/");
 		var config = Websom.Json.parse(Oxygen.FileSystem.readSync(themeDir + "/theme.json", "utf8"));
@@ -2903,10 +2923,10 @@ Websom.Services.View.prototype.start = function () {
 				}
 			}
 		if (refresh) {
-			if (Oxygen.FileSystem.isDir(this.server.config.root + "/pages")) {
+			if (Oxygen.FileSystem.exists(this.server.config.root + "/pages")) {
 				status.inherit(this.loadPages(this.server.config.root + "/pages/"));
 				}
-			if (Oxygen.FileSystem.isDir(this.server.config.root + "/views")) {
+			if (Oxygen.FileSystem.exists(this.server.config.root + "/views")) {
 				status.inherit(this.loadViews(this.server.config.root + "/views/"));
 				}
 			this.moduleViews = this.getModuleViews();
@@ -3383,7 +3403,7 @@ Websom.Config.load = function () {
 			config.brandColor = out["brandColor"];
 			}
 		if ("manifest" in out) {
-			if (out["manifest"] === "0") {
+			if (out["manifest"] !== "1") {
 				config.hasManifest = false;
 				}
 			}
@@ -3393,7 +3413,7 @@ Websom.Config.load = function () {
 				}
 			}
 		if ("sslVerifyPeer" in out) {
-			if (out["sslVerifyPeer"] === "0") {
+			if (out["sslVerifyPeer"] !== "1") {
 				config.sslVerifyPeer = false;
 				}
 			}
@@ -9135,7 +9155,7 @@ return require('path').resolve(arguments[0]);
 Oxygen.FileSystem.isDir = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var location = arguments[0];
-return require('fs').lstatSync(arguments[0]).isDirectory();
+const _fs = require('fs'); return _fs.lstatSync(_fs.realpathSync(arguments[0])).isDirectory();
 	}
 }
 

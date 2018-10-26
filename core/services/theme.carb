@@ -23,6 +23,16 @@ class Websom.Services.Theme inherits Websom.Service {
 		native javascript {
 			if (this.server.config.dev) {
 				var fs = require("fs");
+				if (!fs.existsSync(this.server.config.resources + "/" + theme.prefix())) { // Rebuild theme if non existent
+					theme.buildAndSave((err) => {
+						if (err.length > 0) {
+							console.log("Error while building theme " + theme.name + " : " + err);
+						}else{
+							console.log("New theme built " + theme.name);
+						}
+					});
+				}
+
 				console.log("Setup watch on theme " + config.name);
 				
 				fs.watch(themeDir, {recursive: true}, (type, file) => {
@@ -80,8 +90,10 @@ class Websom.Services.Theme inherits Websom.Service {
 	override Websom.Status start() {
 		var dir = this.server.config.root + "/themes/";
 		//TODO: Add theme dir override
-		if (FileSystem.exists(dir) == false)
-			return Websom.Status.singleError("Services.Theme", "Unable to find themes directory within website root.");
+		if (FileSystem.exists(dir) == false) {
+			FileSystem.makeDir(dir);
+			//return Websom.Status.singleError("Services.Theme", "Unable to find themes directory within website root.");
+		}
 
 		var themeDir = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../theme/");
 		var map config = Websom.Json.parse(FileSystem.readSync(themeDir + "/theme.json", "utf8"));

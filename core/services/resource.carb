@@ -260,6 +260,10 @@ class Websom.Services.Resource inherits Websom.Service {
 			return Websom.Status.singleError("View", err);
 
 		if (dev) {
+			if (FileSystem.exists(this.server.config.resources + "/jquery.min.js") == false) {
+				FileSystem.writeSync(this.server.config.resources + "/jquery.min.js", FileSystem.readSync(this.server.websomRoot + "/client/javascript/jquery.min.js", "utf8"));
+			}
+
 			var client = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/client.js");
 			var input = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/input.js");
 			var theme = new Websom.Resources.Javascript(this.server, "Websom.Core", this.server.websomRoot + "/client/javascript/theme.js");

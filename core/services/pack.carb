@@ -86,8 +86,10 @@ class Websom.Services.Pack inherits Websom.Service {
 	override Websom.Status start() {
 		var dir = this.server.config.root + "/packs/";
 		//TODO: Add pack dir override
-		if (FileSystem.exists(dir) == false)
-			return Websom.Status.singleError("Services.Pack", "Unable to find packs directory within website root.");
+		if (FileSystem.exists(dir) == false) {
+			FileSystem.makeDir(dir);
+			//return Websom.Status.singleError("Services.Pack", "Unable to find packs directory within website root.");
+		}
 
 		return this.reload(dir);
 	}

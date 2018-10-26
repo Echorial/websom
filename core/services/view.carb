@@ -21,10 +21,10 @@ class Websom.Services.View inherits Websom.Service {
 		}
 
 		if (refresh) { // Reloads all views and caches them into website/viewCache.json
-			if (FileSystem.isDir(this.server.config.root + "/pages"))
+			if (FileSystem.exists(this.server.config.root + "/pages"))
 				status.inherit(this.loadPages(this.server.config.root + "/pages/"));
 			
-			if (FileSystem.isDir(this.server.config.root + "/views"))
+			if (FileSystem.exists(this.server.config.root + "/views"))
 				status.inherit(this.loadViews(this.server.config.root + "/views/"));
 			
 			this.moduleViews = this.getModuleViews(); //TODO: Fix hack.

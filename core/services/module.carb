@@ -294,8 +294,10 @@ class Websom.Services.Module inherits Websom.Service {
 	override Websom.Status start() {
 		var dir = this.server.config.root + "/modules/";
 		//TODO: Add module dir override
-		if (FileSystem.exists(dir) == false)
-			return Websom.Status.singleError("Services.Module", "Unable to find modules directory");
+		if (FileSystem.exists(dir) == false) {
+			FileSystem.makeDir(dir);
+			//return Websom.Status.singleError("Services.Module", "Unable to find modules directory");
+		}
 
 		return this.reload(dir);
 	}
