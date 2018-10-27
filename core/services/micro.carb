@@ -1,0 +1,25 @@
+#include "micro"
+
+namespace Websom.Micro {}
+
+class Websom.Services.Micro inherits Websom.Service {
+	Websom.Micro.Text text = null;
+
+	Websom.Status start() {
+		var Websom.Status status = new Websom.Status();
+		this.text = new Websom.Micro.Text(this.server);
+		
+		status.inherit(this.text.start());
+		return status;
+	}
+}
+
+class Websom.MicroService {
+	Websom.Server server = null;
+
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	Websom.Status start();
+}

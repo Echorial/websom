@@ -67,7 +67,7 @@ Websom.Theme.handle(".theme", (config) => {
 						$(".modal-shade").remove();
 					});
 				}else{
-					$("<div class='modal-shade' data-target='" + $(this).attr("href") + "'></div>").appendTo($(this).parent()).animate({opacity: 1}, 300);
+					$("<div class='modal-shade' data-target='" + $(this).attr("href") + "'></div>").appendTo(document.body).animate({opacity: 1}, 300);
 				}
 			}
 		},
@@ -192,12 +192,15 @@ Websom.Theme.handle(".theme", (config) => {
 					return;
 
 				var drop = $(this).closest(".dropdown");
-				drop.css({
-					top: drop.offset().top,
-					left: drop.offset().left
-				});
+				if (!drop.is("a"))
+					drop.css({
+						top: drop.offset().top,
+						left: drop.offset().left
+					});
 				var init = drop.height();
 				drop.toggleClass("open");
+				
+				if (!drop.is("a"))
 				if (drop.hasClass("open")) {
 					var h = drop.height();
 					drop.css("height", init + "px");

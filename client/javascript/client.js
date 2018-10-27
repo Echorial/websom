@@ -1,4 +1,15 @@
 Websom = {
+	inGroup: () => {
+		return false;
+	},
+	hasPermission: (perm) => {
+		return false; // TODO: Check for dashboard admin login.
+	},
+	text: {
+		"*": {
+
+		}
+	},
 	views: {
 		loaded: {}
 	},

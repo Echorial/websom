@@ -51,12 +51,14 @@ class Websom.Services.Router inherits Websom.Service {
 				+ this.server.view.include()
 				+ this.server.resource.include(true)
 				+ this.server.theme.include()
-				+ this.server.input.clientValidate;
+				+ this.server.input.clientValidate
+				+ '<script src="' + this.server.config.clientResources + '/text.js"></script>';
 		}else{
 			return '<script src="https:/' + '/cdn.jsdelivr.net/npm/vue/dist/vue.js"></script><script src="' + this.server.config.clientResources + '/client.js"></script>'
 				+ this.server.resource.include(false)
 				+ '<script src="' + this.server.config.clientResources + '/js.js"></script>'
-				+ '<link rel="stylesheet" href="' + this.server.config.clientResources + '/css.css">';
+				+ '<link rel="stylesheet" href="' + this.server.config.clientResources + '/css.css">'
+				+ '<script src="' + this.server.config.clientResources + '/text.js"></script>';
 		}
 	}
 
@@ -66,7 +68,7 @@ class Websom.Services.Router inherits Websom.Service {
 		if (this.server.config.hasManifest)
 			metas += "<link rel='manifest' href='" + this.server.config.manifestPath + "'>";
 
-		return "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
+		return "<html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
 	}
 
 	void sendStringView(Websom.Request req, string template) {

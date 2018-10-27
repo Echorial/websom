@@ -1,54 +1,80 @@
 .theme {
+	a.dropdown {
+		a {
+			position: relative;
+			cursor: pointer;
+			
+			> ul {
+				transition: bottom .3s, opacity .3s;
+				position: absolute;
+				opacity: 0;
+				pointer-events: none;
+			}
+		}
+	}
+
 	.dropdown {
-		display: inline;
-		//transition: height .4s !important;
-		height: 1em;
+		&ul {
+			display: inline;
+			//transition: height .4s !important;
+			height: 1em;
 
-		.theme .button;
+			.theme .button;
 
-		> li, ul {
-			display: none;
-			padding: 1em .45em;
+			> li, ul {
+				display: none;
+				padding: 1em .45em;
+			}
+
+			> li:hover {
+				background: @dropdown-hover;
+			}
+
+			> ul::after {
+				content: ">";
+			}
 		}
+	}
 
-		> li:hover {
-			background: @dropdown-hover;
-		}
-
-		> ul::after {
-			content: ">";
+	a.dropdown.open {
+		> ul {
+			opacity: 1;
+			pointer-events: none;
+			
 		}
 	}
 
 	.dropdown.open {
-		background: @dropdown-background;
-		color: @dropdown-text;
-		position: absolute !important;
-		height: auto;
-		padding: 0;
-		box-shadow: none;
-		border-radius: .03em;
-		border: none;
-		z-index: 1000;
+		&ul {
+			background: @dropdown-background;
+			color: @dropdown-text;
+			position: absolute !important;
+			height: auto;
+			padding: 0;
+			box-shadow: none;
+			border-radius: .03em;
+			border: none;
+			z-index: 1000;
 
-		&::after {
-			content: "";
-		}
-		
-		> li, ul {
-			display: block;
-		}
+			&::after {
+				content: "";
+			}
+			
+			> li, ul {
+				display: block;
+			}
 
-		> span {
-			display: none;
-		}
+			> span {
+				display: none;
+			}
 
-		> ul > li, ul {
-			display: none;
-		}
+			> ul > li, ul {
+				display: none;
+			}
 
-		> ul:hover > li, ul {
-			display: block;
+			> ul:hover > li, ul {
+				display: block;
+			}
 		}
 	}
 }

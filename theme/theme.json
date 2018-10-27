@@ -69,6 +69,11 @@
 			"path": "./view/icon.view"
 		},
 		{
+			"name": "text",
+			"type": "view",
+			"path": "./view/text.view"
+		},
+		{
 			"name": "small-loader",
 			"type": "view",
 			"path": "./view/smallLoader.view"

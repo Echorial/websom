@@ -22,6 +22,7 @@ class Websom.Server {
 	Websom.Services.Email email = null;
 	Websom.Services.Render render = null;
 	Websom.Services.Pack pack = null;
+	Websom.Services.Micro micro = null;
 	
 	Websom.Standard.Dashboard.Module dashboard = null;
 	Websom.Standard.UserSystem.Module userSystem = null;
@@ -56,6 +57,7 @@ class Websom.Server {
 		this.input = new Websom.Services.Input(this);
 		this.crypto = new Websom.Services.Crypto(this);
 		this.email = new Websom.Services.Email(this);
+		this.micro = new Websom.Services.Micro(this);
 		this.render = new Websom.Services.Render(this);
 
 		this.status.inherit(this.database.start());
@@ -68,6 +70,7 @@ class Websom.Server {
 		this.status.inherit(this.input.start());
 		this.status.inherit(this.crypto.start());
 		this.status.inherit(this.email.start());
+		this.status.inherit(this.micro.start());
 		this.status.inherit(this.render.start());
 
 		if (this.config.bucket)

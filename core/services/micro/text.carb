@@ -1,0 +1,56 @@
+class Websom.Micro.Text inherits Websom.MicroService {
+	bool loaded = false; // text.json is lazy loaded
+	map data = null;
+	string textFile = "";
+
+	Websom.Status start() {
+		var that = this;
+
+		var textFile = this.server.config.root + "/text.json";
+		this.textFile = textFile;
+		if (this.server.config.dev) {
+			if (FileSystem.exists(textFile) == false) {
+				FileSystem.writeSync(textFile, "{}");
+			}
+
+			if (FileSystem.exists(this.server.config.resources + "/text.js") == false) {
+				FileSystem.writeSync(this.server.config.resources + "/text.js", "Websom.text = {\"*\": {}};");
+			}
+		}
+
+		this.server.input.interface("text.edit")
+			.restrict()
+				.to("permission", "text.edit")
+			.key("rule")
+				.is("string")
+				.length(1, 256)
+			.key("name")
+				.is("string")
+				.length(1, 512)
+			.key("text")
+				.is("string")
+				.length(0, 10000)
+			.success(void (Websom.Input input, map cooked) => {
+				var map data = input.raw;
+				that.load();
+				if (that.data.hasKey(data["rule"]) == false)
+					that.data[data["rule"]] = new map();
+				
+				that.data[data["rule"]][data["name"]] = data["text"];
+				that.save();
+
+				input.sendSuccess("Saved");
+			});
+	}
+
+	void save() {
+		var encoded = Websom.Json.encode(this.data);
+		FileSystem.writeSync(this.textFile, encoded);
+		FileSystem.writeSync(this.server.config.resources + "/text.js", "Websom.text = " + encoded + ";");
+	}
+
+	void load() {
+		if (this.loaded == false)
+			this.data = Websom.Json.parse(FileSystem.readSync(this.textFile, "utf8"));
+	}
+}

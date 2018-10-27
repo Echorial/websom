@@ -257,6 +257,24 @@ h1, h2, h3, h4, h5, h6, p {
 }
 
 .theme {
+	.dtext {
+		&.editOpen {
+			cursor: text !important;
+		}
+
+		> .text-inline-edit {
+			display: none;
+		}
+
+		&:hover {
+			> .text-inline-edit {
+				display: inline-block;
+				vertical-align: middle;
+				font-size: 2rem;
+			}
+		}
+	}
+
 	.input-color {
 		display: inline-block;
 		width: 2em;

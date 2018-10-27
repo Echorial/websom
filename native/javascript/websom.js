@@ -32,6 +32,8 @@ Websom.Server = function () {
 
 	this.pack = null;
 
+	this.micro = null;
+
 	this.dashboard = null;
 
 	this.userSystem = null;
@@ -64,6 +66,7 @@ Websom.Server = function () {
 		this.input = new Websom.Services.Input(this);
 		this.crypto = new Websom.Services.Crypto(this);
 		this.email = new Websom.Services.Email(this);
+		this.micro = new Websom.Services.Micro(this);
 		this.render = new Websom.Services.Render(this);
 		this.status.inherit(this.database.start());
 		this.status.inherit(this.module.start());
@@ -75,6 +78,7 @@ Websom.Server = function () {
 		this.status.inherit(this.input.start());
 		this.status.inherit(this.crypto.start());
 		this.status.inherit(this.email.start());
+		this.status.inherit(this.micro.start());
 		this.status.inherit(this.render.start());
 		if (this.config.bucket) {
 			if ("reference" in this.config.bucket) {
@@ -1061,6 +1065,57 @@ Websom.InputValidation.prototype.stringify = function () {
 				return this.message + " on field " + this.field.realName;
 			}
 	}
+}
+
+Websom.Micro = function () {
+
+
+}
+
+Websom.Services.Micro = function () {
+	this.text = null;
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.Services.Micro.prototype.start = function () {
+	if (arguments.length == 0) {
+		var status = new Websom.Status();
+		this.text = new Websom.Micro.Text(this.server);
+		status.inherit(this.text.start());
+		return status;
+	}
+else 	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Micro.prototype.stop = function () {
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Micro.prototype.end = function () {
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.MicroService = function () {
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
 }
 
 Websom.Services.Module = function () {
@@ -2526,9 +2581,9 @@ Websom.Services.Router.prototype.injectSends = function () {
 Websom.Services.Router.prototype.include = function () {
 	if (arguments.length == 0) {
 		if (this.server.config.dev) {
-			return "<script src=\"https:/" + "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" + this.server.config.clientResources + "/client.js\"></script>" + this.server.view.include() + this.server.resource.include(true) + this.server.theme.include() + this.server.input.clientValidate;
+			return "<script src=\"https:/" + "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" + this.server.config.clientResources + "/client.js\"></script>" + this.server.view.include() + this.server.resource.include(true) + this.server.theme.include() + this.server.input.clientValidate + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
 			}else{
-				return "<script src=\"https:/" + "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" + this.server.config.clientResources + "/client.js\"></script>" + this.server.resource.include(false) + "<script src=\"" + this.server.config.clientResources + "/js.js\"></script>" + "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/css.css\">";
+				return "<script src=\"https:/" + "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" + this.server.config.clientResources + "/client.js\"></script>" + this.server.resource.include(false) + "<script src=\"" + this.server.config.clientResources + "/js.js\"></script>" + "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/css.css\">" + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
 			}
 	}
 }
@@ -2540,7 +2595,7 @@ Websom.Services.Router.prototype.wrapPage = function () {
 		if (this.server.config.hasManifest) {
 			metas += "<link rel='manifest' href='" + this.server.config.manifestPath + "'>";
 			}
-		return "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
+		return "<html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
 	}
 }
 
@@ -9262,6 +9317,64 @@ Oxygen.FileSystem.Stat.fromMap = function () {
 		stat.ctime = data["ctimeMs"];
 		stat.birthtime = data["birthtimeMs"];
 		return stat;
+	}
+}
+
+Websom.Micro.Text = function () {
+	this.loaded = false;
+
+	this.data = null;
+
+	this.textFile = "";
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.Micro.Text.prototype.start = function () {
+	if (arguments.length == 0) {
+		var that = this;
+		var textFile = this.server.config.root + "/text.json";
+		this.textFile = textFile;
+		if (this.server.config.dev) {
+			if (Oxygen.FileSystem.exists(textFile) == false) {
+				Oxygen.FileSystem.writeSync(textFile, "{}");
+				}
+			if (Oxygen.FileSystem.exists(this.server.config.resources + "/text.js") == false) {
+				Oxygen.FileSystem.writeSync(this.server.config.resources + "/text.js", "Websom.text = {\"*\": {}};");
+				}
+			}
+		this.server.input.interface("text.edit").restrict().to("permission", "text.edit").key("rule").is("string").length(1, 256).key("name").is("string").length(1, 512).key("text").is("string").length(0, 10000).success(function (input, cooked) {
+			var data = input.raw;
+			that.load();
+			if ((data["rule"] in that.data) == false) {
+				that.data[data["rule"]] = {};
+				}
+			that.data[data["rule"]][data["name"]] = data["text"];
+			that.save();
+			input.sendSuccess("Saved");
+			});
+	}
+}
+
+Websom.Micro.Text.prototype.save = function () {
+	if (arguments.length == 0) {
+		var encoded = Websom.Json.encode(this.data);
+		Oxygen.FileSystem.writeSync(this.textFile, encoded);
+		Oxygen.FileSystem.writeSync(this.server.config.resources + "/text.js", "Websom.text = " + encoded + ";");
+	}
+}
+
+Websom.Micro.Text.prototype.load = function () {
+	if (arguments.length == 0) {
+		if (this.loaded == false) {
+			this.data = Websom.Json.parse(Oxygen.FileSystem.readSync(this.textFile, "utf8"));
+			}
 	}
 }
 

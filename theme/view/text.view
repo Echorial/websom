@@ -1,0 +1,75 @@
+info {
+	"name": "dtext"
+}
+
+template {
+	<span class="dtext" @click="handleEvent($event)" :class="{editOpen: isEdit}"><span v-html="isEdit ? '' : text"></span>
+		<span ref="editArea" :contenteditable="isEdit" v-if="isEdit" v-html="text"></span>
+		<button v-if="isEdit" style="vertical-align: middle;" class="button" @click="save($event)">Save</button>
+		<span v-if="!isEdit && Websom.hasPermission('text.edit')" style="cursor: pointer;" class="text-inline-edit" @click="toggleEdit($event)"><icon fa>pencil-alt</icon></span>
+	</span>
+}
+
+client {
+	props: {
+		name: {
+			type: String,
+			default: ""
+		},
+		tag: {
+			type: String,
+			default: "span"
+		},
+		rule: {
+			type: String,
+			default: "*"
+		},
+		"edit-mode": {
+			type: Boolean,
+			default: false
+		}
+	},
+	data: () => {return {text: "", isEdit: false}},
+	created: function () {
+		this.isEdit = this.editMode;
+
+		if (this.$slots.default && this.$slots.default.length > 0)
+			this.text = this.$slots.default[0].text;
+		
+		if (Websom.text[this.rule][this.name])
+			this.text = Websom.text[this.rule][this.name];
+	},
+	methods: {
+		handleEvent: function (e) {
+			if (this.isEdit) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		},
+		save: function (e) {
+			e.preventDefault();
+			this.text = this.$refs.editArea.innerHTML;
+			this.isEdit = false;
+
+			Websom.Input.post("text.edit", {rule: "*", name: this.name, text: this.text}, (d) => {
+				Websom.Theme.toast(JSON.parse(d).message);
+			});
+		},
+		toggleEdit: function (e) {
+			e.preventDefault();
+			this.isEdit = !this.isEdit;
+
+			if (this.isEdit) {
+				setTimeout(() => {
+					/*let range = document.createRange();
+					let sel = window.getSelection();
+					range.setStart(this.$refs.editArea, this.$refs.editArea.innerText.length);
+					range.collapse(true);
+					sel.removeAllRanges();
+					sel.addRange(range);*/
+					$(this.$refs.editArea).focus();
+				});
+			}
+		}
+	}
+}
