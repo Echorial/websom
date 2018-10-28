@@ -2683,7 +2683,7 @@ Websom.Services.Router.prototype.routeView = function () {
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.View) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var view = arguments[0];
 		var that = this;
-		this.route(view.handles, function (req) {
+		var r = this.route(view.handles, function (req) {
 			var data = {};
 			if (view.hasServerScript) {
 				data = view.runServerScript(req);
@@ -2711,6 +2711,7 @@ Websom.Services.Router.prototype.routeView = function () {
 				};
 			that.injectSends(req, clientData, readyToSend);
 			});
+		r.greedy = view.greedy;
 	}
 }
 
@@ -6929,6 +6930,8 @@ Websom.View = function () {
 
 	this.handles = "";
 
+	this.greedy = false;
+
 	this.meta = null;
 
 	this.template = "";
@@ -7038,6 +7041,9 @@ Websom.View.prototype.loadFromFile = function () {
 				}
 			if ("handles" in this.meta) {
 				this.handles = this.meta["handles"];
+				}
+			if ("greedy" in this.meta) {
+				this.greedy = this.meta["greedy"];
 				}
 			}else{
 				return Websom.Status.singleError("View", "No info provided in view: '" + location + "'");

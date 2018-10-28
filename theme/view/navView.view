@@ -19,15 +19,15 @@ client {
 	props: ["container", "slashes", "view", "can-edit", "edit-key", "validate", "show-edit", "show-save"],
 	data: function () {return {data: false, editMode: false}},
 	created: function () {
-		this.load(this.parseUrl(location.href));
+		this.load(this.parseUrl(location.pathname));
 	},
 	methods: {
 		reload: function () {
 			location.reload();
 		},
 		parseUrl: function (url) {
-			var base = url.match(/https?:\/\/[^\/]*\/?(.*)/)[1];
-			return base.split("/")[this.slashes || 1];
+			let splits = url.split("/");
+			return splits[this.slashes || 2];
 		},
 		load: function (id) {
 			Websom.interface(this.container, "select", {publicId: id}, (data) => {

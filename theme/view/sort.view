@@ -52,7 +52,7 @@ client {
 	data: function () {
 		return {documents: [], offset: 0};
 	},
-	props: ["view", "bind-data", "render-field", "container", "sub", "sub-field", "parent", "query", "container-class", "layout"],
+	props: ["view", "nav", "bind-data", "render-field", "container", "sub", "sub-field", "parent", "query", "container-class", "layout"],
 	computed: {
 		isSlot: function () {
 			return this.$slots.view || this.$scopedSlots.view;
@@ -132,6 +132,20 @@ client {
 	},
 	mounted: function () {
 		var that = this;
+
+		if (this.nav) {
+			let splits = window.location.pathname.split("/");
+			
+			let val = splits[splits.length - 1];
+
+			let navControl = $(this.$el).children(".controls").find("[name=" + this.nav + "]")[0];
+			if (navControl.__vue__) {
+				navControl.__vue__.setValue(val);
+			}else{
+				$(navControl).val(val);
+			}
+		}
+		
 
 		$(document).on("success", "[data-submit]", function (e) {
 			if ($(this).closest("form").attr("form-key") == that.container && $(this).attr("data-interface") == "insert")

@@ -196,6 +196,40 @@
 @import "popover";
 @import "parallax";
 
+@media @small {
+	.hide-small {
+		display: none !important;
+	}
+	
+	.hide-medium-and-down {
+		display: none !important;
+	}
+}
+
+@media @medium {
+	.hide-medium {
+		display: none !important;
+	}
+	
+	.hide-medium-and-down {
+		display: none !important;
+	}
+
+	.hide-medium-and-up {
+		display: none !important;
+	}
+}
+
+@media @large {
+	.hide-large {
+		display: none !important;
+	}
+	
+	.hide-medium-and-up {
+		display: none !important;
+	}
+}
+
 body {
 	font-family: Arial, Helvetica, sans-serif;
 	margin: 0;
@@ -464,6 +498,19 @@ h1, h2, h3, h4, h5, h6, p {
 		z-index: 1000;
 		padding: .1em;
 		position: absolute;
+	}
+
+	.main-small {
+		width: 70%;
+		margin: 0 auto;
+
+		@media @large {
+			width: 40%;
+		}
+
+		@media @medium {
+			width: 50%;
+		}
 	}
 
 	.main {

@@ -145,7 +145,7 @@ class Websom.Services.Router inherits Websom.Service {
 	`Handles all of the pages/view.view routing`
 	void routeView(Websom.View view) {
 		var that = this;
-		this.route(view.handles, void (Websom.Request req) => {
+		var r = this.route(view.handles, void (Websom.Request req) => {
 			var data = new map();
 			
 			if (view.hasServerScript)
@@ -178,6 +178,8 @@ class Websom.Services.Router inherits Websom.Service {
 
 			that.injectSends(req, clientData, readyToSend);
 		});
+		
+		r.greedy = view.greedy;
 	}
 
 	// value flag will loosely return by value(this is for php)

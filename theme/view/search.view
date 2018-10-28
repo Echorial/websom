@@ -8,7 +8,8 @@ template {
 		<input v-if="layout == 'default'" :placeholder="placeholder" type="text" class="input" v-on:keyup="emit()" />
 		<div v-else-if="layout == 'full'" class="input-box">
 			<span class="icon"><icon fa>search</icon></span>
-			<input :placeholder="placeholder" type="text" class="input" v-on:keyup="emit()" />
+			<input ref="input" :placeholder="placeholder" type="text" class="input" @keyup.enter="navSearch()" v-on:keyup="emit()" />
+			<span v-if="nav" @click="navSearch()" class="go-nav"><icon fa>chevron-right</icon></span>
 		</div>
 	</div>
 }
@@ -22,6 +23,10 @@ client {
 		placeholder: {
 			type: String,
 			default: "Search"
+		},
+		nav: {
+			type: String,
+			default: null
 		}
 	},
 	methods: {
@@ -30,6 +35,14 @@ client {
 		},
 		value: function (callback) {
 			callback($(this.$el).find("input").val());
+		},
+		setValue: function (val) {
+			$(this.$el).find("input").val(val);
+		},
+		navSearch: function () {
+			if (this.nav) {
+				window.location.href = this.nav + "/" + this.$refs.input.value;
+			}
 		}
 	}
 }

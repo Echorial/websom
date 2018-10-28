@@ -13,6 +13,7 @@ class Websom.View {
 	map renderViewData = null;
 
 	string handles = "";
+	bool greedy = false;
 	map meta = null; // info {} front part of .view
 	string template = ""; // Middle part of .view
 	map serverHandles = null; // Pulled out of data.methods.server
@@ -103,6 +104,9 @@ class Websom.View {
 
 			if ("handles" in this.meta)
 				this.handles = this.meta["handles"];
+
+			if ("greedy" in this.meta)
+				this.greedy = this.meta["greedy"];
 		}else{
 			return Websom.Status.singleError("View", "No info provided in view: '" + location + "'");
 		}
