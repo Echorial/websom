@@ -4,12 +4,15 @@ namespace Websom.Micro {}
 
 class Websom.Services.Micro inherits Websom.Service {
 	Websom.Micro.Text text = null;
+	Websom.Micro.Command command = null;
 
 	Websom.Status start() {
 		var Websom.Status status = new Websom.Status();
 		this.text = new Websom.Micro.Text(this.server);
+		this.command = new Websom.Micro.Command(this.server);
 		
 		status.inherit(this.text.start());
+		status.inherit(this.command.start());
 		return status;
 	}
 }

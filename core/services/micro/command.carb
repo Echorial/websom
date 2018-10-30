@@ -1,0 +1,374 @@
+class Websom.Micro.Command inherits Websom.MicroService {
+	<Websom.Command>array commands = new <Websom.Command>array();
+
+	Websom.Status start() {
+		var that = this;
+
+		this.register("theme")
+			.command("init <name> <author> [version=\"1.0\"]")
+				.flag("option")
+					.default("Value")
+			.cook()
+			.on(void (Websom.CommandInvocation invo) => {
+
+			});
+		
+		this.exec("theme init name echorial --option Hello");
+	}
+
+	Websom.Command register(string topName) {
+		var cmd = new Websom.Command(this.server, topName);
+		this.commands.push(cmd);
+		return cmd;
+	}
+
+	void exec(string command) {
+		var inv = new Websom.CommandInvocation(this.server, command);
+		inv.parse();
+		var found = inv.search(this.commands);
+
+		if (found != null) {
+			var output = found.run(inv);
+			Console.log(output);
+		}
+	}
+}
+
+class Websom.Command {
+	Websom.Server server = null;
+	string name = "";
+
+	<Websom.CommandPattern>array patterns = new <Websom.CommandPattern>array();
+
+	void @construct(Websom.Server server, string name) {
+		this.server = server;
+		this.name = name;
+	}
+
+	`Registers a new sub pattern for this command.`
+	Websom.CommandPattern command(string pattern) {
+		var pat = new Websom.CommandPattern(this, pattern);
+		this.patterns.push(pat);
+		return pat;
+	}
+}
+
+class Websom.CommandFlag {
+	Websom.CommandPattern parent = null;
+	string name = "";
+	string _type = "";
+	primitive _default = null;
+
+	void @construct(Websom.CommandPattern parent, string name, string type, primitive defVal) {
+		this.parent = parent;
+		this.name = name;
+		this._type = type;
+		this._default = defVal;
+	}
+
+	Websom.CommandFlag type(string type) {
+		this._type = type;
+		return this;
+	}
+
+	Websom.CommandFlag default(primitive val) {
+		this._default = val;
+		return this;
+	}
+
+	Websom.CommandFlag flag(string name) {
+		return this.parent.flag(name);
+	}
+
+	Websom.CommandPattern command(string pattern) {
+		return this.parent.parent.command(pattern);
+	}
+
+	Websom.CommandFlag cook() {
+		this.parent.cook();
+		return this;
+	}
+
+	Websom.CommandPattern on(<void, Websom.CommandInvocation>function run) {
+		return this.parent.on(run);
+	}
+}
+
+class Websom.CommandPart {
+	int type = 2;
+	bool optional = false;
+	primitive default = null;
+	string name = "";
+	
+	void @construct(string name, int type) {
+		this.name = name;
+		this.type = type;
+	}
+}
+
+class Websom.CommandPattern {
+	bool cooked = false;
+	Websom.Command parent = null;
+	string pattern = null;
+	<Websom.CommandFlag>array flags = new <Websom.CommandFlag>array();
+	<void, Websom.CommandInvocation>function handler = null;
+
+	<Websom.CommandPart>array parts = new <Websom.CommandPart>array();
+
+	void @construct(Websom.Command parent, string pattern) {
+		this.parent = parent;
+		this.pattern = pattern;
+	}
+
+	Websom.CommandFlag flag(string name) {
+		var flag = new Websom.CommandFlag(this, name, "string", null);
+		this.flags.push(flag);
+		return flag;
+	}
+
+	Websom.CommandPattern command(string pattern) {
+		return this.parent.command(pattern);
+	}
+
+	Websom.CommandPattern on(<void, Websom.CommandInvocation>function run) {
+		this.handler = run;
+		return this;
+	}
+
+	string run(Websom.CommandInvocation invocation) {
+		for (var int i in this.parts) {
+			var part = this.parts[i];
+
+			if (invocation.arguments.length - 1 > i) {
+				var arg = invocation.arguments[i + 1];
+
+				if (part.type == 1) {
+					// TODO: Something.
+				}else{
+					invocation.values[part.name] = arg;
+				}
+			}else{
+				if (part.type != 2 or part.optional == false) {
+					return part.name + " argument required on command";
+				}else{
+					invocation.values[part.name] = part.default;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	bool match(Websom.CommandInvocation invocation) {
+		for (var int i in this.parts) {
+			var part = this.parts[i];
+
+			if (invocation.arguments.length - 1 >= i) {
+				var arg = invocation.arguments[i + 1];
+
+				if (part.type == 1) {
+					if (arg != part.name)
+						return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	void buildParts() {
+		var bool isOpen = false;
+		var bool isEquals = false;
+		var string openPart = "";
+		var string closePart = "";
+		var string build = "";
+		var string equals = "";
+
+		for (var int i = 0; i < this.pattern.length; i++) {
+			var char = this.pattern[i];
+			if (openPart.length > 0 and closePart != char) {
+				if (isEquals)
+					equals += char;
+				else
+					build += char;
+				
+				if (char == "=") {
+					isEquals = true;
+				}
+			}else if (openPart.length == 0 and char != " ") {
+				if (char == "<") {
+					openPart = "<";
+					closePart = ">";
+					isOpen = true;
+				}else if (char == "[") {
+					openPart = "[";
+					closePart = "]";
+					isOpen = true;
+				}else{
+					isOpen = true;
+					build += char;
+				}
+			}else if (isOpen == true and ((char == " ") or closePart == char)) { // Finish part
+				isOpen = false;
+				var type = 2; // Dynamic input value
+
+				if (openPart == "")
+					type = 1; // Forced keyword
+
+				var part = new Websom.CommandPart(build, type);
+				part.optional = openPart == "[";
+				if (equals.length > 0)
+					part.default = Websom.Json.parse(equals);
+
+				this.parts.push(part);
+
+				openPart = "";
+				closePart = "";
+				
+				isOpen = false;
+				isEquals = false;
+				build = "";
+				equals = "";
+			}
+		}
+	}
+
+	Websom.CommandPattern cook() {
+		this.cooked = true;
+		this.buildParts();
+		return this;
+	}
+}
+
+class Websom.CommandInvocation {
+	`If this command was invoked locally from a module or service.`
+	bool local = true;
+
+	`The request that invoked this. @note this is null on local calls.`
+	Websom.Request request = null;
+
+	`Module name, service name, or "remote"`
+	string sender = "Unknown";
+
+	<void, bool, string>function handler = null;
+
+	Websom.CommandPattern pattern = null;
+	Websom.Server server = null;
+
+	map flags = new map();
+
+	map values = new map();
+
+	<string>array arguments = new <string>array();
+
+	`The raw command input.`
+	string raw = "";
+
+	void @construct(Websom.Server server, string raw) {
+		this.server = server;
+		this.raw = raw;
+	}
+
+	primitive get(string name) {
+		if (name in this.values)
+			return this.values[name];
+		else
+			return null;
+	}
+
+	`Outputs an error message to the sender.`
+	void error(string message) {
+		if (this.local) {
+			this.handler(true, message);
+		}else{
+			this.request.send('{"status": "error", "message": ' + Websom.Json.encode(message) + '}');
+		}
+	}
+
+	`Outputs a message to the sender.`
+	void output(string message) {
+		if (this.local) {
+			this.handler(false, message);
+		}else{
+			this.request.send('{"status": "success", "message": ' + Websom.Json.encode(message) + '}');
+		}
+	}
+	
+	Websom.CommandPattern searchPatterns(<Websom.CommandPattern>array patterns) {
+		for (var int i in patterns) {
+			var pattern = patterns[i];
+			if (pattern.match(this)) {
+				return pattern;
+			}
+		}
+
+		return null;
+	}
+
+	Websom.CommandPattern search(<Websom.Command>array commands) {
+		for (var int i in commands) {
+			var command = commands[i];
+			if (command.name == this.arguments[0]) {
+				return this.searchPatterns(command.patterns);
+			}
+		}
+
+		return null;
+	}
+
+	string parse() {
+		var build = "";
+		var builds = new <string>array();
+		var isOpen = false;
+		var openString = "";
+		var escape = false;
+
+		var flagName = "";
+
+		for (var int i = 0; i < this.raw.length; i++) {
+			var char = this.raw[i];
+
+			if (isOpen == false and char == " ") {
+				if (build.length > 0) {
+					if (openString == "" and build.length > 2 and build[0] == "-" and build[1] == "-") {
+						flagName = build.substr(2, build.length - 1);
+					}else if (flagName == "") {
+						builds.push(build);
+					}else{
+						this.flags[flagName] = build;
+						flagName = "";
+					}
+
+					build = "";
+					openString = "";
+					escape = false;
+				}
+			}else{
+				if (char == "\"" or char == "'") {
+					if (escape) {
+						build += char;
+						escape = false;
+					}else if (isOpen and char == openString) {
+						isOpen = false;
+					}else if (char == "\\") {
+						escape = true;
+					}else{
+						isOpen = true;
+						openString = char;
+					}
+				}else{
+					build += char;
+				}
+			}
+		}
+
+		if (build.length > 0) {
+			if (flagName.length > 0)
+				this.flags[flagName] = build;
+			else
+				builds.push(build);
+		}
+
+		this.arguments = builds;
+	}
+}

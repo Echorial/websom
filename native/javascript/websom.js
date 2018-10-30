@@ -1075,6 +1075,8 @@ Websom.Micro = function () {
 Websom.Services.Micro = function () {
 	this.text = null;
 
+	this.command = null;
+
 	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
@@ -1088,7 +1090,9 @@ Websom.Services.Micro.prototype.start = function () {
 	if (arguments.length == 0) {
 		var status = new Websom.Status();
 		this.text = new Websom.Micro.Text(this.server);
+		this.command = new Websom.Micro.Command(this.server);
 		status.inherit(this.text.start());
+		status.inherit(this.command.start());
 		return status;
 	}
 else 	if (arguments.length == 0) {
@@ -9323,6 +9327,452 @@ Oxygen.FileSystem.Stat.fromMap = function () {
 		stat.ctime = data["ctimeMs"];
 		stat.birthtime = data["birthtimeMs"];
 		return stat;
+	}
+}
+
+Websom.Micro.Command = function () {
+	this.commands = [];
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.Micro.Command.prototype.start = function () {
+	if (arguments.length == 0) {
+		var that = this;
+		this.register("theme").command("init <name> <author> [version=\"1.0\"]").flag("option").default("Value").cook().on(function (invo) {
+
+			});
+		this.exec("theme init name echorial --option Hello");
+	}
+}
+
+Websom.Micro.Command.prototype.register = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var topName = arguments[0];
+		var cmd = new Websom.Command(this.server, topName);
+		this.commands.push(cmd);
+		return cmd;
+	}
+}
+
+Websom.Micro.Command.prototype.exec = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var command = arguments[0];
+		var inv = new Websom.CommandInvocation(this.server, command);
+		inv.parse();
+		var found = inv.search(this.commands);
+		if (found != null) {
+			var output = found.run(inv);
+			console.log(output);
+			}
+	}
+}
+
+Websom.Command = function () {
+	this.server = null;
+
+	this.name = "";
+
+	this.patterns = [];
+
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var server = arguments[0];
+		var name = arguments[1];
+		this.server = server;
+		this.name = name;
+	}
+
+}
+
+Websom.Command.prototype.command = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var pattern = arguments[0];
+		var pat = new Websom.CommandPattern(this, pattern);
+		this.patterns.push(pat);
+		return pat;
+	}
+}
+
+Websom.CommandFlag = function () {
+	this.parent = null;
+
+	this.name = "";
+
+	this._type = "";
+
+	this._default = null;
+
+	if (arguments.length == 4 && ((arguments[0] instanceof Websom.CommandPattern) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'string' || typeof arguments[2] == 'undefined' || arguments[2] === null) && ((arguments[3]instanceof Array || typeof arguments[3] == 'boolean' || typeof arguments[3] == 'number' || typeof arguments[3] == 'number' || typeof arguments[3] == 'object' || typeof arguments[3] == 'string') || typeof arguments[3] == 'undefined' || arguments[3] === null)) {
+		var parent = arguments[0];
+		var name = arguments[1];
+		var type = arguments[2];
+		var defVal = arguments[3];
+		this.parent = parent;
+		this.name = name;
+		this._type = type;
+		this._default = defVal;
+	}
+
+}
+
+Websom.CommandFlag.prototype.type = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var type = arguments[0];
+		this._type = type;
+		return this;
+	}
+}
+
+Websom.CommandFlag.prototype.default = function () {
+	if (arguments.length == 1 && ((arguments[0]instanceof Array || typeof arguments[0] == 'boolean' || typeof arguments[0] == 'number' || typeof arguments[0] == 'number' || typeof arguments[0] == 'object' || typeof arguments[0] == 'string') || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		this._default = val;
+		return this;
+	}
+}
+
+Websom.CommandFlag.prototype.flag = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		return this.parent.flag(name);
+	}
+}
+
+Websom.CommandFlag.prototype.command = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var pattern = arguments[0];
+		return this.parent.parent.command(pattern);
+	}
+}
+
+Websom.CommandFlag.prototype.cook = function () {
+	if (arguments.length == 0) {
+		this.parent.cook();
+		return this;
+	}
+}
+
+Websom.CommandFlag.prototype.on = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var run = arguments[0];
+		return this.parent.on(run);
+	}
+}
+
+Websom.CommandPart = function () {
+	this.type = 2;
+
+	this.optional = false;
+
+	this.default = null;
+
+	this.name = "";
+
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'number' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var name = arguments[0];
+		var type = arguments[1];
+		this.name = name;
+		this.type = type;
+	}
+
+}
+
+Websom.CommandPattern = function () {
+	this.cooked = false;
+
+	this.parent = null;
+
+	this.pattern = null;
+
+	this.flags = [];
+
+	this.handler = null;
+
+	this.parts = [];
+
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Command) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var parent = arguments[0];
+		var pattern = arguments[1];
+		this.parent = parent;
+		this.pattern = pattern;
+	}
+
+}
+
+Websom.CommandPattern.prototype.flag = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		var flag = new Websom.CommandFlag(this, name, "string", null);
+		this.flags.push(flag);
+		return flag;
+	}
+}
+
+Websom.CommandPattern.prototype.command = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var pattern = arguments[0];
+		return this.parent.command(pattern);
+	}
+}
+
+Websom.CommandPattern.prototype.on = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var run = arguments[0];
+		this.handler = run;
+		return this;
+	}
+}
+
+Websom.CommandPattern.prototype.run = function () {
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.CommandInvocation) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var invocation = arguments[0];
+		for (var i = 0; i < this.parts.length; i++) {
+			var part = this.parts[i];
+			if (invocation.arguments.length - 1 > i) {
+				var arg = invocation.arguments[i + 1];
+				if (part.type == 1) {
+
+					}else{
+						invocation.values[part.name] = arg;
+					}
+				}else{
+					if (part.type != 2 || part.optional == false) {
+						return part.name + " argument required on command";
+						}else{
+							invocation.values[part.name] = part.default;
+						}
+				}
+			}
+		return null;
+	}
+}
+
+Websom.CommandPattern.prototype.match = function () {
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.CommandInvocation) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var invocation = arguments[0];
+		for (var i = 0; i < this.parts.length; i++) {
+			var part = this.parts[i];
+			if (invocation.arguments.length - 1 >= i) {
+				var arg = invocation.arguments[i + 1];
+				if (part.type == 1) {
+					if (arg != part.name) {
+						return false;
+						}
+					}
+				}
+			}
+		return true;
+	}
+}
+
+Websom.CommandPattern.prototype.buildParts = function () {
+	if (arguments.length == 0) {
+		var isOpen = false;
+		var isEquals = false;
+		var openPart = "";
+		var closePart = "";
+		var build = "";
+		var equals = "";
+		for (var i = 0;i < this.pattern.length;i++) {
+			var char = this.pattern[i];
+			if (openPart.length > 0 && closePart != char) {
+				if (isEquals) {
+					equals += char;
+					}else{
+						build += char;
+					}
+				if (char == "=") {
+					isEquals = true;
+					}
+				}else if (openPart.length == 0 && char != " ") {
+				if (char == "<") {
+					openPart = "<";
+					closePart = ">";
+					isOpen = true;
+					}else if (char == "[") {
+					openPart = "[";
+					closePart = "]";
+					isOpen = true;
+					}else{
+						isOpen = true;
+						build += char;
+					}
+				}else if (isOpen == true && char == " " || closePart == char) {
+				isOpen = false;
+				var type = 2;
+				if (openPart == "") {
+					type = 1;
+					}
+				var part = new Websom.CommandPart(build, type);
+				part.optional = openPart == "[";
+				if (equals.length > 0) {
+					part.default = Websom.Json.parse(equals);
+					}
+				this.parts.push(part);
+				openPart = "";
+				closePart = "";
+				isOpen = false;
+				isEquals = false;
+				build = "";
+				equals = "";
+				}
+			}
+	}
+}
+
+Websom.CommandPattern.prototype.cook = function () {
+	if (arguments.length == 0) {
+		this.cooked = true;
+		this.buildParts();
+		return this;
+	}
+}
+
+Websom.CommandInvocation = function () {
+	this.local = true;
+
+	this.request = null;
+
+	this.sender = "Unknown";
+
+	this.handler = null;
+
+	this.pattern = null;
+
+	this.server = null;
+
+	this.flags = {};
+
+	this.values = {};
+
+	this.arguments = [];
+
+	this.raw = "";
+
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var server = arguments[0];
+		var raw = arguments[1];
+		this.server = server;
+		this.raw = raw;
+	}
+
+}
+
+Websom.CommandInvocation.prototype.get = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		if (name in this.values) {
+			return this.values[name];
+			}else{
+				return null;
+			}
+	}
+}
+
+Websom.CommandInvocation.prototype.error = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var message = arguments[0];
+		if (this.local) {
+			this.handler(true, message);
+			}else{
+				this.request.send("{\"status\": \"error\", \"message\": " + Websom.Json.encode(message) + "}");
+			}
+	}
+}
+
+Websom.CommandInvocation.prototype.output = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var message = arguments[0];
+		if (this.local) {
+			this.handler(false, message);
+			}else{
+				this.request.send("{\"status\": \"success\", \"message\": " + Websom.Json.encode(message) + "}");
+			}
+	}
+}
+
+Websom.CommandInvocation.prototype.searchPatterns = function () {
+	if (arguments.length == 1 && (arguments[0]instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var patterns = arguments[0];
+		for (var i = 0; i < patterns.length; i++) {
+			var pattern = patterns[i];
+			if (pattern.match(this)) {
+				return pattern;
+				}
+			}
+		return null;
+	}
+}
+
+Websom.CommandInvocation.prototype.search = function () {
+	if (arguments.length == 1 && (arguments[0]instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var commands = arguments[0];
+		for (var i = 0; i < commands.length; i++) {
+			var command = commands[i];
+			if (command.name == this.arguments[0]) {
+				return this.searchPatterns(command.patterns);
+				}
+			}
+		return null;
+	}
+}
+
+Websom.CommandInvocation.prototype.parse = function () {
+	if (arguments.length == 0) {
+		var build = "";
+		var builds = [];
+		var isOpen = false;
+		var openString = "";
+		var escape = false;
+		var flagName = "";
+		for (var i = 0;i < this.raw.length;i++) {
+			var char = this.raw[i];
+			if (isOpen == false && char == " ") {
+				if (build.length > 0) {
+					if (openString == "" && build.length > 2 && build[0] == "-" && build[1] == "-") {
+						flagName = build.substr(2,build.length - 1);
+						}else if (flagName == "") {
+						builds.push(build);
+						}else{
+							this.flags[flagName] = build;
+							flagName = "";
+						}
+					build = "";
+					openString = "";
+					escape = false;
+					}
+				}else{
+					if (char == "\"" || char == "'") {
+						if (escape) {
+							build += char;
+							escape = false;
+							}else if (isOpen && char == openString) {
+							isOpen = false;
+							}else if (char == "\\") {
+							escape = true;
+							}else{
+								isOpen = true;
+								openString = char;
+							}
+						}else{
+							build += char;
+						}
+				}
+			}
+		if (build.length > 0) {
+			if (flagName.length > 0) {
+				this.flags[flagName] = build;
+				}else{
+					builds.push(build);
+				}
+			}
+		this.arguments = builds;
 	}
 }
 
