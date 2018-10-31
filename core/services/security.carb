@@ -1,0 +1,93 @@
+class Websom.Services.Security inherits Websom.Service {
+	bool loaded = false;
+	string captchaService = "";
+	string serviceKey = "";
+	string configPath = "";
+
+	int updateLimit = 6;
+	int insertLimit = 3;
+	int selectLimit = 60;
+
+	string message = "Too many requests.";
+
+	uint64 interval = 60000;
+
+	Websom.Status start() {
+		this.configPath = this.server.config.root + "/security.json";
+	}
+
+	void load() {
+		if (this.loaded == false) {
+			this.loaded = true;
+			if (FileSystem.exists(this.configPath)) {
+				var config = Websom.Json.parse(FileSystem.readSync(this.configPath, "utf8"));
+				this.captchaService = config["captchaService"];
+				this.serviceKey = config["serviceKey"];
+				this.selectLimit = config["selectLimit"];
+				this.insertLimit = config["insertLimit"];
+				this.updateLimit = config["updateLimit"];
+				this.message = config["requestLimitMessage"];
+			}else{
+				FileSystem.writeSync(this.configPath, '{\n	"captchaService": "none",\n	"serviceKey": "",\n	"updateLimit": 6,\n	"insertLimit": 3,\n	"selectLimit": 60,\n	"requestLimitMessage": "Too many requests."\n}');
+			}
+		}
+	}
+
+	`Verify a captcha key`
+	void verify(<void, bool>function callback) {
+		this.load();
+	}
+
+	void countRequest(string type, Websom.InterfaceOptions opts, Websom.Input input) {
+		this.load();
+
+		var history = input.request.session.get("_w_history_" + type);
+		if (history == null) {
+			var nHistory = new map();
+			nHistory["a"] = 1;
+			nHistory["t"] = Websom.Time.now();
+			input.request.session.set("_w_history_" + type, nHistory);
+		}else{
+			var int amount = history["a"];
+			history["a"] = amount + 1;
+			input.request.session.set("_w_history_" + type, history);
+		}
+	}
+
+	`Checks if an input request is allowed. @note callback is not called if the request fails.`
+	void request(string type, Websom.InterfaceOptions opts, Websom.Input input, <void>function callback) {
+		this.load();
+
+		var history = input.request.session.get("_w_history_" + type);
+		if (history == null) {
+			callback();
+		}else{
+			var limit = this.selectLimit;
+			
+			if (type == "update") {
+				limit = this.updateLimit;
+			}else if (type == "insert") {
+				limit = this.insertLimit;
+			}
+
+			var int amount = history["a"];
+			var uint64 timestamp = history["t"];
+			var uint64 now = Websom.Time.now();
+			var uint64 diff = now - timestamp;
+			if (amount > limit) {
+				if (diff >= this.interval) {
+					var updated = new map();
+					updated["a"] = 0;
+					updated["t"] = now;
+
+					input.request.session.set("_w_history_" + type, updated);
+					callback();
+				}else{
+					input.sendError(this.message);
+				}
+			}else{
+				callback();
+			}
+		}
+	}
+}

@@ -10,6 +10,8 @@ Websom.Server = function () {
 
 	this.version = "1.0";
 
+	this.security = null;
+
 	this.module = null;
 
 	this.resource = null;
@@ -56,6 +58,7 @@ Websom.Server = function () {
 		
 		this.websomRoot = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(this.scriptPath) + "/../../");
 		this.config = config;
+		this.security = new Websom.Services.Security(this);
 		this.database = new Websom.Services.Database(this);
 		this.module = new Websom.Services.Module(this);
 		this.resource = new Websom.Services.Resource(this);
@@ -68,6 +71,7 @@ Websom.Server = function () {
 		this.email = new Websom.Services.Email(this);
 		this.micro = new Websom.Services.Micro(this);
 		this.render = new Websom.Services.Render(this);
+		this.status.inherit(this.security.start());
 		this.status.inherit(this.database.start());
 		this.status.inherit(this.module.start());
 		this.status.inherit(this.resource.start());
@@ -2821,6 +2825,139 @@ Websom.Route.prototype.handle = function () {
 	}
 }
 
+Websom.Services.Security = function () {
+	this.loaded = false;
+
+	this.captchaService = "";
+
+	this.serviceKey = "";
+
+	this.configPath = "";
+
+	this.updateLimit = 6;
+
+	this.insertLimit = 3;
+
+	this.selectLimit = 20;
+
+	this.message = "Too many requests.";
+
+	this.interval = 60000;
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.Services.Security.prototype.start = function () {
+	if (arguments.length == 0) {
+		this.configPath = this.server.config.root + "/security.json";
+	}
+else 	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Security.prototype.load = function () {
+	if (arguments.length == 0) {
+		if (this.loaded == false) {
+			this.loaded = true;
+			if (Oxygen.FileSystem.exists(this.configPath)) {
+				var config = Websom.Json.parse(Oxygen.FileSystem.readSync(this.configPath, "utf8"));
+				this.captchaService = config["captchaService"];
+				this.serviceKey = config["serviceKey"];
+				this.selectLimit = config["selectLimit"];
+				this.insertLimit = config["insertLimit"];
+				this.updateLimit = config["updateLimit"];
+				this.message = config["requestLimitMessage"];
+				}else{
+					Oxygen.FileSystem.writeSync(this.configPath, "{\n	\"captchaService\": \"none\",\n	\"serviceKey\": \"\",\n	\"updateLimit\": 6,\n	\"insertLimit\": 3,\n	\"selectLimit\": 20,\n	\"requestLimitMessage\": \"Too many requests.\"\n}");
+				}
+			}
+	}
+}
+
+Websom.Services.Security.prototype.verify = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		this.load();
+	}
+}
+
+Websom.Services.Security.prototype.countRequest = function () {
+	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.InterfaceOptions) || typeof arguments[1] == 'undefined' || arguments[1] === null) && ((arguments[2] instanceof Websom.Input) || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var type = arguments[0];
+		var opts = arguments[1];
+		var input = arguments[2];
+		this.load();
+		var history = input.request.session.get("_w_history_" + type);
+		if (history == null) {
+			var nHistory = {};
+			nHistory["a"] = 1;
+			nHistory["t"] = Websom.Time.now();
+			input.request.session.set("_w_history_" + type, nHistory);
+			}else{
+				var amount = history["a"];
+				history["a"] = amount + 1;
+				input.request.session.set("_w_history_" + type, history);
+			}
+	}
+}
+
+Websom.Services.Security.prototype.request = function () {
+	if (arguments.length == 4 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.InterfaceOptions) || typeof arguments[1] == 'undefined' || arguments[1] === null) && ((arguments[2] instanceof Websom.Input) || typeof arguments[2] == 'undefined' || arguments[2] === null) && (typeof arguments[3] == 'function' || typeof arguments[3] == 'undefined' || arguments[3] === null)) {
+		var type = arguments[0];
+		var opts = arguments[1];
+		var input = arguments[2];
+		var callback = arguments[3];
+		this.load();
+		var history = input.request.session.get("_w_history_" + type);
+		if (history == null) {
+			callback();
+			}else{
+				var limit = this.selectLimit;
+				if (type == "update") {
+					limit = this.updateLimit;
+					}else if (type == "insert") {
+					limit = this.insertLimit;
+					}
+				var amount = history["a"];
+				var timestamp = history["t"];
+				var now = Websom.Time.now();
+				var diff = now - timestamp;
+				if (amount > limit) {
+					if (diff >= this.interval) {
+						var updated = {};
+						updated["a"] = 0;
+						updated["t"] = now;
+						input.request.session.set("_w_history_" + type, updated);
+						callback();
+						}else{
+							input.sendError(this.message);
+						}
+					}else{
+						callback();
+					}
+			}
+	}
+}
+
+Websom.Services.Security.prototype.stop = function () {
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Security.prototype.end = function () {
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Theme = function () {
 	this.themes = [];
 
@@ -3598,52 +3735,55 @@ Websom.Container.prototype.interfaceInsert = function () {
 							return null;
 							}
 						}
-					var v = new Websom.DataValidator(this.dataInfo);
-					v.validate(input, function (msg) {
-						if (msg.hadError) {
-							input.sendError(msg.stringify());
-							}else{
-								var dones = 0;
-								var values = input.raw;
-								var clientMessage = new Websom.ClientMessage();
-								clientMessage.message = opts.baseSuccess;
-								dones+=opts.controls.length + opts.insertControls.length;
-								var checkDone = function () {
-									if (dones == 0) {
-										if (clientMessage.hadError) {
-											input.send(clientMessage.stringify());
-											}else{
-												that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
+					this.server.security.request("insert", opts, input, function () {
+						var v = new Websom.DataValidator(this.dataInfo);
+						v.validate(input, function (msg) {
+							if (msg.hadError) {
+								input.sendError(msg.stringify());
+								}else{
+									var dones = 0;
+									var values = input.raw;
+									var clientMessage = new Websom.ClientMessage();
+									clientMessage.message = opts.baseSuccess;
+									dones+=opts.controls.length + opts.insertControls.length;
+									var checkDone = function () {
+										if (dones == 0) {
+											if (clientMessage.hadError) {
+												input.send(clientMessage.stringify());
+												}else{
+													that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
+												}
+											}
+										};
+									var runControl = function (control) {
+										control.validate(input, function (cMsg) {
+											dones--;
+											if (cMsg != null && cMsg.hadError) {
+												clientMessage.add(cMsg);
+												checkDone();
+												}else{
+													control.fill(input, values, function () {
+														checkDone();
+														});
+												}
+											});
+										};
+									for (var i = 0; i < opts.controls.length; i++) {
+										var control = opts.controls[i];
+										runControl(control);
+										}
+									for (var i = 0; i < opts.insertControls.length; i++) {
+										var control = opts.insertControls[i];
+										runControl(control);
+										}
+									if (opts.controls.length + opts.insertControls.length == 0) {
+										if (dones == 0) {
+											that.server.security.countRequest("insert", opts, input);
+											that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
 											}
 										}
-									};
-								var runControl = function (control) {
-									control.validate(input, function (cMsg) {
-										dones--;
-										if (cMsg != null && cMsg.hadError) {
-											clientMessage.add(cMsg);
-											checkDone();
-											}else{
-												control.fill(input, values, function () {
-													checkDone();
-													});
-											}
-										});
-									};
-								for (var i = 0; i < opts.controls.length; i++) {
-									var control = opts.controls[i];
-									runControl(control);
-									}
-								for (var i = 0; i < opts.insertControls.length; i++) {
-									var control = opts.insertControls[i];
-									runControl(control);
-									}
-								if (opts.controls.length + opts.insertControls.length == 0) {
-									if (dones == 0) {
-										that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
-										}
-									}
-							}
+								}
+							});
 						});
 				}
 			}else{
@@ -3713,77 +3853,80 @@ Websom.Container.prototype.interfaceUpdate = function (opts, input) {
 							return null;
 							}
 						}
-					var v = new Websom.DataValidator(this.dataInfo);
-					v.validate(input, function (msg) {
-						if (msg.hadError) {
-							input.sendError(msg.stringify());
-							}else{
-								var dones = 0;
-								var values = input.raw;
-								var clientMessage = new Websom.ClientMessage();
-								clientMessage.message = opts.baseSuccess;
-								dones+=opts.controls.length + opts.updateControls.length;
-								var cast = that;
-								var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update();
-								var obj = that.dataInfo.spawn(that.server);
-								var checkDone = function () {
-									if (dones == 0) {
-										if (clientMessage.hadError) {
-											input.send(clientMessage.stringify());
-											}else{
-												that.updateFromInterface(opts, update, obj, input, values, clientMessage);
-											}
-										}
-									};
-								obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
-									var shouldContinue = true;
-									var doContinue = function () {
-										var runControl = function (control) {
-											control.validate(input, function (cMsg) {
-												dones--;
-												if (cMsg != null && cMsg.hadError) {
-													clientMessage.add(cMsg);
-													checkDone();
-													}else{
-														control.fill(input, values, function () {
-															checkDone();
-															});
-													}
-												});
-											};
-										for (var i = 0; i < opts.controls.length; i++) {
-											var control = opts.controls[i];
-											runControl(control);
-											}
-										for (var i = 0; i < opts.updateControls.length; i++) {
-											runControl(opts.updateControls[i]);
-											}
-										if (opts.controls.length + opts.updateControls.length == 0) {
-											if (dones == 0) {
-												that.updateFromInterface(opts, update, obj, input, values, clientMessage);
+					this.server.security.request("update", opts, input, function () {
+						var v = new Websom.DataValidator(this.dataInfo);
+						v.validate(input, function (msg) {
+							if (msg.hadError) {
+								input.sendError(msg.stringify());
+								}else{
+									var dones = 0;
+									var values = input.raw;
+									var clientMessage = new Websom.ClientMessage();
+									clientMessage.message = opts.baseSuccess;
+									dones+=opts.controls.length + opts.updateControls.length;
+									var cast = that;
+									var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update();
+									var obj = that.dataInfo.spawn(that.server);
+									var checkDone = function () {
+										if (dones == 0) {
+											if (clientMessage.hadError) {
+												input.send(clientMessage.stringify());
+												}else{
+													that.updateFromInterface(opts, update, obj, input, values, clientMessage);
 												}
 											}
 										};
-									if (opts.mustOwnUpdate) {
-										that.server.userSystem.getLoggedIn(input.request, function (user) {
-											
-										if (user.id != obj.owner.id) {
-											shouldContinue = false;
-										}
-									
-											
-											if (shouldContinue == false) {
-												var cMsg = Websom.ClientMessage.quickError("You do not own this.");
-												input.send(cMsg.stringify());
-												}else{
-													doContinue();
+									obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
+										var shouldContinue = true;
+										var doContinue = function () {
+											var runControl = function (control) {
+												control.validate(input, function (cMsg) {
+													dones--;
+													if (cMsg != null && cMsg.hadError) {
+														clientMessage.add(cMsg);
+														checkDone();
+														}else{
+															control.fill(input, values, function () {
+																checkDone();
+																});
+														}
+													});
+												};
+											for (var i = 0; i < opts.controls.length; i++) {
+												var control = opts.controls[i];
+												runControl(control);
 												}
-											});
-										}else{
-											doContinue();
-										}
-									});
-							}
+											for (var i = 0; i < opts.updateControls.length; i++) {
+												runControl(opts.updateControls[i]);
+												}
+											if (opts.controls.length + opts.updateControls.length == 0) {
+												if (dones == 0) {
+													that.server.security.countRequest("update", opts, input);
+													that.updateFromInterface(opts, update, obj, input, values, clientMessage);
+													}
+												}
+											};
+										if (opts.mustOwnUpdate) {
+											that.server.userSystem.getLoggedIn(input.request, function (user) {
+												
+											if (user.id != obj.owner.id) {
+												shouldContinue = false;
+											}
+										
+												
+												if (shouldContinue == false) {
+													var cMsg = Websom.ClientMessage.quickError("You do not own this.");
+													input.send(cMsg.stringify());
+													}else{
+														doContinue();
+													}
+												});
+											}else{
+												doContinue();
+											}
+										});
+								}
+							});
 						});
 				}
 			}else{
@@ -3919,7 +4062,9 @@ Websom.Container.prototype.register = function () {
 								}else if (type == "update") {
 								that.interfaceUpdate(opts, input);
 								}else if (type == "select") {
-								that.interfaceSelect(opts, input, new Websom.CallContext());
+								that.server.security.request("select", opts, input, function () {
+									that.interfaceSelect(opts, input, new Websom.CallContext());
+									});
 								}else if (type == "interface") {
 								that.interfaceSend(opts, input);
 								}else{
@@ -4050,6 +4195,18 @@ Websom.InterfaceOptions = function () {
 	this.autoOwn = false;
 
 	this.hasAuth = false;
+
+	this.captchaSelect = false;
+
+	this.captchaInsert = false;
+
+	this.captchaUpdate = false;
+
+	this.countSelect = true;
+
+	this.countInsert = true;
+
+	this.countUpdate = true;
 
 	this.permission = "";
 
@@ -5584,6 +5741,8 @@ Websom.Database.prototype.structure = function () {
 Websom.InputChain = function () {
 	this.handler = null;
 
+	this.hasCaptcha = false;
+
 	this.successCallback = null;
 
 	this.errorCallback = null;
@@ -5603,6 +5762,13 @@ Websom.InputChain.prototype.use = function () {
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Control || (arguments[0] instanceof Websom.MessageControl || (arguments[0] instanceof Websom.Controls.AddTo)) || (arguments[0] instanceof Websom.FieldControl || (arguments[0] instanceof Websom.Controls.Search) || (arguments[0] instanceof Websom.Controls.Unique) || (arguments[0] instanceof Websom.Controls.String) || (arguments[0] instanceof Websom.Controls.Number) || (arguments[0] instanceof Websom.Controls.Bool) || (arguments[0] instanceof Websom.Standard.UserSystem.UserControl)) || (arguments[0] instanceof Websom.Controls.Component) || (arguments[0] instanceof Websom.Controls.File)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var control = arguments[0];
 		control.use(this);
+		return this;
+	}
+}
+
+Websom.InputChain.prototype.captcha = function () {
+	if (arguments.length == 0) {
+		this.hasCaptcha = true;
 		return this;
 	}
 }
@@ -6045,6 +6211,19 @@ else 	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Container ||
 		this.upChain = upChain;
 	}
 
+}
+
+Websom.InterfaceChain.prototype.captcha = function () {
+	if (arguments.length == 0) {
+		if (this.currentMode == "select") {
+			this.io.captchaSelect = true;
+			}else if (this.currentMode == "insert") {
+			this.io.captchaInsert = true;
+			}else{
+				this.io.captchaUpdate = true;
+			}
+		return this;
+	}
 }
 
 Websom.InterfaceChain.prototype.select = function () {
@@ -10130,6 +10309,7 @@ Websom.Containers.Table.prototype.interfaceSelect = function () {
 													if (loadMore) {
 														castSends.push("{\"_w_loadMore\": true}");
 														}
+													that.server.security.countRequest("select", opts, input);
 													input.send("{\"documents\": [" + castSends.join(", ") + "]}");
 													}else{
 														that.selectHook(sends);
@@ -10840,52 +11020,55 @@ Websom.Containers.Table.prototype.interfaceInsert = function () {
 							return null;
 							}
 						}
-					var v = new Websom.DataValidator(this.dataInfo);
-					v.validate(input, function (msg) {
-						if (msg.hadError) {
-							input.sendError(msg.stringify());
-							}else{
-								var dones = 0;
-								var values = input.raw;
-								var clientMessage = new Websom.ClientMessage();
-								clientMessage.message = opts.baseSuccess;
-								dones+=opts.controls.length + opts.insertControls.length;
-								var checkDone = function () {
-									if (dones == 0) {
-										if (clientMessage.hadError) {
-											input.send(clientMessage.stringify());
-											}else{
-												that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
+					this.server.security.request("insert", opts, input, function () {
+						var v = new Websom.DataValidator(this.dataInfo);
+						v.validate(input, function (msg) {
+							if (msg.hadError) {
+								input.sendError(msg.stringify());
+								}else{
+									var dones = 0;
+									var values = input.raw;
+									var clientMessage = new Websom.ClientMessage();
+									clientMessage.message = opts.baseSuccess;
+									dones+=opts.controls.length + opts.insertControls.length;
+									var checkDone = function () {
+										if (dones == 0) {
+											if (clientMessage.hadError) {
+												input.send(clientMessage.stringify());
+												}else{
+													that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
+												}
+											}
+										};
+									var runControl = function (control) {
+										control.validate(input, function (cMsg) {
+											dones--;
+											if (cMsg != null && cMsg.hadError) {
+												clientMessage.add(cMsg);
+												checkDone();
+												}else{
+													control.fill(input, values, function () {
+														checkDone();
+														});
+												}
+											});
+										};
+									for (var i = 0; i < opts.controls.length; i++) {
+										var control = opts.controls[i];
+										runControl(control);
+										}
+									for (var i = 0; i < opts.insertControls.length; i++) {
+										var control = opts.insertControls[i];
+										runControl(control);
+										}
+									if (opts.controls.length + opts.insertControls.length == 0) {
+										if (dones == 0) {
+											that.server.security.countRequest("insert", opts, input);
+											that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
 											}
 										}
-									};
-								var runControl = function (control) {
-									control.validate(input, function (cMsg) {
-										dones--;
-										if (cMsg != null && cMsg.hadError) {
-											clientMessage.add(cMsg);
-											checkDone();
-											}else{
-												control.fill(input, values, function () {
-													checkDone();
-													});
-											}
-										});
-									};
-								for (var i = 0; i < opts.controls.length; i++) {
-									var control = opts.controls[i];
-									runControl(control);
-									}
-								for (var i = 0; i < opts.insertControls.length; i++) {
-									var control = opts.insertControls[i];
-									runControl(control);
-									}
-								if (opts.controls.length + opts.insertControls.length == 0) {
-									if (dones == 0) {
-										that.insertFromInterface(opts, input, values, clientMessage, null, null, new Websom.CallContext());
-										}
-									}
-							}
+								}
+							});
 						});
 				}
 			}else{
@@ -10946,77 +11129,80 @@ Websom.Containers.Table.prototype.interfaceUpdate = function (opts, input) {
 							return null;
 							}
 						}
-					var v = new Websom.DataValidator(this.dataInfo);
-					v.validate(input, function (msg) {
-						if (msg.hadError) {
-							input.sendError(msg.stringify());
-							}else{
-								var dones = 0;
-								var values = input.raw;
-								var clientMessage = new Websom.ClientMessage();
-								clientMessage.message = opts.baseSuccess;
-								dones+=opts.controls.length + opts.updateControls.length;
-								var cast = that;
-								var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update();
-								var obj = that.dataInfo.spawn(that.server);
-								var checkDone = function () {
-									if (dones == 0) {
-										if (clientMessage.hadError) {
-											input.send(clientMessage.stringify());
-											}else{
-												that.updateFromInterface(opts, update, obj, input, values, clientMessage);
-											}
-										}
-									};
-								obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
-									var shouldContinue = true;
-									var doContinue = function () {
-										var runControl = function (control) {
-											control.validate(input, function (cMsg) {
-												dones--;
-												if (cMsg != null && cMsg.hadError) {
-													clientMessage.add(cMsg);
-													checkDone();
-													}else{
-														control.fill(input, values, function () {
-															checkDone();
-															});
-													}
-												});
-											};
-										for (var i = 0; i < opts.controls.length; i++) {
-											var control = opts.controls[i];
-											runControl(control);
-											}
-										for (var i = 0; i < opts.updateControls.length; i++) {
-											runControl(opts.updateControls[i]);
-											}
-										if (opts.controls.length + opts.updateControls.length == 0) {
-											if (dones == 0) {
-												that.updateFromInterface(opts, update, obj, input, values, clientMessage);
+					this.server.security.request("update", opts, input, function () {
+						var v = new Websom.DataValidator(this.dataInfo);
+						v.validate(input, function (msg) {
+							if (msg.hadError) {
+								input.sendError(msg.stringify());
+								}else{
+									var dones = 0;
+									var values = input.raw;
+									var clientMessage = new Websom.ClientMessage();
+									clientMessage.message = opts.baseSuccess;
+									dones+=opts.controls.length + opts.updateControls.length;
+									var cast = that;
+									var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update();
+									var obj = that.dataInfo.spawn(that.server);
+									var checkDone = function () {
+										if (dones == 0) {
+											if (clientMessage.hadError) {
+												input.send(clientMessage.stringify());
+												}else{
+													that.updateFromInterface(opts, update, obj, input, values, clientMessage);
 												}
 											}
 										};
-									if (opts.mustOwnUpdate) {
-										that.server.userSystem.getLoggedIn(input.request, function (user) {
-											
-										if (user.id != obj.owner.id) {
-											shouldContinue = false;
-										}
-									
-											
-											if (shouldContinue == false) {
-												var cMsg = Websom.ClientMessage.quickError("You do not own this.");
-												input.send(cMsg.stringify());
-												}else{
-													doContinue();
+									obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
+										var shouldContinue = true;
+										var doContinue = function () {
+											var runControl = function (control) {
+												control.validate(input, function (cMsg) {
+													dones--;
+													if (cMsg != null && cMsg.hadError) {
+														clientMessage.add(cMsg);
+														checkDone();
+														}else{
+															control.fill(input, values, function () {
+																checkDone();
+																});
+														}
+													});
+												};
+											for (var i = 0; i < opts.controls.length; i++) {
+												var control = opts.controls[i];
+												runControl(control);
 												}
-											});
-										}else{
-											doContinue();
-										}
-									});
-							}
+											for (var i = 0; i < opts.updateControls.length; i++) {
+												runControl(opts.updateControls[i]);
+												}
+											if (opts.controls.length + opts.updateControls.length == 0) {
+												if (dones == 0) {
+													that.server.security.countRequest("update", opts, input);
+													that.updateFromInterface(opts, update, obj, input, values, clientMessage);
+													}
+												}
+											};
+										if (opts.mustOwnUpdate) {
+											that.server.userSystem.getLoggedIn(input.request, function (user) {
+												
+											if (user.id != obj.owner.id) {
+												shouldContinue = false;
+											}
+										
+												
+												if (shouldContinue == false) {
+													var cMsg = Websom.ClientMessage.quickError("You do not own this.");
+													input.send(cMsg.stringify());
+													}else{
+														doContinue();
+													}
+												});
+											}else{
+												doContinue();
+											}
+										});
+								}
+							});
 						});
 				}
 			}else{
@@ -11152,7 +11338,9 @@ Websom.Containers.Table.prototype.register = function () {
 								}else if (type == "update") {
 								that.interfaceUpdate(opts, input);
 								}else if (type == "select") {
-								that.interfaceSelect(opts, input, new Websom.CallContext());
+								that.server.security.request("select", opts, input, function () {
+									that.interfaceSelect(opts, input, new Websom.CallContext());
+									});
 								}else if (type == "interface") {
 								that.interfaceSend(opts, input);
 								}else{

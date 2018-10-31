@@ -11,6 +11,7 @@ class Websom.Server {
 
 	string version = "1.0";
 
+	Websom.Services.Security security = null;
 	Websom.Services.Module module = null;
 	Websom.Services.Resource resource = null;
 	Websom.Services.Router router = null;
@@ -47,6 +48,7 @@ class Websom.Server {
 		this.websomRoot = FileSystem.resolve(FileSystem.dirName(this.scriptPath) + "/../../");
 
 		this.config = config;
+		this.security = new Websom.Services.Security(this);
 		this.database = new Websom.Services.Database(this);
 		this.module = new Websom.Services.Module(this);
 		this.resource = new Websom.Services.Resource(this);
@@ -60,6 +62,7 @@ class Websom.Server {
 		this.micro = new Websom.Services.Micro(this);
 		this.render = new Websom.Services.Render(this);
 
+		this.status.inherit(this.security.start());
 		this.status.inherit(this.database.start());
 		this.status.inherit(this.module.start());
 		this.status.inherit(this.resource.start());

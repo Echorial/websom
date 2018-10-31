@@ -292,6 +292,7 @@ class Websom.Containers.Table inherits Websom.Container {
 											var <string>array castSends = sends;
 											if (loadMore)
 												castSends.push("{\"_w_loadMore\": true}");
+											that.server.security.countRequest("select", opts, input);
 											
 											input.send('{"documents": [' + castSends.join(", ") + ']}');
 										}else{

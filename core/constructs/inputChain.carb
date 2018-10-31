@@ -4,6 +4,8 @@
 class Websom.InputChain {
 	Websom.InputHandler handler = null;
 
+	bool hasCaptcha = false;
+
 	<void, Websom.Input, map>function successCallback = null;
 	<void, Websom.Input, Websom.InputValidation>function errorCallback = null;
 
@@ -19,6 +21,11 @@ class Websom.InputChain {
 	Websom.InputChain use(Websom.Control control) {
 		control.use(this);
 		
+		return this;
+	}
+
+	Websom.InputChain captcha() {
+		this.hasCaptcha = true;
 		return this;
 	}
 

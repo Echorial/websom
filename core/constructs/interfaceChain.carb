@@ -18,6 +18,18 @@ class Websom.InterfaceChain {
 		this.upChain = upChain;
 	}
 
+	Websom.InterfaceChain captcha() {
+		if (this.currentMode == "select") {
+			this.io.captchaSelect = true;
+		}else if (this.currentMode == "insert") {
+			this.io.captchaInsert = true;
+		}else{
+			this.io.captchaUpdate = true;
+		}
+		
+		return this;
+	}
+
 	Websom.InterfaceChain select() {
 		this.currentMode = "select";
 		this.io.canSelect = true;

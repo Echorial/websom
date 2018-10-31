@@ -9,7 +9,7 @@ template {
 		</div>
 		<div class="col s12" :class="{'m8': $slots.default, 'm12': !$slots.default}">
 			<slot name="static"/>
-			<h2 v-if="documents.length == 0 && !results">No results</h2>
+			<h2 v-if="documents.length == 0 && !results">{{errorMessage}}</h2>
 			<template v-else-if="documents.length == 0 && results"><slot name="no-results"/></template>
 			<transition-group v-else name="list" tag="div" :class="containerClass">
 				<template v-if="!isSlot">
@@ -29,7 +29,7 @@ template {
 		</div>
 		<div>
 			<slot name="static"/>
-			<h2 v-if="documents.length == 0 && !results">No results</h2>
+			<h2 v-if="documents.length == 0 && !results">{{errorMessage}}</h2>
 			<template v-else-if="documents.length == 0 && results"><slot name="no-results"/></template>
 			<transition-group v-else name="list" tag="div" :class="containerClass">
 				<template v-if="!isSlot">
@@ -50,10 +50,17 @@ template {
 
 client {
 	data: function () {
-		return {documents: [], offset: 0};
+		return {documents: [], offset: 0, error: null};
 	},
 	props: ["view", "nav", "bind-data", "render-field", "container", "sub", "sub-field", "parent", "query", "container-class", "layout"],
 	computed: {
+		errorMessage: function () {
+			if (this.error) {
+				return this.error;
+			}else{
+				return "No results";
+			}
+		},
 		isSlot: function () {
 			return this.$slots.view || this.$scopedSlots.view;
 		},
@@ -88,15 +95,23 @@ client {
 
 			query._w_type = "select";
 			query._w_route = route;
+			this.error = null;
 			$.post("/postInput",
 				{
 					inputKey: this.container,
 					data: query
 				},
 				(d) => {
-					let rawDocs = JSON.parse(d).documents
-					if (!rawDocs)
+					let parsed = JSON.parse(d);
+					let rawDocs = parsed.documents
+					if (!rawDocs) {
+						if (parsed.status == "error") {
+							this.error = parsed.message;
+							this.documents.splice(0, this.documents.length);
+						}
+						
 						console.error(d + " on sort form(container: " + that.container + ", view: " + that.view + ")");
+					}
 					let clientData = new Array(rawDocs.length);
 					for (let i = 0; i < rawDocs.length; i++)
 						clientData[i] = Websom.setupClientData(this.container, rawDocs[i]);
