@@ -64,6 +64,11 @@
 			"path": "./view/sort.view"
 		},
 		{
+			"name": "captcha",
+			"type": "view",
+			"path": "./view/captcha.view"
+		},
+		{
 			"name": "icon",
 			"type": "view",
 			"path": "./view/icon.view"

@@ -93,6 +93,13 @@ Websom.Server = function () {
 
 }
 
+Websom.Server.prototype.injectExpression = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var src = arguments[0];
+		this.router.injectScript = src;
+	}
+}
+
 Websom.Server.prototype.getBucketFromReference = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var referenceName = arguments[0];
@@ -100,6 +107,18 @@ Websom.Server.prototype.getBucketFromReference = function () {
 			return this.getBucket(this.bucketReference[referenceName]["bucket"]);
 			}
 		return null;
+	}
+}
+
+Websom.Server.prototype.log = function (value) {
+		
+			console.log(value);
+		}
+
+Websom.Server.prototype.request = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var url = arguments[0];
+		return new Websom.RequestChain(this, url);
 	}
 }
 
@@ -1029,6 +1048,29 @@ Websom.Input.prototype.sendSuccess = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var message = arguments[0];
 		this.request.send("{\"status\": \"success\", \"message\": " + Websom.Json.encode(message) + "}");
+	}
+}
+
+Websom.Input.prototype.validateCaptcha = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		var that = this;
+		var url = "https://www.google.com/recaptcha/api/siteverify";
+		if (("_captcha" in this.raw) && (typeof this.raw["_captcha"] == 'object' ? (Array.isArray(this.raw["_captcha"]) ? 'array' : 'map') : (typeof this.raw["_captcha"] == 'number' ? 'float' : typeof this.raw["_captcha"])) == "string") {
+			this.server.security.load();
+			this.server.request(url).form("response", this.raw["_captcha"]).form("secret", this.server.security.serviceKey).parseJson().post(function (res) {
+				if (res.hadError) {
+					that.server.log(res.error);
+					}else{
+						if ("error-codes" in res.data) {
+							that.server.log(res.data["error-codes"]);
+							}
+						callback(res.data["success"]);
+					}
+				});
+			}else{
+				callback(false);
+			}
 	}
 }
 
@@ -2524,6 +2566,8 @@ Websom.Resources.Less.prototype.rawRead = function () {
 Websom.Services.Router = function () {
 	this.routes = [];
 
+	this.injectScript = "";
+
 	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
@@ -2637,7 +2681,7 @@ Websom.Services.Router.prototype.routeString = function () {
 				if (rawClientData == "null") {
 					rawClientData = "{}";
 					}
-				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'>" + template + "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
+				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + "; " + that.injectScript + "</script><div id='page' class='" + themeClass + "'>" + template + "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
 				};
 			that.injectSends(req, clientData, readyToSend);
 			});
@@ -2680,7 +2724,7 @@ Websom.Services.Router.prototype.quickRoute = function () {
 				if (rawClientData == "null") {
 					rawClientData = "{}";
 					}
-				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'><" + viewName + " v-bind:data='data'></" + viewName + "></div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
+				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + "; " + that.injectScript + "</script><div id='page' class='" + themeClass + "'><" + viewName + " v-bind:data='data'></" + viewName + "></div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
 				};
 			that.injectSends(req, clientData, readyToSend);
 			});
@@ -2715,7 +2759,7 @@ Websom.Services.Router.prototype.routeView = function () {
 				if (rawClientData == "null") {
 					rawClientData = "{}";
 					}
-				req.send(that.wrapPage(serverStatic + "<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'><" + view.name + " v-bind:data='data'></" + view.name + "></div>" + content));
+				req.send(that.wrapPage(serverStatic + "<script>Websom.Client = " + rawClientData + "; " + that.injectScript + "</script><div id='page' class='" + themeClass + "'><" + view.name + " v-bind:data='data'></" + view.name + "></div>" + content));
 				};
 			that.injectSends(req, clientData, readyToSend);
 			});
@@ -2832,13 +2876,15 @@ Websom.Services.Security = function () {
 
 	this.serviceKey = "";
 
+	this.publicKey = "";
+
 	this.configPath = "";
 
 	this.updateLimit = 6;
 
 	this.insertLimit = 3;
 
-	this.selectLimit = 20;
+	this.selectLimit = 60;
 
 	this.message = "Too many requests.";
 
@@ -2856,6 +2902,8 @@ Websom.Services.Security = function () {
 Websom.Services.Security.prototype.start = function () {
 	if (arguments.length == 0) {
 		this.configPath = this.server.config.root + "/security.json";
+		this.load();
+		this.server.injectExpression("Websom.Captcha = {publicKey: " + Websom.Json.encode(this.publicKey) + "};");
 	}
 else 	if (arguments.length == 0) {
 
@@ -2870,12 +2918,13 @@ Websom.Services.Security.prototype.load = function () {
 				var config = Websom.Json.parse(Oxygen.FileSystem.readSync(this.configPath, "utf8"));
 				this.captchaService = config["captchaService"];
 				this.serviceKey = config["serviceKey"];
+				this.publicKey = config["publicKey"];
 				this.selectLimit = config["selectLimit"];
 				this.insertLimit = config["insertLimit"];
 				this.updateLimit = config["updateLimit"];
 				this.message = config["requestLimitMessage"];
 				}else{
-					Oxygen.FileSystem.writeSync(this.configPath, "{\n	\"captchaService\": \"none\",\n	\"serviceKey\": \"\",\n	\"updateLimit\": 6,\n	\"insertLimit\": 3,\n	\"selectLimit\": 20,\n	\"requestLimitMessage\": \"Too many requests.\"\n}");
+					Oxygen.FileSystem.writeSync(this.configPath, "{\n	\"captchaService\": \"none\",\n	\"publicKey\": \"\",\n	\"serviceKey\": \"\",\n	\"updateLimit\": 6,\n	\"insertLimit\": 3,\n	\"selectLimit\": 60,\n	\"requestLimitMessage\": \"Too many requests.\"\n}");
 				}
 			}
 	}
@@ -8379,6 +8428,196 @@ Websom.Http.get = function () {
 		var data = arguments[1];
 		var callback = arguments[2];
 
+	}
+}
+
+Websom.Result = function () {
+	this.error = "";
+
+	this.hadError = false;
+
+	this.data = null;
+
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1]instanceof Array || typeof arguments[1] == 'boolean' || typeof arguments[1] == 'number' || typeof arguments[1] == 'number' || typeof arguments[1] == 'object' || typeof arguments[1] == 'string') || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var error = arguments[0];
+		var data = arguments[1];
+		this.error = error;
+		if (error != null && error.length > 0) {
+			this.hadError = true;
+			}
+		this.data = data;
+	}
+
+}
+
+Websom.RequestChain = function () {
+	this.server = null;
+
+	this.url = "";
+
+	this.urlencode = false;
+
+	this.jsonencode = false;
+
+	this.data = {};
+
+	this.doAuth = false;
+
+	this.user = null;
+
+	this.pass = null;
+
+	this.bearer = null;
+
+	this.doParse = false;
+
+	this._headers = {};
+
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var server = arguments[0];
+		var url = arguments[1];
+		this.server = server;
+		this.url = url;
+	}
+
+}
+
+Websom.RequestChain.prototype.auth = function () {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var user = arguments[0];
+		var pass = arguments[1];
+		this.doAuth = true;
+		this.user = user;
+		this.pass = pass;
+		return this;
+	}
+else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var bearer = arguments[0];
+		this.doAuth = true;
+		this.bearer = bearer;
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.parseJson = function () {
+	if (arguments.length == 0) {
+		this.doParse = true;
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.json = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var data = arguments[0];
+		this.jsonencode = true;
+		this.data = data;
+	}
+}
+
+Websom.RequestChain.prototype.form = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var data = arguments[0];
+		this.urlencode = true;
+		this.data = data;
+		return this;
+	}
+else 	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1]instanceof Array || typeof arguments[1] == 'boolean' || typeof arguments[1] == 'number' || typeof arguments[1] == 'number' || typeof arguments[1] == 'object' || typeof arguments[1] == 'string') || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var key = arguments[0];
+		var value = arguments[1];
+		this.urlencode = true;
+		this.data[key] = value;
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.header = function () {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1]instanceof Array || typeof arguments[1] == 'boolean' || typeof arguments[1] == 'number' || typeof arguments[1] == 'number' || typeof arguments[1] == 'object' || typeof arguments[1] == 'string') || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var key = arguments[0];
+		var value = arguments[1];
+		this._headers[key] = value;
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.headers = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var headers = arguments[0];
+		this._headers = headers;
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.makeRequest = function () {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var method = arguments[0];
+		var callback = arguments[1];
+		
+		
+			const request = require("request");
+			let data = {};
+
+			data.method = method;
+
+			if (this.urlencode) {
+				data.form = this.data;
+			}else{
+				data.body = this.data;
+				data.json = true;
+			}
+
+			data.headers = this._headers;
+			data.url = this.url;
+
+			if (this.doAuth) {
+				if (this.bearer == null) {
+					data.auth = {user: this.user, pass: this.pass};
+				}else{
+					data.headers["Authorization"] = "Bearer " + this.bearer;
+				}
+			}
+
+			request(data, (err, res) => {
+				let body = res.body;
+
+				if (this.doParse) {
+					body = JSON.parse(body);
+				}
+
+				callback(new Websom.Result(err, body));
+			});
+		
+	}
+}
+
+Websom.RequestChain.prototype.delete = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		this.makeRequest("DELETE", callback);
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.put = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		this.makeRequest("PUT", callback);
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.get = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		this.makeRequest("GET", callback);
+		return this;
+	}
+}
+
+Websom.RequestChain.prototype.post = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		this.makeRequest("POST", callback);
+		return this;
 	}
 }
 

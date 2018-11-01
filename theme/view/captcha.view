@@ -1,0 +1,46 @@
+info {
+	"name": "captcha"
+}
+
+template {
+	<div>
+
+	</div>
+}
+
+client {
+	methods: {
+		init: function () {
+			if (!Websom.Captcha.publicKey) {
+				console.error("No publicKey for reCaptcha");
+			}else{
+				grecaptcha.render(this.$el, {sitekey: Websom.Captcha.publicKey});
+				$(this.$el).closest("form").on("submit", () => {
+					grecaptcha.reset();
+				});
+			}
+		}
+	},
+	mounted: function () {
+		if (!window.grecaptcha && !window.loadingCaptcha) {
+			window.loadingCaptcha = true;
+			window.waitingForCaptcha = [];
+
+			window.recaptchaLoaded = () => {
+				this.init();
+
+				for (let wait of window.waitingForCaptcha) {
+					wait();
+				}
+			};
+
+			let src = document.createElement("script");
+			src.src = "https://www.google.com/recaptcha/api.js?onload=recaptchaLoaded&render=explicit";
+			document.body.appendChild(src);
+		}else if (window.loadingCaptcha) {
+			window.waitingForCaptcha.push(this.init);
+		}else{
+			this.init();
+		}
+	}
+}

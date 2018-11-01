@@ -271,6 +271,33 @@ class Websom.Input {
 	void sendSuccess(string message) {
 		this.request.send('{"status": "success", "message": ' + Websom.Json.encode(message) + '}');
 	}
+
+	void validateCaptcha(<void, bool>function callback) {
+		var that = this;
+		var url = "https://www.google.com/recaptcha/api/siteverify"; // TODO: Setup a captcha handler for different services.
+
+		if (this.raw.hasKey("_captcha") and this.raw["_captcha"].typeAsString() == "string") {
+			this.server.security.load();
+
+			this.server.request(url)
+				.form("response", this.raw["_captcha"])
+				.form("secret", this.server.security.serviceKey)
+				.parseJson()
+				.post(void (Websom.Result res) => {
+					if (res.hadError) {
+						that.server.log(res.error);
+					}else{
+						if ("error-codes" in res.data) {
+							that.server.log(res.data["error-codes"]);
+						}
+
+						callback(res.data["success"]);
+					}
+				});
+		}else{
+			callback(false);
+		}
+	}
 }
 
 class Websom.InputValidator {

@@ -81,10 +81,24 @@ class Websom.Server {
 				this.bucketReference = this.config.bucket["reference"];
 	}
 
+	void injectExpression(string src) {
+		this.router.injectScript = src;
+	}
+
 	Websom.Bucket getBucketFromReference(string referenceName) {
 		if (referenceName in this.bucketReference)
 			return this.getBucket(this.bucketReference[referenceName]["bucket"]);
 		return null;
+	}
+
+	trust void log(everything value) {
+		native javascript {
+			console.log(value);
+		}
+	}
+
+	Websom.RequestChain request(string url) {
+		return new Websom.RequestChain(this, url);
 	}
 
 	Websom.Bucket getBucket(string name) {

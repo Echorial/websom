@@ -1,5 +1,6 @@
 class Websom.Services.Router inherits Websom.Service {
 	<Websom.Route>array routes = new <Websom.Route>array();
+	string injectScript = "";
 
 	Websom.Route route(string routeString, <void, Websom.Request>function handler) {
 		var splits = this.buildSplits(routeString);
@@ -99,7 +100,7 @@ class Websom.Services.Router inherits Websom.Service {
 				var rawClientData = Websom.Json.encode(clientData);
 				if (rawClientData == "null")
 					rawClientData = "{}";
-				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'>" + template + "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
+				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + "; " + that.injectScript + "</script><div id='page' class='" + themeClass + "'>" + template + "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
 			};
 
 			that.injectSends(req, clientData, readyToSend);
@@ -135,7 +136,7 @@ class Websom.Services.Router inherits Websom.Service {
 				var rawClientData = Websom.Json.encode(clientData);
 				if (rawClientData == "null")
 					rawClientData = "{}";
-				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'><" + viewName + " v-bind:data='data'></" + viewName + "></div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
+				req.send(that.wrapPage("<script>Websom.Client = " + rawClientData + "; " + that.injectScript + "</script><div id='page' class='" + themeClass + "'><" + viewName + " v-bind:data='data'></" + viewName + "></div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));
 			};
 
 			that.injectSends(req, clientData, readyToSend);
@@ -173,7 +174,7 @@ class Websom.Services.Router inherits Websom.Service {
 				}
 				if (rawClientData == "null")
 					rawClientData = "{}";
-				req.send(that.wrapPage(serverStatic + "<script>Websom.Client = " + rawClientData + ";</script><div id='page' class='" + themeClass + "'><" + view.name + " v-bind:data='data'></" + view.name + "></div>" + content));
+				req.send(that.wrapPage(serverStatic + "<script>Websom.Client = " + rawClientData + "; " + that.injectScript + "</script><div id='page' class='" + themeClass + "'><" + view.name + " v-bind:data='data'></" + view.name + "></div>" + content));
 			};
 
 			that.injectSends(req, clientData, readyToSend);

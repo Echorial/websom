@@ -13,6 +13,8 @@ public $bucketReference;
 
 public $version;
 
+public $security;
+
 public $module;
 
 public $resource;
@@ -35,6 +37,8 @@ public $render;
 
 public $pack;
 
+public $micro;
+
 public $dashboard;
 
 public $userSystem;
@@ -53,6 +57,7 @@ function __construct($config) {
 $this->buckets = [];
 $this->bucketReference = null;
 $this->version = "1.0";
+$this->security = null;
 $this->module = null;
 $this->resource = null;
 $this->router = null;
@@ -64,6 +69,7 @@ $this->crypto = null;
 $this->email = null;
 $this->render = null;
 $this->pack = null;
+$this->micro = null;
 $this->dashboard = null;
 $this->userSystem = null;
 $this->paymentSystem = null;
@@ -78,6 +84,7 @@ $this->status = new Websom_Status();
 
 $this->websomRoot = Oxygen_FileSystem::resolve(Oxygen_FileSystem::dirName($this->scriptPath) . "/../../");
 $this->config = $config;
+$this->security = new Websom_Services_Security($this);
 $this->database = new Websom_Services_Database($this);
 $this->module = new Websom_Services_Module($this);
 $this->resource = new Websom_Services_Resource($this);
@@ -88,7 +95,9 @@ $this->pack = new Websom_Services_Pack($this);
 $this->input = new Websom_Services_Input($this);
 $this->crypto = new Websom_Services_Crypto($this);
 $this->email = new Websom_Services_Email($this);
+$this->micro = new Websom_Services_Micro($this);
 $this->render = new Websom_Services_Render($this);
+$this->status->inherit($this->security->start());
 $this->status->inherit($this->database->start());
 $this->status->inherit($this->module->start());
 $this->status->inherit($this->resource->start());
@@ -99,15 +108,22 @@ $this->status->inherit($this->pack->start());
 $this->status->inherit($this->input->start());
 $this->status->inherit($this->crypto->start());
 $this->status->inherit($this->email->start());
+$this->status->inherit($this->micro->start());
 $this->status->inherit($this->render->start());
 if ($this->config->bucket) {
 if (isset($this->config->bucket["reference"])) {
 $this->bucketReference = $this->config->bucket["reference"];}}
 }
+function injectExpression($src) {
+$this->router->injectScript = $src;}
+
 function getBucketFromReference($referenceName) {
 if (isset($this->bucketReference[$referenceName])) {
 return $this->getBucket($this->bucketReference[$referenceName]["bucket"]);}
 return null;}
+
+function log($value) {
+}
 
 function getBucket($name) {
 for ($i = 0; $i < count($this->buckets); $i++) {
@@ -619,7 +635,10 @@ $name = $input->containerInterface->dataInfo->name;
 if (isset($this->completed[$name]) == false) {
 $this->completed[$name] = true;
 array_push($strs, "\"" . $name . "\": {" . $this->buildDataValidation($input->containerInterface->dataInfo) . "}");}}}
-return "<script>Websom.inputValidation = {" . implode(", ", $strs) . ", " . implode(", ", $this->inputTypes) . "};</script>";}
+$seg = "";
+if (count($this->inputTypes) > 0) {
+$seg = ", ";}
+return "<script>Websom.inputValidation = {" . implode(", ", $strs) . $seg . implode(", ", $this->inputTypes) . "};</script>";}
 
 function restriction($key, $callback) {
 $this->restrictHandlers[$key] = $callback;}
@@ -781,6 +800,21 @@ $this->request->send("{\"status\": \"error\", \"message\": " . Websom_Json::enco
 function sendSuccess($message) {
 $this->request->send("{\"status\": \"success\", \"message\": " . Websom_Json::encode($message) . "}");}
 
+function validateCaptcha($callback) {
+$that = $this;
+$url = "https://www.google.com/recaptcha/api/siteverify";
+if (isset($this->raw["_captcha"]) and (gettype($this->raw["_captcha"]) == 'double' ? 'float' : (gettype($this->raw["_captcha"]) == 'array' ? (isset($this->raw["_captcha"]['_c__mapC']) ? 'map' : 'array') : gettype($this->raw["_captcha"]))) == "string") {
+$this->server->security->load();
+$data = new _carb_map();
+$data["body"] = new _carb_map();
+$data["body"]["secret"] = $this->server->security->serviceKey;
+$data["body"]["response"] = $this->raw["_captcha"];
+Websom_Http::postJson($this->server, $url, $data, function ($raw) use (&$data, &$callback, &$that, &$url) {$cast = $raw["success"];
+if (isset($raw["error_codes"])) {
+$that->server->log($raw);}
+$callback->__invoke($cast);});}else{
+$callback->__invoke(false);}}
+
 
 }class Websom_InputValidator {
 
@@ -822,6 +856,57 @@ if ($this->field == null) {
 return $this->message;}else{
 return $this->message . " on field " . $this->field->realName;}}
 
+
+}class Websom_Micro {
+
+function __construct(...$arguments) {
+
+
+}
+
+}class Websom_Services_Micro {
+public $text;
+
+public $command;
+
+public $server;
+
+function __construct($server) {
+$this->text = null;
+$this->command = null;
+$this->server = null;
+
+$this->server = $server;
+}
+function start(...$arguments) {
+if (count($arguments) == 0) {
+$status = new Websom_Status();
+$this->text = new Websom_Micro_Text($this->server);
+$this->command = new Websom_Micro_Command($this->server);
+$status->inherit($this->text->start());
+$status->inherit($this->command->start());
+return $status;
+}
+else if (count($arguments) == 0) {
+
+}
+}
+
+function stop() {
+}
+
+function end() {
+}
+
+
+}class Websom_MicroService {
+public $server;
+
+function __construct($server) {
+$this->server = null;
+
+$this->server = $server;
+}
 
 }class Websom_Services_Module {
 public $modules;
@@ -945,7 +1030,7 @@ return $status;}}}}}
 function start() {
 $dir = $this->server->config->root . "/modules/";
 if (Oxygen_FileSystem::exists($dir) == false) {
-return Websom_Status::singleError("Services.Module", "Unable to find modules directory");}
+Oxygen_FileSystem::makeDir($dir);}
 return $this->reload($dir);}
 
 function handleBridge($req, $bridgeName, $method, $args) {
@@ -1027,7 +1112,7 @@ return $inc;}
 function start() {
 $dir = $this->server->config->root . "/packs/";
 if (Oxygen_FileSystem::exists($dir) == false) {
-return Websom_Status::singleError("Services.Pack", "Unable to find packs directory within website root.");}
+Oxygen_FileSystem::makeDir($dir);}
 return $this->reload($dir);}
 
 function stop() {
@@ -1249,6 +1334,8 @@ $err = $this->buildViews(true);
 if ($err != null) {
 return Websom_Status::singleError("View", $err);}
 if ($dev) {
+if (Oxygen_FileSystem::exists($this->server->config->resources . "/jquery.min.js") == false) {
+Oxygen_FileSystem::writeSync($this->server->config->resources . "/jquery.min.js", Oxygen_FileSystem::readSync($this->server->websomRoot . "/client/javascript/jquery.min.js", "utf8"));}
 $client = new Websom_Resources_Javascript($this->server, "Websom.Core", $this->server->websomRoot . "/client/javascript/client.js");
 $input = new Websom_Resources_Javascript($this->server, "Websom.Core", $this->server->websomRoot . "/client/javascript/input.js");
 $theme = new Websom_Resources_Javascript($this->server, "Websom.Core", $this->server->websomRoot . "/client/javascript/theme.js");
@@ -1698,10 +1785,13 @@ return Oxygen_FileSystem::readSync($this->file, null);}
 }class Websom_Services_Router {
 public $routes;
 
+public $injectScript;
+
 public $server;
 
 function __construct($server) {
 $this->routes = [];
+$this->injectScript = "";
 $this->server = null;
 
 $this->server = $server;
@@ -1737,14 +1827,14 @@ $readyToSend->__invoke();}}}
 
 function _c__include() {
 if ($this->server->config->dev) {
-return "<script src=\"https:/" . "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" . $this->server->config->clientResources . "/client.js\"></script>" . $this->server->view->_c__include() . $this->server->resource->_c__include(true) . $this->server->theme->_c__include() . $this->server->input->clientValidate;}else{
-return "<script src=\"https:/" . "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" . $this->server->config->clientResources . "/client.js\"></script>" . $this->server->resource->_c__include(false) . "<script src=\"" . $this->server->config->clientResources . "/js.js\"></script>" . "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/css.css\">";}}
+return "<script src=\"https:/" . "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" . $this->server->config->clientResources . "/client.js\"></script>" . $this->server->view->_c__include() . $this->server->resource->_c__include(true) . $this->server->theme->_c__include() . $this->server->input->clientValidate . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}else{
+return "<script src=\"https:/" . "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" . $this->server->config->clientResources . "/client.js\"></script>" . $this->server->resource->_c__include(false) . "<script src=\"" . $this->server->config->clientResources . "/js.js\"></script>" . "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/css.css\">" . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}}
 
 function wrapPage($content) {
 $metas = "";
 if ($this->server->config->hasManifest) {
 $metas .= "<link rel='manifest' href='" . $this->server->config->manifestPath . "'>";}
-return "<html><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" . $this->server->config->brandColor . "'/>" . $metas . $this->_c__include() . "</head><body>" . $content . "</body></html>";}
+return "<html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" . $this->server->config->brandColor . "'/>" . $metas . $this->_c__include() . "</head><body>" . $content . "</body></html>";}
 
 function sendStringView($req, $template) {
 $themeClass = "theme";
@@ -1763,7 +1853,7 @@ $clientDatas = 0;
 $readyToSend = function () use (&$req, &$data, &$themeClass, &$clientData, &$clientDatas, &$readyToSend, &$route, &$template, &$that) {$rawClientData = Websom_Json::encode($clientData);
 if ($rawClientData == "null") {
 $rawClientData = "{}";}
-$req->send($that->wrapPage("<script>Websom.Client = " . $rawClientData . ";</script><div id='page' class='" . $themeClass . "'>" . $template . "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));};
+$req->send($that->wrapPage("<script>Websom.Client = " . $rawClientData . "; " . $that->injectScript . "</script><div id='page' class='" . $themeClass . "'>" . $template . "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));};
 $that->injectSends($req, $clientData, $readyToSend);});}
 
 function navView($routeStr, $container, $view, $validate, $canEdit, $editKey) {
@@ -1785,12 +1875,12 @@ $clientDatas = 0;
 $readyToSend = function () use (&$req, &$data, &$themeClass, &$clientData, &$clientDatas, &$readyToSend, &$route, &$viewName, &$that) {$rawClientData = Websom_Json::encode($clientData);
 if ($rawClientData == "null") {
 $rawClientData = "{}";}
-$req->send($that->wrapPage("<script>Websom.Client = " . $rawClientData . ";</script><div id='page' class='" . $themeClass . "'><" . $viewName . " v-bind:data='data'></" . $viewName . "></div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));};
+$req->send($that->wrapPage("<script>Websom.Client = " . $rawClientData . "; " . $that->injectScript . "</script><div id='page' class='" . $themeClass . "'><" . $viewName . " v-bind:data='data'></" . $viewName . "></div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));};
 $that->injectSends($req, $clientData, $readyToSend);});}
 
 function routeView($view) {
 $that = $this;
-$this->route($view->handles, function ($req) use (&$view, &$that) {$data = new _carb_map();
+$r = $this->route($view->handles, function ($req) use (&$view, &$that, &$r) {$data = new _carb_map();
 if ($view->hasServerScript) {
 $data = $view->runServerScript($req);}
 $themeClass = "theme";
@@ -1798,7 +1888,7 @@ if (strlen($that->server->config->defaultTheme) > 0) {
 $themeClass = "theme-" . $that->server->config->defaultTheme;}
 $clientData = new _carb_map();
 $clientDatas = 0;
-$readyToSend = function () use (&$req, &$data, &$themeClass, &$clientData, &$clientDatas, &$readyToSend, &$view, &$that) {$rawClientData = Websom_Json::encode($clientData);
+$readyToSend = function () use (&$req, &$data, &$themeClass, &$clientData, &$clientDatas, &$readyToSend, &$view, &$that, &$r) {$rawClientData = Websom_Json::encode($clientData);
 $content = "<script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: " . json_encode($data->data) . "}}); \$('#server-static').remove();</script>";
 $serverStatic = "";
 $ctx = new Websom_Render_Context();
@@ -1807,8 +1897,9 @@ $content = $that->server->render->renderView($view, $ctx);}else{
 }
 if ($rawClientData == "null") {
 $rawClientData = "{}";}
-$req->send($that->wrapPage($serverStatic . "<script>Websom.Client = " . $rawClientData . ";</script><div id='page' class='" . $themeClass . "'><" . $view->name . " v-bind:data='data'></" . $view->name . "></div>" . $content));};
-$that->injectSends($req, $clientData, $readyToSend);});}
+$req->send($that->wrapPage($serverStatic . "<script>Websom.Client = " . $rawClientData . "; " . $that->injectScript . "</script><div id='page' class='" . $themeClass . "'><" . $view->name . " v-bind:data='data'></" . $view->name . "></div>" . $content));};
+$that->injectSends($req, $clientData, $readyToSend);});
+$r->greedy = $view->greedy;}
 
 function buildSplits($route) {
 return explode("/", $route);}
@@ -1874,6 +1965,114 @@ function handle($req) {
 $this->handler->__invoke($req);}
 
 
+}class Websom_Services_Security {
+public $loaded;
+
+public $captchaService;
+
+public $serviceKey;
+
+public $publicKey;
+
+public $configPath;
+
+public $updateLimit;
+
+public $insertLimit;
+
+public $selectLimit;
+
+public $message;
+
+public $interval;
+
+public $server;
+
+function __construct($server) {
+$this->loaded = false;
+$this->captchaService = "";
+$this->serviceKey = "";
+$this->publicKey = "";
+$this->configPath = "";
+$this->updateLimit = 6;
+$this->insertLimit = 3;
+$this->selectLimit = 60;
+$this->message = "Too many requests.";
+$this->interval = 60000;
+$this->server = null;
+
+$this->server = $server;
+}
+function start(...$arguments) {
+if (count($arguments) == 0) {
+$this->configPath = $this->server->config->root . "/security.json";
+$this->load();
+$this->server->injectExpression("Websom.Captcha = {publicKey: " . Websom_Json::encode($this->publicKey) . "};");
+}
+else if (count($arguments) == 0) {
+
+}
+}
+
+function load() {
+if ($this->loaded == false) {
+$this->loaded = true;
+if (Oxygen_FileSystem::exists($this->configPath)) {
+$config = Websom_Json::parse(Oxygen_FileSystem::readSync($this->configPath, "utf8"));
+$this->captchaService = $config["captchaService"];
+$this->serviceKey = $config["serviceKey"];
+$this->publicKey = $config["publicKey"];
+$this->selectLimit = $config["selectLimit"];
+$this->insertLimit = $config["insertLimit"];
+$this->updateLimit = $config["updateLimit"];
+$this->message = $config["requestLimitMessage"];}else{
+Oxygen_FileSystem::writeSync($this->configPath, "{\n\t\"captchaService\": \"none\",\n\t\"publicKey\": \"\",\n\t\"serviceKey\": \"\",\n\t\"updateLimit\": 6,\n\t\"insertLimit\": 3,\n\t\"selectLimit\": 60,\n\t\"requestLimitMessage\": \"Too many requests.\"\n}");}}}
+
+function verify($callback) {
+$this->load();}
+
+function countRequest($type, $opts, $input) {
+$this->load();
+$history = $input->request->session->get("_w_history_" . $type);
+if ($history == null) {
+$nHistory = new _carb_map();
+$nHistory["a"] = 1;
+$nHistory["t"] = Websom_Time::now();
+$input->request->session->set("_w_history_" . $type, $nHistory);}else{
+$amount = $history["a"];
+$history["a"] = $amount + 1;
+$input->request->session->set("_w_history_" . $type, $history);}}
+
+function request($type, $opts, $input, $callback) {
+$this->load();
+$history = $input->request->session->get("_w_history_" . $type);
+if ($history == null) {
+$callback->__invoke();}else{
+$limit = $this->selectLimit;
+if ($type == "update") {
+$limit = $this->updateLimit;}else if ($type == "insert") {
+$limit = $this->insertLimit;}
+$amount = $history["a"];
+$timestamp = $history["t"];
+$now = Websom_Time::now();
+$diff = $now - $timestamp;
+if ($amount > $limit) {
+if ($diff >= $this->interval) {
+$updated = new _carb_map();
+$updated["a"] = 0;
+$updated["t"] = $now;
+$input->request->session->set("_w_history_" . $type, $updated);
+$callback->__invoke();}else{
+$input->sendError($this->message);}}else{
+$callback->__invoke();}}}
+
+function stop() {
+}
+
+function end() {
+}
+
+
 }class Websom_Services_Theme {
 public $themes;
 
@@ -1922,7 +2121,7 @@ return $inc;}
 function start() {
 $dir = $this->server->config->root . "/themes/";
 if (Oxygen_FileSystem::exists($dir) == false) {
-return Websom_Status::singleError("Services.Theme", "Unable to find themes directory within website root.");}
+Oxygen_FileSystem::makeDir($dir);}
 $themeDir = Oxygen_FileSystem::resolve(Oxygen_FileSystem::dirName($this->server->scriptPath) . "/../../theme/");
 $config = Websom_Json::parse(Oxygen_FileSystem::readSync($themeDir . "/theme.json", "utf8"));
 $status = $this->load($themeDir, $config);
@@ -1964,9 +2163,9 @@ if ($refresh == false) {
 if (Oxygen_FileSystem::exists($this->server->config->root . "/viewCache.json") == false) {
 $refresh = true;}}
 if ($refresh) {
-if (Oxygen_FileSystem::isDir($this->server->config->root . "/pages")) {
+if (Oxygen_FileSystem::exists($this->server->config->root . "/pages")) {
 $status->inherit($this->loadPages($this->server->config->root . "/pages/"));}
-if (Oxygen_FileSystem::isDir($this->server->config->root . "/views")) {
+if (Oxygen_FileSystem::exists($this->server->config->root . "/views")) {
 $status->inherit($this->loadViews($this->server->config->root . "/views/"));}
 $this->moduleViews = $this->getModuleViews();
 $this->buildCache();}else{
@@ -2413,7 +2612,7 @@ if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $msg = Websom_ClientMessage::quickError("Please login.");
 $input->send($msg->stringify());
 return null;}}
-$v = new Websom_DataValidator($this->dataInfo);
+$this->server->security->request("insert", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
 $v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
@@ -2438,7 +2637,8 @@ $control = _c_lib__arrUtils::readIndex($opts->insertControls, $i);
 $runControl->__invoke($control);}
 if (count($opts->controls) + count($opts->insertControls) == 0) {
 if ($dones == 0) {
-$that->insertFromInterface($opts, $input, $values, $clientMessage, null, null, new Websom_CallContext());}}}});}}else{
+$that->server->security->countRequest("insert", $opts, $input);
+$that->insertFromInterface($opts, $input, $values, $clientMessage, null, null, new Websom_CallContext());}}}});});}}else{
 if ($this->server->config->dev) {
 $input->send("Invalid(Dev: This container has no insert interface)");}else{
 $input->send("Invalid");}}}
@@ -2483,7 +2683,7 @@ if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $cMsg = Websom_ClientMessage::quickError("Please login.");
 $input->send($cMsg->stringify());
 return null;}}
-$v = new Websom_DataValidator($this->dataInfo);
+$this->server->security->request("update", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
 $v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
@@ -2511,19 +2711,20 @@ for ($i = 0; $i < count($opts->updateControls); $i++) {
 $runControl->__invoke(_c_lib__arrUtils::readIndex($opts->updateControls, $i));}
 if (count($opts->controls) + count($opts->updateControls) == 0) {
 if ($dones == 0) {
+$that->server->security->countRequest("update", $opts, $input);
 $that->updateFromInterface($opts, $update, $obj, $input, $values, $clientMessage);}}};
 if ($opts->mustOwnUpdate) {
 $that->server->userSystem->getLoggedIn($input->request, function ($user) use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {
 
-										if ($user->id != $obj->owner->id) {
-											$shouldContinue = false;
-										}
-									
+											if ($user->id != $obj->owner->id) {
+												$shouldContinue = false;
+											}
+										
 if ($shouldContinue == false) {
 $cMsg = Websom_ClientMessage::quickError("You do not own this.");
 $input->send($cMsg->stringify());}else{
 $doContinue->__invoke();}});}else{
-$doContinue->__invoke();}});}});}}else{
+$doContinue->__invoke();}});}});});}}else{
 if ($this->server->config->dev) {
 $input->send("Invalid(Dev: This container has no update interface)");}else{
 $input->send("Invalid");}}}
@@ -2611,7 +2812,7 @@ $that->checkAuth($opts, $input, $type, function ($success) use (&$type, &$route,
 if ($type == "insert") {
 $that->interfaceInsert($opts, $input);}else if ($type == "update") {
 $that->interfaceUpdate($opts, $input);}else if ($type == "select") {
-$that->interfaceSelect($opts, $input, new Websom_CallContext());}else if ($type == "interface") {
+$that->server->security->request("select", $opts, $input, function () use (&$success, &$type, &$route, &$opts, &$input, &$that, &$handler) {$that->interfaceSelect($opts, $input, new Websom_CallContext());});}else if ($type == "interface") {
 $that->interfaceSend($opts, $input);}else{
 $input->request->code(400);
 if ($that->server->config->dev) {
@@ -2688,6 +2889,18 @@ public $autoOwn;
 
 public $hasAuth;
 
+public $captchaSelect;
+
+public $captchaInsert;
+
+public $captchaUpdate;
+
+public $countSelect;
+
+public $countInsert;
+
+public $countUpdate;
+
 public $permission;
 
 public $selectPermission;
@@ -2751,6 +2964,12 @@ $this->autoPublicId = false;
 $this->autoTimestamp = false;
 $this->autoOwn = false;
 $this->hasAuth = false;
+$this->captchaSelect = false;
+$this->captchaInsert = false;
+$this->captchaUpdate = false;
+$this->countSelect = true;
+$this->countInsert = true;
+$this->countUpdate = true;
 $this->permission = "";
 $this->selectPermission = "";
 $this->updatePermission = "";
@@ -3710,6 +3929,8 @@ return new Websom_DatabaseStructure($this, $table);}
 }class Websom_InputChain {
 public $handler;
 
+public $hasCaptcha;
+
 public $successCallback;
 
 public $errorCallback;
@@ -3720,6 +3941,7 @@ public $keys;
 
 function __construct($ih) {
 $this->handler = null;
+$this->hasCaptcha = false;
 $this->successCallback = null;
 $this->errorCallback = null;
 $this->restricts = [];
@@ -3729,6 +3951,10 @@ $this->handler = $ih;
 }
 function _c__use($control) {
 $control->_c__use($this);
+return $this;}
+
+function captcha() {
+$this->hasCaptcha = true;
 return $this;}
 
 function restrict() {
@@ -4067,6 +4293,13 @@ $this->upChain = $upChain;
 }
 
 }
+function captcha() {
+if ($this->currentMode == "select") {
+$this->io->captchaSelect = true;}else if ($this->currentMode == "insert") {
+$this->io->captchaInsert = true;}else{
+$this->io->captchaUpdate = true;}
+return $this;}
+
 function select() {
 $this->currentMode = "select";
 $this->io->canSelect = true;
@@ -4707,6 +4940,8 @@ public $renderViewData;
 
 public $handles;
 
+public $greedy;
+
 public $meta;
 
 public $template;
@@ -4744,6 +4979,7 @@ $this->raw = null;
 $this->shallow = false;
 $this->renderViewData = null;
 $this->handles = "";
+$this->greedy = false;
 $this->meta = null;
 $this->template = "";
 $this->serverHandles = null;
@@ -4808,7 +5044,9 @@ if (isset($this->meta["name"])) {
 $this->name = $this->meta["name"];}else{
 return Websom_Status::singleError("View", "No name provided in view: '" . $location . "'");}
 if (isset($this->meta["handles"])) {
-$this->handles = $this->meta["handles"];}}else{
+$this->handles = $this->meta["handles"];}
+if (isset($this->meta["greedy"])) {
+$this->greedy = $this->meta["greedy"];}}else{
 return Websom_Status::singleError("View", "No info provided in view: '" . $location . "'");}
 if (isset($output["template"])) {
 $this->template = $output["template"];}
@@ -6564,6 +6802,367 @@ $stat->birthtime = $data["birthtime"];
 return $stat;}
 
 
+}class Websom_Micro_Command {
+public $commands;
+
+public $server;
+
+function __construct($server) {
+$this->commands = [];
+$this->server = null;
+
+$this->server = $server;
+}
+function start() {
+$that = $this;
+$this->register("theme")->command("init <name> <author> [version=\"1.0\"]")->flag("option")->_c__default("Value")->cook()->on(function ($invo) use (&$that) {});
+$this->exec("theme init name echorial --option Hello");}
+
+function register($topName) {
+$cmd = new Websom_Command($this->server, $topName);
+array_push($this->commands, $cmd);
+return $cmd;}
+
+function exec($command) {
+$inv = new Websom_CommandInvocation($this->server, $command);
+$inv->parse();
+$found = $inv->search($this->commands);
+if ($found != null) {
+$output = $found->run($inv);
+;}}
+
+
+}class Websom_Command {
+public $server;
+
+public $name;
+
+public $patterns;
+
+function __construct($server, $name) {
+$this->server = null;
+$this->name = "";
+$this->patterns = [];
+
+$this->server = $server;
+$this->name = $name;
+}
+function command($pattern) {
+$pat = new Websom_CommandPattern($this, $pattern);
+array_push($this->patterns, $pat);
+return $pat;}
+
+
+}class Websom_CommandFlag {
+public $parent;
+
+public $name;
+
+public $_type;
+
+public $_default;
+
+function __construct($parent, $name, $type, $defVal) {
+$this->parent = null;
+$this->name = "";
+$this->_type = "";
+$this->_default = null;
+
+$this->parent = $parent;
+$this->name = $name;
+$this->_type = $type;
+$this->_default = $defVal;
+}
+function type($type) {
+$this->_type = $type;
+return $this;}
+
+function _c__default($val) {
+$this->_default = $val;
+return $this;}
+
+function flag($name) {
+return $this->parent->flag($name);}
+
+function command($pattern) {
+return $this->parent->parent->command($pattern);}
+
+function cook() {
+$this->parent->cook();
+return $this;}
+
+function on($run) {
+return $this->parent->on($run);}
+
+
+}class Websom_CommandPart {
+public $type;
+
+public $optional;
+
+public $_c__default;
+
+public $name;
+
+function __construct($name, $type) {
+$this->type = 2;
+$this->optional = false;
+$this->_c__default = null;
+$this->name = "";
+
+$this->name = $name;
+$this->type = $type;
+}
+
+}class Websom_CommandPattern {
+public $cooked;
+
+public $parent;
+
+public $pattern;
+
+public $flags;
+
+public $handler;
+
+public $parts;
+
+function __construct($parent, $pattern) {
+$this->cooked = false;
+$this->parent = null;
+$this->pattern = null;
+$this->flags = [];
+$this->handler = null;
+$this->parts = [];
+
+$this->parent = $parent;
+$this->pattern = $pattern;
+}
+function flag($name) {
+$flag = new Websom_CommandFlag($this, $name, "string", null);
+array_push($this->flags, $flag);
+return $flag;}
+
+function command($pattern) {
+return $this->parent->command($pattern);}
+
+function on($run) {
+$this->handler = $run;
+return $this;}
+
+function run($invocation) {
+for ($i = 0; $i < count($this->parts); $i++) {
+$part = _c_lib__arrUtils::readIndex($this->parts, $i);
+if (count($invocation->arguments) - 1 > $i) {
+$arg = _c_lib__arrUtils::readIndex($invocation->arguments, $i + 1);
+if ($part->type == 1) {
+}else{
+$invocation->values[$part->name] = $arg;}}else{
+if ($part->type != 2 or $part->optional == false) {
+return $part->name . " argument required on command";}else{
+$invocation->values[$part->name] = $part->_c__default;}}}
+return null;}
+
+function match($invocation) {
+for ($i = 0; $i < count($this->parts); $i++) {
+$part = _c_lib__arrUtils::readIndex($this->parts, $i);
+if (count($invocation->arguments) - 1 >= $i) {
+$arg = _c_lib__arrUtils::readIndex($invocation->arguments, $i + 1);
+if ($part->type == 1) {
+if ($arg != $part->name) {
+return false;}}}}
+return true;}
+
+function buildParts() {
+$isOpen = false;
+$isEquals = false;
+$openPart = "";
+$closePart = "";
+$build = "";
+$equals = "";
+for ($i = 0;$i < strlen($this->pattern);$i++) {
+$char = $this->pattern[$i];
+if (strlen($openPart) > 0 and $closePart != $char) {
+if ($isEquals) {
+$equals .= $char;}else{
+$build .= $char;}
+if ($char == "=") {
+$isEquals = true;}}else if (strlen($openPart) == 0 and $char != " ") {
+if ($char == "<") {
+$openPart = "<";
+$closePart = ">";
+$isOpen = true;}else if ($char == "[") {
+$openPart = "[";
+$closePart = "]";
+$isOpen = true;}else{
+$isOpen = true;
+$build .= $char;}}else if ($isOpen == true and $char == " " or $closePart == $char) {
+$isOpen = false;
+$type = 2;
+if ($openPart == "") {
+$type = 1;}
+$part = new Websom_CommandPart($build, $type);
+$part->optional = $openPart == "[";
+if (strlen($equals) > 0) {
+$part->_c__default = Websom_Json::parse($equals);}
+array_push($this->parts, $part);
+$openPart = "";
+$closePart = "";
+$isOpen = false;
+$isEquals = false;
+$build = "";
+$equals = "";}}}
+
+function cook() {
+$this->cooked = true;
+$this->buildParts();
+return $this;}
+
+
+}class Websom_CommandInvocation {
+public $local;
+
+public $request;
+
+public $sender;
+
+public $handler;
+
+public $pattern;
+
+public $server;
+
+public $flags;
+
+public $values;
+
+public $arguments;
+
+public $raw;
+
+function __construct($server, $raw) {
+$this->local = true;
+$this->request = null;
+$this->sender = "Unknown";
+$this->handler = null;
+$this->pattern = null;
+$this->server = null;
+$this->flags = new _carb_map();
+$this->values = new _carb_map();
+$this->arguments = [];
+$this->raw = "";
+
+$this->server = $server;
+$this->raw = $raw;
+}
+function get($name) {
+if (isset($this->values[$name])) {
+return $this->values[$name];}else{
+return null;}}
+
+function error($message) {
+if ($this->local) {
+$this->handler->__invoke(true, $message);}else{
+$this->request->send("{\"status\": \"error\", \"message\": " . Websom_Json::encode($message) . "}");}}
+
+function output($message) {
+if ($this->local) {
+$this->handler->__invoke(false, $message);}else{
+$this->request->send("{\"status\": \"success\", \"message\": " . Websom_Json::encode($message) . "}");}}
+
+function searchPatterns($patterns) {
+for ($i = 0; $i < count($patterns); $i++) {
+$pattern = _c_lib__arrUtils::readIndex($patterns, $i);
+if ($pattern->match($this)) {
+return $pattern;}}
+return null;}
+
+function search($commands) {
+for ($i = 0; $i < count($commands); $i++) {
+$command = _c_lib__arrUtils::readIndex($commands, $i);
+if ($command->name == _c_lib__arrUtils::readIndex($this->arguments, 0)) {
+return $this->searchPatterns($command->patterns);}}
+return null;}
+
+function parse() {
+$build = "";
+$builds = [];
+$isOpen = false;
+$openString = "";
+$escape = false;
+$flagName = "";
+for ($i = 0;$i < strlen($this->raw);$i++) {
+$char = $this->raw[$i];
+if ($isOpen == false and $char == " ") {
+if (strlen($build) > 0) {
+if ($openString == "" and strlen($build) > 2 and $build[0] == "-" and $build[1] == "-") {
+$flagName = substr($build, 2,strlen($build) - 1);}else if ($flagName == "") {
+array_push($builds, $build);}else{
+$this->flags[$flagName] = $build;
+$flagName = "";}
+$build = "";
+$openString = "";
+$escape = false;}}else{
+if ($char == "\"" or $char == "'") {
+if ($escape) {
+$build .= $char;
+$escape = false;}else if ($isOpen and $char == $openString) {
+$isOpen = false;}else if ($char == "\\") {
+$escape = true;}else{
+$isOpen = true;
+$openString = $char;}}else{
+$build .= $char;}}}
+if (strlen($build) > 0) {
+if (strlen($flagName) > 0) {
+$this->flags[$flagName] = $build;}else{
+array_push($builds, $build);}}
+$this->arguments = $builds;}
+
+
+}class Websom_Micro_Text {
+public $loaded;
+
+public $data;
+
+public $textFile;
+
+public $server;
+
+function __construct($server) {
+$this->loaded = false;
+$this->data = null;
+$this->textFile = "";
+$this->server = null;
+
+$this->server = $server;
+}
+function start() {
+$that = $this;
+$textFile = $this->server->config->root . "/text.json";
+$this->textFile = $textFile;
+if ($this->server->config->dev) {
+if (Oxygen_FileSystem::exists($textFile) == false) {
+Oxygen_FileSystem::writeSync($textFile, "{}");}
+if (Oxygen_FileSystem::exists($this->server->config->resources . "/text.js") == false) {
+Oxygen_FileSystem::writeSync($this->server->config->resources . "/text.js", "Websom.text = {\"*\": {}};");}}
+$this->server->input->_c__interface("text.edit")->restrict()->to("permission", "text.edit")->key("rule")->is("string")->length(1, 256)->key("name")->is("string")->length(1, 512)->key("text")->is("string")->length(0, 10000)->success(function ($input, $cooked) use (&$that, &$textFile) {$data = &$input->raw;
+$that->load();
+if (isset($that->data[$data["rule"]]) == false) {
+$that->data[$data["rule"]] = new _carb_map();}
+$that->data[$data["rule"]][$data["name"]] = $data["text"];
+$that->save();
+$input->sendSuccess("Saved");});}
+
+function save() {
+$encoded = Websom_Json::encode($this->data);
+Oxygen_FileSystem::writeSync($this->textFile, $encoded);
+Oxygen_FileSystem::writeSync($this->server->config->resources . "/text.js", "Websom.text = " . $encoded . ";");}
+
+function load() {
+if ($this->loaded == false) {
+$this->data = Websom_Json::parse(Oxygen_FileSystem::readSync($this->textFile, "utf8"));}}
+
+
 }class Websom_Containers_Table {
 public $load;
 
@@ -6787,6 +7386,7 @@ if ($that->selectHook == null) {
 $castSends = &$sends;
 if ($loadMore) {
 array_push($castSends, "{\"_w_loadMore\": true}");}
+$that->server->security->countRequest("select", $opts, $input);
 $input->send("{\"documents\": [" . implode(", ", $castSends) . "]}");}else{
 $that->selectHook->__invoke($sends);}}};
 $loads+=count($docs);
@@ -7185,7 +7785,7 @@ if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $msg = Websom_ClientMessage::quickError("Please login.");
 $input->send($msg->stringify());
 return null;}}
-$v = new Websom_DataValidator($this->dataInfo);
+$this->server->security->request("insert", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
 $v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
@@ -7210,7 +7810,8 @@ $control = _c_lib__arrUtils::readIndex($opts->insertControls, $i);
 $runControl->__invoke($control);}
 if (count($opts->controls) + count($opts->insertControls) == 0) {
 if ($dones == 0) {
-$that->insertFromInterface($opts, $input, $values, $clientMessage, null, null, new Websom_CallContext());}}}});}}else{
+$that->server->security->countRequest("insert", $opts, $input);
+$that->insertFromInterface($opts, $input, $values, $clientMessage, null, null, new Websom_CallContext());}}}});});}}else{
 if ($this->server->config->dev) {
 $input->send("Invalid(Dev: This container has no insert interface)");}else{
 $input->send("Invalid");}}}
@@ -7252,7 +7853,7 @@ if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $cMsg = Websom_ClientMessage::quickError("Please login.");
 $input->send($cMsg->stringify());
 return null;}}
-$v = new Websom_DataValidator($this->dataInfo);
+$this->server->security->request("update", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
 $v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
@@ -7280,19 +7881,20 @@ for ($i = 0; $i < count($opts->updateControls); $i++) {
 $runControl->__invoke(_c_lib__arrUtils::readIndex($opts->updateControls, $i));}
 if (count($opts->controls) + count($opts->updateControls) == 0) {
 if ($dones == 0) {
+$that->server->security->countRequest("update", $opts, $input);
 $that->updateFromInterface($opts, $update, $obj, $input, $values, $clientMessage);}}};
 if ($opts->mustOwnUpdate) {
 $that->server->userSystem->getLoggedIn($input->request, function ($user) use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {
 
-										if ($user->id != $obj->owner->id) {
-											$shouldContinue = false;
-										}
-									
+											if ($user->id != $obj->owner->id) {
+												$shouldContinue = false;
+											}
+										
 if ($shouldContinue == false) {
 $cMsg = Websom_ClientMessage::quickError("You do not own this.");
 $input->send($cMsg->stringify());}else{
 $doContinue->__invoke();}});}else{
-$doContinue->__invoke();}});}});}}else{
+$doContinue->__invoke();}});}});});}}else{
 if ($this->server->config->dev) {
 $input->send("Invalid(Dev: This container has no update interface)");}else{
 $input->send("Invalid");}}}
@@ -7380,7 +7982,7 @@ $that->checkAuth($opts, $input, $type, function ($success) use (&$type, &$route,
 if ($type == "insert") {
 $that->interfaceInsert($opts, $input);}else if ($type == "update") {
 $that->interfaceUpdate($opts, $input);}else if ($type == "select") {
-$that->interfaceSelect($opts, $input, new Websom_CallContext());}else if ($type == "interface") {
+$that->server->security->request("select", $opts, $input, function () use (&$success, &$type, &$route, &$opts, &$input, &$that, &$handler) {$that->interfaceSelect($opts, $input, new Websom_CallContext());});}else if ($type == "interface") {
 $that->interfaceSend($opts, $input);}else{
 $input->request->code(400);
 if ($that->server->config->dev) {

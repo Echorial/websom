@@ -74,7 +74,39 @@ Vue.directive('on-native', {
 			b.value(e);
 		});
 	}
-})
+});
+
+var wRcList = 0;
+
+Vue.directive("captcha", {
+	inserted: (el) => {
+		wRcList++;
+		el.classList.add("g-recaptcha");
+		el.setAttribute("data-sitekey", Websom.Captcha.publicKey);
+		
+		window["wValidateCaptchaForm" + wRcList] = function (token) {
+			Websom.submitForm($(el).closest("form"), $(el), {"_captcha": token});
+		};
+
+		el.setAttribute("data-callback", "wValidateCaptchaForm" + wRcList);
+		el.setAttribute("data-size", "invisible");
+
+		if (!window.grecaptcha && !window.loadingCaptcha) {
+			window.loadingCaptcha = true;
+			window.waitingForCaptcha = [];
+
+			window.recaptchaLoaded = () => {
+				for (let wait of window.waitingForCaptcha) {
+					wait();
+				}
+			};
+
+			let src = document.createElement("script");
+			src.src = "https://www.google.com/recaptcha/api.js";
+			document.body.appendChild(src);
+		}
+	}
+});
 
 Websom.currentStyle = "data-desktop-style";
 

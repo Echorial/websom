@@ -2,6 +2,7 @@ class Websom.Services.Security inherits Websom.Service {
 	bool loaded = false;
 	string captchaService = "";
 	string serviceKey = "";
+	string publicKey = "";
 	string configPath = "";
 
 	int updateLimit = 6;
@@ -14,6 +15,9 @@ class Websom.Services.Security inherits Websom.Service {
 
 	Websom.Status start() {
 		this.configPath = this.server.config.root + "/security.json";
+
+		this.load();
+		this.server.injectExpression("Websom.Captcha = {publicKey: " + Websom.Json.encode(this.publicKey) + "};");
 	}
 
 	void load() {
@@ -23,12 +27,13 @@ class Websom.Services.Security inherits Websom.Service {
 				var config = Websom.Json.parse(FileSystem.readSync(this.configPath, "utf8"));
 				this.captchaService = config["captchaService"];
 				this.serviceKey = config["serviceKey"];
+				this.publicKey = config["publicKey"];
 				this.selectLimit = config["selectLimit"];
 				this.insertLimit = config["insertLimit"];
 				this.updateLimit = config["updateLimit"];
 				this.message = config["requestLimitMessage"];
 			}else{
-				FileSystem.writeSync(this.configPath, '{\n	"captchaService": "none",\n	"serviceKey": "",\n	"updateLimit": 6,\n	"insertLimit": 3,\n	"selectLimit": 60,\n	"requestLimitMessage": "Too many requests."\n}');
+				FileSystem.writeSync(this.configPath, '{\n	"captchaService": "none",\n	"publicKey": "",\n	"serviceKey": "",\n	"updateLimit": 6,\n	"insertLimit": 3,\n	"selectLimit": 60,\n	"requestLimitMessage": "Too many requests."\n}');
 			}
 		}
 	}
