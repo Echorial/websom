@@ -860,7 +860,7 @@ Websom.Services.Input.prototype.buildDataValidation = function () {
 			var fieldValidation = [];
 			fieldValidation.push("type: \"" + type + "\"");
 			for (var key in field.attributes) {
-				if (key == "Min" || key == "Max" || key == "Matches" || key == "Length") {
+				if (key == "Min" || key == "Max" || key == "Match" || key == "MatchMessage" || key == "Not" || key == "Length") {
 					fieldValidation.push(key + ": " + Websom.Json.encode(field.attributes[key]));
 					}
 				}
@@ -5902,7 +5902,7 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof ar
 			if (typeName == "string") {
 				this.keys[this.keys.length - 1].setFilter(new Websom.InputFilters.String());
 				}else{
-					throw new Error("Unkown is typeName " + typeName);
+					throw new Error("Unknown is typeName " + typeName);
 				}
 			}
 		return this;

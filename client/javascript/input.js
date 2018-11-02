@@ -90,6 +90,51 @@ function handleMessage(form, button, data) {
 	}
 }
 
+Websom.validateField = function (el, key, v, check) {
+	function giveError(name, msg) {
+		el.trigger("validationError", msg);
+	}
+
+	let hadError = false;
+
+	if (v.Min) {
+		if ((typeof check == "string" ? check.length : check) < v.Min) {
+			giveError(key, typeof check == "string" ? "Must be at least " + v.Min + " characters long." : "Must be larger than " + v.Min);
+			hadError = true;
+		}
+	}
+
+	if (v.Length) {
+		if ((typeof check == "string" ? check.length : check) > v.Length) {
+			giveError(key, typeof check == "string" ? "Must be at shorter than " + v.Length + " characters long." : "Must be smaller than " + v.Min);
+			hadError = true;
+		}
+	}
+
+	if (v.Match) {
+		if (!(new RegExp(v.Match)).test(check)) {
+			giveError(key, "Must match " + (v.MatchMessage || v.Match));
+			hadError = true;
+		}
+	}
+
+	if (!hadError) {
+		el.trigger("validationClear");
+	}
+};
+
+Websom.validateForm = function (form, val, query) {
+	for (let key in val) {
+		let v = val[key];
+
+		if (query[key]) {
+			let check = query[key];
+			
+			Websom.validateField(form.find("[name=" + key + "]"), key, v, check);
+		}
+	}
+};
+
 Websom.submitForm = function (form, button, extraQuery) {
 	var route = "default";
 	var key = form.attr("form-key");
@@ -190,6 +235,11 @@ Websom.submitForm = function (form, button, extraQuery) {
 		dones--;
 		query[input.attr("name")] = value;
 		if (dones == 0) {
+			if (form.attr("data-validation")) {
+				if (!Websom.validateForm(form, Websom.inputValidation[form.attr("data-validation")], query)) {
+					return;
+				}
+			}
 			send();
 		}
 	};
@@ -214,6 +264,16 @@ Websom.submitForm = function (form, button, extraQuery) {
 };
 
 document.addEventListener("DOMContentLoaded", function (e) {
+	$(document).on("input", "input, textarea, select", function(e) {
+		let $this = $(this);
+		let $form = $this.closest("form");
+		if ($form.attr("data-validate")) {
+			let validate = Websom.inputValidation[$form.attr("data-validate")];
+			let key = $this.attr("name");
+			Websom.validateField($this, key, validate[key], $this.val());
+		}
+	});
+
 	$(document).on("submit", "form[form-key]", function(e) {
 		e.preventDefault();
 		return false;

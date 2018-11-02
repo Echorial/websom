@@ -389,6 +389,8 @@ Websom.Theme.handle(".theme", (config) => {
 		},
 		"input.input": {
 			"input": function (e) { //TODO: WARN: Does not work on nested input-array
+				return; // Old
+				
 				var that = $(this);
 				var form = that.closest("form");
 				if (form.attr("data-validate")) {
@@ -407,25 +409,25 @@ Websom.Theme.handle(".theme", (config) => {
 					if ("Length" in key) {
 						if (that.val().length > key["Length"]) {
 							invalid = true;
-							message = "Too long";
+							message = "Must be at shorter than " + key.Length + " characters long.";
 						}
 					}
 					if ("Max" in key) {
 						if (parseFloat(that.val()) > key["Max"]) {
 							invalid = true;
-							message = "Too large";
+							message = "Must be at smaller than " + key.Length + ".";
 						}
 					}
 					if ("Min" in key) {
 						if (that.val().length < key["Min"]) {
 							invalid = true;
-							message = "Too short";
+							message = "Must be at least " + key.Min + " characters long.";
 						}
 					}
-					if ("Matches" in key) {
-						if (!(new RegExp(key["Matches"]).test(that.val()))) {
+					if ("Match" in key) {
+						if (!(new RegExp(key["Match"]).test(that.val()))) {
 							invalid = true;
-							message = "Does not match " + key["Matches"];
+							message = (key.MatchMessage ? key.MatchMessage : "Must match " + key.Match);
 						}
 					}
 

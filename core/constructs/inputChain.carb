@@ -93,7 +93,7 @@ class Websom.InputChain {
 			if (typeName == "string") {
 				this.keys[this.keys.length - 1].setFilter(new Websom.InputFilters.String());
 			}else{
-				Exception.throw("Unkown is typeName " + typeName);
+				Exception.throw("Unknown is typeName " + typeName);
 			}
 		}
 		

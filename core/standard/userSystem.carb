@@ -37,7 +37,7 @@ header interface Websom.Standard.UserSystem.User inherits Websom.StandardData {
 	[Length = 12]
 	expose field string publicId = "";
 
-	[Length = 256, Matches="[A-Za-z0-9_.]"]
+	[Length = 256, Match="^[A-Za-z0-9_.]*$"]
 	expose field string username = "";
 
 	[Length = 512]

@@ -113,7 +113,7 @@ class Websom.Services.Input inherits Websom.Service {
 			fieldValidation.push("type: \"" + type + "\"");
 
 			for (var string key in field.attributes) { //TODO: Allow the type to choose what attributes to send.
-				if (key == "Min" or key == "Max" or key == "Matches" or key == "Length")
+				if (key == "Min" or key == "Max" or key == "Match" or key == "MatchMessage" or key == "Not" or key == "Length")
 					fieldValidation.push(key + ": " + Websom.Json.encode(field.attributes[key]));
 			}
 			keys.push(field.realName + ": {" + fieldValidation.join(", ") + "}");
