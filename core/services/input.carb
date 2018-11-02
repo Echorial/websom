@@ -198,6 +198,8 @@ class Websom.Input {
 	string key = "";
 	string route = "";
 
+	Websom.Data updateData = null;
+
 	trust void @construct(string key, map raw, Websom.Request request) {
 		this.key = key;
 		this.raw = raw;

@@ -973,6 +973,8 @@ Websom.Input = function (key, raw, request) {
 
 	this.route = "";
 
+	this.updateData = null;
+
 		this.key = key;
 		this.raw = raw;
 		if ("_w_route" in raw) {
@@ -3785,7 +3787,7 @@ Websom.Container.prototype.interfaceInsert = function () {
 							}
 						}
 					this.server.security.request("insert", opts, input, function () {
-						var v = new Websom.DataValidator(this.dataInfo);
+						var v = new Websom.DataValidator(that.dataInfo);
 						v.validate(input, function (msg) {
 							if (msg.hadError) {
 								input.sendError(msg.stringify());
@@ -3902,8 +3904,19 @@ Websom.Container.prototype.interfaceUpdate = function (opts, input) {
 							return null;
 							}
 						}
+					if (("publicId" in input.raw) == false || (typeof input.raw["publicId"] == 'object' ? (Array.isArray(input.raw["publicId"]) ? 'array' : 'map') : (typeof input.raw["publicId"] == 'number' ? 'float' : typeof input.raw["publicId"])) != "string") {
+						var qMsg = Websom.ClientMessage.quickError("Invalid publicId");
+						input.send(qMsg.stringify());
+						return null;
+						}
+					var publicId = input.raw["publicId"];
+					if (publicId.length < 10 || publicId.length > 256) {
+						var qMsg = Websom.ClientMessage.quickError("Invalid publicId");
+						input.send(qMsg.stringify());
+						return null;
+						}
 					this.server.security.request("update", opts, input, function () {
-						var v = new Websom.DataValidator(this.dataInfo);
+						var v = new Websom.DataValidator(that.dataInfo);
 						v.validate(input, function (msg) {
 							if (msg.hadError) {
 								input.sendError(msg.stringify());
@@ -3914,7 +3927,7 @@ Websom.Container.prototype.interfaceUpdate = function (opts, input) {
 									clientMessage.message = opts.baseSuccess;
 									dones+=opts.controls.length + opts.updateControls.length;
 									var cast = that;
-									var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update();
+									var update = that.server.database.primary.from(cast.table).where("publicId").equals(publicId).update();
 									var obj = that.dataInfo.spawn(that.server);
 									var checkDone = function () {
 										if (dones == 0) {
@@ -3925,7 +3938,7 @@ Websom.Container.prototype.interfaceUpdate = function (opts, input) {
 												}
 											}
 										};
-									obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
+									obj.loadFromPublicKey(that, publicId, function (err) {
 										var shouldContinue = true;
 										var doContinue = function () {
 											var runControl = function (control) {
@@ -6487,6 +6500,8 @@ Websom.ClientMessage = function () {
 
 	this.href = "";
 
+	this.doReload = false;
+
 	this.hadError = false;
 
 	this.validations = [];
@@ -6511,6 +6526,12 @@ Websom.ClientMessage.prototype.navigate = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var href = arguments[0];
 		this.href = href;
+	}
+}
+
+Websom.ClientMessage.prototype.reload = function () {
+	if (arguments.length == 0) {
+		this.doReload = true;
 	}
 }
 
@@ -6540,6 +6561,10 @@ Websom.ClientMessage.prototype.stringify = function () {
 		var add = "";
 		if (this.href.length > 0) {
 			add += ", \"action\": \"navigate\", \"href\": \"" + this.href + "\"";
+			status = "action";
+			}
+		if (this.doReload) {
+			add += ", \"action\": \"reload\"";
 			status = "action";
 			}
 		return "{\"status\": \"" + status + "\", \"messages\": [" + anon.join(", ") + "], \"message\": " + Websom.Json.encode(this.message) + add + "}";
@@ -10881,7 +10906,7 @@ input.send(msg.stringify());
 				var nextCall = function () {
 					if (opts.onInsert != null) {
 						opts.onInsert(input, insert, function (err) {
-if (err.length > 0) {
+if (err != null && err.length > 0) {
 	input.send(err);
 	}else{
 		call();
@@ -10968,84 +10993,108 @@ Websom.Containers.Table.prototype.updateFromInterface = function (opts, update, 
 					}
 				}
 			var updateReady = function (readyField, readyValue) {
-				that.checkRestrictions(opts, input, "update", readyField, function (doChange) {
-					if (doChange == true && readyValue != null) {
-						update.set(readyField.fieldName, readyValue);
-						}
-					fieldWaits--;
-					if (fieldWaits <= 0) {
-						if (values["parentId"] != null) {
-							update.set("parentId", values["parentId"]);
+				var callUpdate = function () {
+					that.checkRestrictions(opts, input, "update", readyField, function (doChange) {
+						if (doChange == true && readyValue != null) {
+							update.set(readyField.fieldName, readyValue);
 							}
-						if (values["arrayIndex"] != null) {
-							update.set("arrayIndex", values["arrayIndex"]);
-							}
-						update.run(function (err, res) {
-							if (opts != null) {
-								for (var iControl = 0; iControl < opts.controls.length; iControl++) {
-									opts.controls[iControl].update(input, obj);
-									}
-								for (var iControl = 0; iControl < opts.updateControls.length; iControl++) {
-									opts.updateControls[iControl].update(input, obj);
-									}
+						fieldWaits--;
+						if (fieldWaits <= 0) {
+							if (values["parentId"] != null) {
+								update.set("parentId", values["parentId"]);
 								}
-							for (var ff = 0; ff < that.dataInfo.fields.length; ff++) {
-								var fieldClose = function (f) {
-									var field = that.dataInfo.fields[f];
-									if (field.onlyServer == false && field.structure.hasFlag("edit")) {
-										if (field.structure.hasFlag("linked")) {
-											var link = field.structure.getFlag("linked");
-											if (link.linkType == "array") {
-												var value = input.raw[field.realName];
-												if ((typeof value == 'object' ? (Array.isArray(value) ? 'array' : 'map') : (typeof value == 'number' ? 'float' : typeof value)) == "array") {
-													var tempContainer = new Websom.Containers.Table(that.server, that.table + "_" + field.fieldName, Websom.DataInfo.getDataInfoFromRoute(link.fieldType));
-													for (var ii = 0; ii < value.length; ii++) {
-														var close = function (i) {
-															value[i]["parentId"] = obj.getField("id");
-															value[i]["arrayIndex"] = i;
-															var subSelect = that.server.database.primary.from(that.table + "_" + field.fieldName).where("parentId").equals(value[i]["parentId"]).and().where("arrayIndex").equals(value[i]["arrayIndex"]);
-															var subObj = tempContainer.dataInfo.spawn(that.server);
-															subObj.websomFieldInfo = field;
-															subObj.websomServer = that.server;
-															subObj.websomParentData = obj;
-															subObj.websomContainer = tempContainer;
-															subSelect.run(function (err2, sres) {
-																if (err2 != null) {
-																	 console.log(err2); 
-																	input.send("Internal Error");
-																	}else if (sres.length == 0) {
-																	tempContainer.insertFromInterface(null, new Websom.Input("", value[i], input.request), value[i], null, field, obj, new Websom.CallContext());
-																	}else{
-																		subObj.nativeLoadFromMap(sres[0], function (err3) {
-																			if (err3.length > 0) {
-																				 console.log(err3); 
-																				input.send("Internal Error");
-																				}else{
-																					var subUpdate = subSelect.update();
-																					tempContainer.updateFromInterface(null, subUpdate, subObj, new Websom.Input("", value[i], input.request), value[i], null);
-																				}
-																			});
-																	}
-																});
-															};
-														close(ii);
-														}
-													that.server.database.primary.from(tempContainer.table).where("parentId").equals(obj.getField("id")).and().where("arrayIndex").greater(value.length - 1).delete().run(function (err2, res2) {
+							if (values["arrayIndex"] != null) {
+								update.set("arrayIndex", values["arrayIndex"]);
+								}
+							update.run(function (err, res) {
+								if (opts != null) {
+									for (var iControl = 0; iControl < opts.controls.length; iControl++) {
+										opts.controls[iControl].update(input, obj);
+										}
+									for (var iControl = 0; iControl < opts.updateControls.length; iControl++) {
+										opts.updateControls[iControl].update(input, obj);
+										}
+									}
+								for (var ff = 0; ff < that.dataInfo.fields.length; ff++) {
+									var fieldClose = function (f) {
+										var field = that.dataInfo.fields[f];
+										if (field.onlyServer == false && field.structure.hasFlag("edit")) {
+											if (field.structure.hasFlag("linked")) {
+												var link = field.structure.getFlag("linked");
+												if (link.linkType == "array") {
+													var value = input.raw[field.realName];
+													if ((typeof value == 'object' ? (Array.isArray(value) ? 'array' : 'map') : (typeof value == 'number' ? 'float' : typeof value)) == "array") {
+														var tempContainer = new Websom.Containers.Table(that.server, that.table + "_" + field.fieldName, Websom.DataInfo.getDataInfoFromRoute(link.fieldType));
+														for (var ii = 0; ii < value.length; ii++) {
+															var close = function (i) {
+																value[i]["parentId"] = obj.getField("id");
+																value[i]["arrayIndex"] = i;
+																var subSelect = that.server.database.primary.from(that.table + "_" + field.fieldName).where("parentId").equals(value[i]["parentId"]).and().where("arrayIndex").equals(value[i]["arrayIndex"]);
+																var subObj = tempContainer.dataInfo.spawn(that.server);
+																subObj.websomFieldInfo = field;
+																subObj.websomServer = that.server;
+																subObj.websomParentData = obj;
+																subObj.websomContainer = tempContainer;
+																subSelect.run(function (err2, sres) {
+																	if (err2 != null) {
+																		 console.log(err2); 
+																		input.send("Internal Error");
+																		}else if (sres.length == 0) {
+																		tempContainer.insertFromInterface(null, new Websom.Input("", value[i], input.request), value[i], null, field, obj, new Websom.CallContext());
+																		}else{
+																			subObj.nativeLoadFromMap(sres[0], function (err3) {
+																				if (err3.length > 0) {
+																					 console.log(err3); 
+																					input.send("Internal Error");
+																					}else{
+																						var subUpdate = subSelect.update();
+																						tempContainer.updateFromInterface(null, subUpdate, subObj, new Websom.Input("", value[i], input.request), value[i], null);
+																					}
+																				});
+																		}
+																	});
+																};
+															close(ii);
+															}
+														that.server.database.primary.from(tempContainer.table).where("parentId").equals(obj.getField("id")).and().where("arrayIndex").greater(value.length - 1).delete().run(function (err2, res2) {
 
-														});
+															});
+														}
 													}
 												}
 											}
+										};
+									fieldClose(ff);
+									}
+								if (message != null) {
+									if (opts.successUpdate) {
+										opts.successUpdate(input, obj, message, function (msg) {
+input.send(msg.stringify());
+});
+										}else{
+											input.send(message.stringify());
 										}
-									};
-								fieldClose(ff);
-								}
-							if (message != null) {
-								input.send(message.stringify());
-								}
-							});
+									}
+								});
+							}
+						});
+					};
+				if (opts != null) {
+					if (opts.onUpdate != null) {
+						input.updateData = obj;
+						opts.onUpdate(input, update, function (err) {
+if (err != null && err.length > 0) {
+	input.send(err);
+	}else{
+		callUpdate();
+	}
+});
+						}else{
+							callUpdate();
 						}
-					});
+					}else{
+						callUpdate();
+					}
 				};
 			for (var ff = 0; ff < that.dataInfo.fields.length; ff++) {
 				var close = function (f) {
@@ -11260,7 +11309,7 @@ Websom.Containers.Table.prototype.interfaceInsert = function () {
 							}
 						}
 					this.server.security.request("insert", opts, input, function () {
-						var v = new Websom.DataValidator(this.dataInfo);
+						var v = new Websom.DataValidator(that.dataInfo);
 						v.validate(input, function (msg) {
 							if (msg.hadError) {
 								input.sendError(msg.stringify());
@@ -11368,8 +11417,19 @@ Websom.Containers.Table.prototype.interfaceUpdate = function (opts, input) {
 							return null;
 							}
 						}
+					if (("publicId" in input.raw) == false || (typeof input.raw["publicId"] == 'object' ? (Array.isArray(input.raw["publicId"]) ? 'array' : 'map') : (typeof input.raw["publicId"] == 'number' ? 'float' : typeof input.raw["publicId"])) != "string") {
+						var qMsg = Websom.ClientMessage.quickError("Invalid publicId");
+						input.send(qMsg.stringify());
+						return null;
+						}
+					var publicId = input.raw["publicId"];
+					if (publicId.length < 10 || publicId.length > 256) {
+						var qMsg = Websom.ClientMessage.quickError("Invalid publicId");
+						input.send(qMsg.stringify());
+						return null;
+						}
 					this.server.security.request("update", opts, input, function () {
-						var v = new Websom.DataValidator(this.dataInfo);
+						var v = new Websom.DataValidator(that.dataInfo);
 						v.validate(input, function (msg) {
 							if (msg.hadError) {
 								input.sendError(msg.stringify());
@@ -11380,7 +11440,7 @@ Websom.Containers.Table.prototype.interfaceUpdate = function (opts, input) {
 									clientMessage.message = opts.baseSuccess;
 									dones+=opts.controls.length + opts.updateControls.length;
 									var cast = that;
-									var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update();
+									var update = that.server.database.primary.from(cast.table).where("publicId").equals(publicId).update();
 									var obj = that.dataInfo.spawn(that.server);
 									var checkDone = function () {
 										if (dones == 0) {
@@ -11391,7 +11451,7 @@ Websom.Containers.Table.prototype.interfaceUpdate = function (opts, input) {
 												}
 											}
 										};
-									obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
+									obj.loadFromPublicKey(that, publicId, function (err) {
 										var shouldContinue = true;
 										var doContinue = function () {
 											var runControl = function (control) {

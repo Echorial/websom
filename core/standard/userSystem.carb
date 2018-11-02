@@ -46,6 +46,21 @@ header interface Websom.Standard.UserSystem.User inherits Websom.StandardData {
 	[Length = 256]
 	field string email = "";
 
+	[Length = 256]
+	edit expose field string name = "";
+
+	[Length = 512]
+	edit expose field string bio = "";
+
+	[Length = 256]
+	edit expose field string website = "";
+
+	[Length = 512]
+	edit expose field string location = "";
+
+	[Length = 256]
+	edit expose field string publicEmail = "";
+
 	`Status bytes:
 	a: unconfirmed email
 	b: banned user

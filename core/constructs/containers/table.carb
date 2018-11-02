@@ -652,7 +652,7 @@ class Websom.Containers.Table inherits Websom.Container {
 				var nextCall = void () => {
 					if (opts.onInsert != null) {
 						opts.onInsert(input, insert, void (string err) => {
-							if (err.length > 0)
+							if (err != null and  err.length > 0)
 								input.send(err);
 							else
 								call();
@@ -741,92 +741,115 @@ class Websom.Containers.Table inherits Websom.Container {
 			}
 			var updateReady = void (Websom.FieldInfo readyField, primitive readyValue) => {
 				// Ensure this passes restrictions
+				var callUpdate = void () => {
+					that.checkRestrictions(opts, input, "update", readyField, void (bool doChange) => {
+						if (doChange == true and readyValue != null)
+							update.set(readyField.fieldName, readyValue);
 
-				that.checkRestrictions(opts, input, "update", readyField, void (bool doChange) => {
-					if (doChange == true and readyValue != null)
-						update.set(readyField.fieldName, readyValue);
+						fieldWaits--;
+						if (fieldWaits <= 0) {
+							if (values["parentId"] != null)
+								update.set("parentId", values["parentId"]);
 
-					fieldWaits--;
-					if (fieldWaits <= 0) {
-						if (values["parentId"] != null)
-							update.set("parentId", values["parentId"]);
+							if (values["arrayIndex"] != null)
+								update.set("arrayIndex", values["arrayIndex"]);
 
-						if (values["arrayIndex"] != null)
-							update.set("arrayIndex", values["arrayIndex"]);
+							update.run(void (string err, <map>array res) => {
+								if (opts != null) {
+									for (var int iControl in opts.controls) {
+										opts.controls[iControl].update(input, obj);
+									}
 
-						update.run(void (string err, <map>array res) => {
-							if (opts != null) {
-								for (var int iControl in opts.controls) {
-									opts.controls[iControl].update(input, obj);
+									for (var int iControl in opts.updateControls) {
+										opts.updateControls[iControl].update(input, obj);
+									}
 								}
 
-								for (var int iControl in opts.updateControls) {
-									opts.updateControls[iControl].update(input, obj);
-								}
-							}
+								for (var int ff in that.dataInfo.fields) {
+									var fieldClose = void (int f) => {
+										var field = that.dataInfo.fields[f];
+										if (field.onlyServer == false and field.structure.hasFlag("edit")) {
+											if (field.structure.hasFlag("linked")) {
+												var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
 
-							for (var int ff in that.dataInfo.fields) {
-								var fieldClose = void (int f) => {
-									var field = that.dataInfo.fields[f];
-									if (field.onlyServer == false and field.structure.hasFlag("edit")) {
-										if (field.structure.hasFlag("linked")) {
-											var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
+												if (link.linkType == "array") {
+													var array value = input.raw[field.realName];
+													if (value.typeAsString() == "array") {
+														var tempContainer = new Websom.Containers.Table(that.server, that.table + "_" + field.fieldName, Websom.DataInfo.getDataInfoFromRoute(link.fieldType));
+														
+														for (var int ii in value) {
+															var close = void (int i) => {
+																value[i]["parentId"] = obj.getField("id"); //Assume parent has an id
+																value[i]["arrayIndex"] = i;
+																var subSelect = that.server.database.primary.from(that.table + "_" + field.fieldName).where("parentId").equals(value[i]["parentId"]).and().where("arrayIndex").equals(value[i]["arrayIndex"]);
+																var subObj = tempContainer.dataInfo.spawn(that.server);
+																
+																subObj.websomFieldInfo = field;
+																subObj.websomServer = that.server;
+																subObj.websomParentData = obj;
 
-											if (link.linkType == "array") {
-												var array value = input.raw[field.realName];
-												if (value.typeAsString() == "array") {
-													var tempContainer = new Websom.Containers.Table(that.server, that.table + "_" + field.fieldName, Websom.DataInfo.getDataInfoFromRoute(link.fieldType));
-													
-													for (var int ii in value) {
-														var close = void (int i) => {
-															value[i]["parentId"] = obj.getField("id"); //Assume parent has an id
-															value[i]["arrayIndex"] = i;
-															var subSelect = that.server.database.primary.from(that.table + "_" + field.fieldName).where("parentId").equals(value[i]["parentId"]).and().where("arrayIndex").equals(value[i]["arrayIndex"]);
-															var subObj = tempContainer.dataInfo.spawn(that.server);
-															
-															subObj.websomFieldInfo = field;
-															subObj.websomServer = that.server;
-															subObj.websomParentData = obj;
+																subObj.websomContainer = tempContainer;
+																subSelect.run(void (string err2, <map>array sres) => {
+																	if (err2 != null) {
+																		native javascript { console.log(err2); }
+																		input.send("Internal Error");
+																	}else if (sres.length == 0) {
+																		tempContainer.insertFromInterface(null, new Websom.Input("", value[i], input.request), value[i], null, field, obj, new Websom.CallContext()); //TODO: Inherit props from input
+																	}else{
+																		subObj.nativeLoadFromMap(sres[0], void (string err3) => {
+																			if (err3.length > 0) {
+																				native javascript { console.log(err3); }
+																				input.send("Internal Error");
+																			}else{
+																				var subUpdate = subSelect.update();
+																				tempContainer.updateFromInterface(null, subUpdate, subObj, new Websom.Input("", value[i], input.request), value[i], null); //TODO: Inherit props from input
+																			}
+																		});
+																	}
+																});
+															};
+															close(ii);
+														}
 
-															subObj.websomContainer = tempContainer;
-															subSelect.run(void (string err2, <map>array sres) => {
-																if (err2 != null) {
-																	native javascript { console.log(err2); }
-																	input.send("Internal Error");
-																}else if (sres.length == 0) {
-																	tempContainer.insertFromInterface(null, new Websom.Input("", value[i], input.request), value[i], null, field, obj, new Websom.CallContext()); //TODO: Inherit props from input
-																}else{
-																	subObj.nativeLoadFromMap(sres[0], void (string err3) => {
-																		if (err3.length > 0) {
-																			native javascript { console.log(err3); }
-																			input.send("Internal Error");
-																		}else{
-																			var subUpdate = subSelect.update();
-																			tempContainer.updateFromInterface(null, subUpdate, subObj, new Websom.Input("", value[i], input.request), value[i], null); //TODO: Inherit props from input
-																		}
-																	});
-																}
-															});
-														};
-														close(ii);
+														that.server.database.primary.from(tempContainer.table).where("parentId").equals(obj.getField("id")).and().where("arrayIndex").greater(value.length - 1).delete().run(void (string err2, <map>array res2) => {
+															//TODO: 
+														});
 													}
-
-													that.server.database.primary.from(tempContainer.table).where("parentId").equals(obj.getField("id")).and().where("arrayIndex").greater(value.length - 1).delete().run(void (string err2, <map>array res2) => {
-														//TODO: 
-													});
 												}
 											}
 										}
-									}
-								};
-								fieldClose(ff);
-							}
+									};
+									fieldClose(ff);
+								}
 
-							if (message != null)
-								input.send(message.stringify());
+								if (message != null) {
+									if (opts.successUpdate) {
+										opts.successUpdate(input, obj, message, void (Websom.ClientMessage msg) => {
+											input.send(msg.stringify());
+										});
+									}else
+										input.send(message.stringify());
+								}
+							});
+						}
+					});
+				};
+
+				if (opts != null) {
+					if (opts.onUpdate != null) {
+						input.updateData = obj;
+						opts.onUpdate(input, update, void (string err) => {
+							if (err != null and err.length > 0)
+								input.send(err);
+							else
+								callUpdate();
 						});
+					}else{
+						callUpdate();
 					}
-				});
+				}else{
+					callUpdate();
+				}
 			};
 
 			for (var int ff in that.dataInfo.fields) {

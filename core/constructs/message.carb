@@ -1,6 +1,7 @@
 class Websom.ClientMessage {
 	string message = "";
 	string href = "";
+	bool doReload = false;
 	bool hadError = false;
 	<Websom.InputValidation>array validations = new <Websom.InputValidation>array();
 
@@ -17,6 +18,10 @@ class Websom.ClientMessage {
 
 	void navigate(string href) {
 		this.href = href;
+	}
+
+	void reload() {
+		this.doReload = true;
 	}
 
 	void add(Websom.InputValidation validation) {
@@ -43,6 +48,11 @@ class Websom.ClientMessage {
 
 		if (this.href.length > 0) {
 			add += ', "action": "navigate", "href": "' + this.href + '"';
+			status = "action";
+		}
+
+		if (this.doReload) {
+			add += ', "action": "reload"';
 			status = "action";
 		}
 

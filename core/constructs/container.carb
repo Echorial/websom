@@ -67,7 +67,7 @@ class Websom.Container {
 					}
 				
 				this.server.security.request("insert", opts, input, void () => {
-					var v = new Websom.DataValidator(this.dataInfo);
+					var v = new Websom.DataValidator(that.dataInfo);
 					v.validate(input, void (Websom.InputValidation msg) => {
 						if (msg.hadError) {
 							input.sendError(msg.stringify());
@@ -189,8 +189,23 @@ class Websom.Container {
 						input.send(cMsg.stringify());
 						return null;
 					}
+				
+				if (input.raw.hasKey("publicId") == false or input.raw["publicId"].typeAsString() != "string") {
+					var qMsg = Websom.ClientMessage.quickError("Invalid publicId");
+					input.send(qMsg.stringify());
+					return null;
+				}
+
+				var string publicId = input.raw["publicId"];
+
+				if (publicId.length < 10 or publicId.length > 256) {
+					var qMsg = Websom.ClientMessage.quickError("Invalid publicId");
+					input.send(qMsg.stringify());
+					return null;
+				}
+
 				this.server.security.request("update", opts, input, void () => {
-					var v = new Websom.DataValidator(this.dataInfo);
+					var v = new Websom.DataValidator(that.dataInfo);
 					v.validate(input, void (Websom.InputValidation msg) => {
 						if (msg.hadError) {
 							input.sendError(msg.stringify());
@@ -201,7 +216,7 @@ class Websom.Container {
 							clientMessage.message = opts.baseSuccess;
 							dones += opts.controls.length + opts.updateControls.length;
 							var Websom.Containers.Table cast = that;
-							var update = that.server.database.primary.from(cast.table).where("publicId").equals(input.raw["publicId"]).update(); //TODO: Update for publicKey field info
+							var update = that.server.database.primary.from(cast.table).where("publicId").equals(publicId).update(); //TODO: Update for publicKey field info
 							var obj = that.dataInfo.spawn(that.server);
 							var checkDone = void () => {
 								if (dones == 0) {
@@ -211,7 +226,7 @@ class Websom.Container {
 										that.updateFromInterface(opts, update, obj, input, values, clientMessage);
 								}
 							};
-							obj.loadFromPublicKey(that, input.raw["publicId"], void (string err) => {
+							obj.loadFromPublicKey(that, publicId, void (string err) => {
 								var shouldContinue = true;
 								var doContinue = void () => {
 									var runControl = void (Websom.Control control) => {
