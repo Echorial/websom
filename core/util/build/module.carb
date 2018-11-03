@@ -86,7 +86,7 @@ var buildLoadMember = string (Carbon.Member member) => {
 
 var valToStr = string (primitive val) => {
 	if (typeOf(val) == "string")
-		return '"' + val + '"';
+		return '"' + val.replace("\\", "\\\\") + '"';
 	if (typeOf(val) == "number")
 		return val.toString();
 
