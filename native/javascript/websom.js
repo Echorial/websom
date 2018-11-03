@@ -3795,7 +3795,7 @@ Websom.Container.prototype.interfaceInsert = function () {
 			if (opts.overrideInsert != null) {
 				opts.overrideInsert(input);
 				}else{
-					if (opts.mustLogin) {
+					if (opts.mustLogin || opts.mustOwnInsert) {
 						if (this.server.userSystem.isLoggedIn(input.request) == false) {
 							var msg = Websom.ClientMessage.quickError("Please login.");
 							input.send(msg.stringify());
@@ -4265,6 +4265,10 @@ Websom.InterfaceOptions = function () {
 	this.mustLogin = false;
 
 	this.mustOwnUpdate = false;
+
+	this.mustOwnSelect = false;
+
+	this.mustOwnInsert = false;
 
 	this.autoPublicId = false;
 
@@ -6407,7 +6411,13 @@ Websom.InterfaceChain.prototype.sub = function () {
 
 Websom.InterfaceChain.prototype.mustOwn = function () {
 	if (arguments.length == 0) {
-		this.io.mustOwnUpdate = true;
+		if (this.currentMode == "insert") {
+			this.io.mustOwnInsert = true;
+			}else if (this.currentMode == "update") {
+			this.io.mustOwnUpdate = true;
+			}else if (this.currentMode == "select") {
+			this.io.mustOwnSelect = true;
+			}
 		return this;
 	}
 }
@@ -6804,6 +6814,8 @@ Websom.Request = function () {
 	this.sent = false;
 
 	this.path = "";
+
+	this.userCache = null;
 
 	this.response = null;
 
@@ -10505,9 +10517,26 @@ Websom.Containers.Table.prototype.handleSubInsert = function () {
 				input.sendError("Invalid document");
 				return null;
 				}
-			ctx.subContainerCall = true;
-			ctx.data = docs[0];
-			that.insertFromInterfaceCallback(opts, input, values, message, fieldInfo, parentData, callback, ctx);
+			var doCall = function () {
+				ctx.subContainerCall = true;
+				ctx.data = docs[0];
+				that.insertFromInterfaceCallback(opts, input, values, message, fieldInfo, parentData, callback, ctx);
+				};
+			if (opts.mustOwnInsert) {
+				that.server.userSystem.getLoggedIn(input.request, function (user) {
+					if (user != null) {
+						if (user.id == docs[0].getField("id")) {
+							doCall();
+							}else{
+								input.sendError("You do not own this.");
+							}
+						}else{
+							input.sendError("Please login.");
+						}
+					});
+				}else{
+					doCall();
+				}
 			});
 	}
 }
@@ -11323,7 +11352,7 @@ Websom.Containers.Table.prototype.interfaceInsert = function () {
 			if (opts.overrideInsert != null) {
 				opts.overrideInsert(input);
 				}else{
-					if (opts.mustLogin) {
+					if (opts.mustLogin || opts.mustOwnInsert) {
 						if (this.server.userSystem.isLoggedIn(input.request) == false) {
 							var msg = Websom.ClientMessage.quickError("Please login.");
 							input.send(msg.stringify());

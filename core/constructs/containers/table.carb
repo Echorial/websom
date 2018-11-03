@@ -196,10 +196,28 @@ class Websom.Containers.Table inherits Websom.Container {
 				return null;
 			}
 			
-			ctx.subContainerCall = true;
-			ctx.data = docs[0];
+			var doCall = void () => {
+				ctx.subContainerCall = true;
+				ctx.data = docs[0];
 
-			that.insertFromInterfaceCallback(opts, input, values, message, fieldInfo, parentData, callback, ctx);
+				that.insertFromInterfaceCallback(opts, input, values, message, fieldInfo, parentData, callback, ctx);
+			};
+
+			if (opts.mustOwnInsert) {
+				that.server.userSystem.getLoggedIn(input.request, void (Websom.Standard.UserSystem.User user) => {
+					if (user != null) {
+						if (user.id == docs[0].getField("id")) {
+							doCall();
+						}else{
+							input.sendError("You do not own this.");
+						}
+					}else{
+						input.sendError("Please login.");
+					}
+				});
+			}else{
+				doCall();
+			}
 		});
 	}
 

@@ -118,7 +118,14 @@ class Websom.InterfaceChain {
 	}
 
 	Websom.InterfaceChain mustOwn() {
-		this.io.mustOwnUpdate = true;
+		if (this.currentMode == "insert") {
+			this.io.mustOwnInsert = true;
+		}else if (this.currentMode == "update") {
+			this.io.mustOwnUpdate = true;
+		}else if (this.currentMode == "select") {
+			this.io.mustOwnSelect = true;
+		}
+
 		return this;
 	}
 

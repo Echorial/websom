@@ -59,7 +59,7 @@ class Websom.Container {
 			if (opts.overrideInsert != null) {
 				opts.overrideInsert(input);
 			}else{
-				if (opts.mustLogin)
+				if (opts.mustLogin or opts.mustOwnInsert)
 					if (this.server.userSystem.isLoggedIn(input.request) == false) {
 						var msg = Websom.ClientMessage.quickError("Please login.");
 						input.send(msg.stringify());
@@ -524,6 +524,8 @@ class Websom.InterfaceOptions {
 	bool canUpdate = false;
 	bool mustLogin = false;
 	bool mustOwnUpdate = false;
+	bool mustOwnSelect = false;
+	bool mustOwnInsert = false;
 
 	bool autoPublicId = false;
 	bool autoTimestamp = false;

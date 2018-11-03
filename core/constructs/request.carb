@@ -4,6 +4,8 @@ class Websom.Request {
 	bool sent = false;
 	string path = "";
 
+	Websom.Standard.UserSystem.User userCache = null;
+
 	`Stored for javascript context, and php response codes`
 	Websom.Response response = null;
 
