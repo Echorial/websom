@@ -16,7 +16,7 @@ template {
 }
 
 client {
-	props: ["container", "slashes", "view", "can-edit", "edit-key", "validate", "show-edit", "show-save"],
+	props: ["container", "slashes", "view", "can-edit", "edit-key", "public-key", "validate", "show-edit", "show-save"],
 	data: function () {return {data: false, editMode: false}},
 	created: function () {
 		this.load(this.parseUrl(location.pathname));
@@ -30,9 +30,14 @@ client {
 			return splits[this.slashes || 2];
 		},
 		load: function (id) {
-			Websom.interface(this.container, "select", {publicId: id}, (data) => {
+			let q = {};
+			if (!this.publicKey)
+				q.publicId = id;
+			else
+				q[this.publicKey] = id;
+
+			Websom.interface(this.container, "select", q, (data) => {
 				this.data = data[0];
-				console.log(this.data);
 			});
 		}
 	}

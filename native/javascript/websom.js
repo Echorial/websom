@@ -2702,7 +2702,23 @@ Websom.Services.Router.prototype.navView = function () {
 		if (canEdit) {
 			canEditStr = "true";
 			}
-		var route = this.routeString(routeStr, "<default-body><nav-view validate='" + validate + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :can-edit='" + canEditStr + "' /></default-body>");
+		var route = this.routeString(routeStr, "<default-body><nav-view validate='" + validate + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
+		route.greedy = true;
+		return route;
+	}
+else 	if (arguments.length == 7 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'string' || typeof arguments[2] == 'undefined' || arguments[2] === null) && (typeof arguments[3] == 'string' || typeof arguments[3] == 'undefined' || arguments[3] === null) && (typeof arguments[4] == 'string' || typeof arguments[4] == 'undefined' || arguments[4] === null) && (typeof arguments[5] == 'boolean' || typeof arguments[5] == 'undefined' || arguments[5] === null) && (typeof arguments[6] == 'string' || typeof arguments[6] == 'undefined' || arguments[6] === null)) {
+		var routeStr = arguments[0];
+		var container = arguments[1];
+		var view = arguments[2];
+		var validate = arguments[3];
+		var publicKey = arguments[4];
+		var canEdit = arguments[5];
+		var editKey = arguments[6];
+		var canEditStr = "false";
+		if (canEdit) {
+			canEditStr = "true";
+			}
+		var route = this.routeString(routeStr, "<default-body><nav-view validate='" + validate + "' public-key='" + publicKey + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
 		route.greedy = true;
 		return route;
 	}
