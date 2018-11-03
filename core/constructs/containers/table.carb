@@ -479,6 +479,8 @@ class Websom.Containers.Table inherits Websom.Container {
 
 		if (subParent != null)
 			insert.set("parentId", subParent.getField("id"));
+		
+		obj.websomContainer = this;
 
 		obj.containerInsert(input, this, insert, values, void () => {
 			var call = void () => {
@@ -856,7 +858,7 @@ class Websom.Containers.Table inherits Websom.Container {
 				var close = void (int f) => {
 					var field = that.dataInfo.fields[f];
 					if (("Parent" in field.attributes) == false) {
-						if (field.onlyServer == false and field.structure.hasFlag("edit")) {
+						if (field.onlyServer == false and field.structure.hasFlag("edit") and input.raw.hasKey(field.realName)) {
 							if (field.structure.hasFlag("linked")) {
 									var Websom.DatabaseFlags.Linked link = field.structure.getFlag("linked");
 
@@ -905,7 +907,7 @@ class Websom.Containers.Table inherits Websom.Container {
 									updateReady(field, null);
 								}
 							}else{
-								updateReady(field, obj.getField(field.realName));
+								updateReady(field, null);
 							}
 						}
 					}
@@ -914,7 +916,6 @@ class Websom.Containers.Table inherits Websom.Container {
 			}
 		});
 	}
-
 
 	Websom.DatabaseSelect from() {
 		return this.server.database.primary.from(this.table);

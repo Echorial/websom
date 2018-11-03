@@ -55,6 +55,8 @@ class Websom.Result {
 	string error = "";
 	bool hadError = false;
 
+	int status = 200;
+
 	primitive data = null;
 
 	void @construct(string error, primitive data) {
@@ -186,9 +188,11 @@ class Websom.RequestChain {
 					$response = json_decode($response, true);
 			}
 
+			$res = new Websom_Result($error, $response);
+			$res->status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 			curl_close($ch);
 
-			$callback(new Websom_Result($error, $response));
+			$callback($res);
 		}
 
 		native javascript {
@@ -221,8 +225,11 @@ class Websom.RequestChain {
 				if (this.doParse) {
 					body = JSON.parse(body);
 				}
+				
+				let wres = new Websom.Result(err, body);
+				wres.status = res.statusCode;
 
-				callback(new Websom.Result(err, body));
+				callback(wres);
 			});
 		}
 	}

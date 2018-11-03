@@ -123,7 +123,7 @@ class Websom.Services.Router inherits Websom.Service {
 		if (canEdit)
 			canEditStr = "true";
 
-		var Websom.Route route = this.routeString(routeStr, "<default-body><nav-view validate='" + validate + "' public-key='" + publicKey + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
+		var Websom.Route route = this.routeString(routeStr, "<default-body><nav-view :show-save='false' validate='" + validate + "' public-key='" + publicKey + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
 		route.greedy = true;
 
 		return route;

@@ -2718,7 +2718,7 @@ else 	if (arguments.length == 7 && (typeof arguments[0] == 'string' || typeof ar
 		if (canEdit) {
 			canEditStr = "true";
 			}
-		var route = this.routeString(routeStr, "<default-body><nav-view validate='" + validate + "' public-key='" + publicKey + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
+		var route = this.routeString(routeStr, "<default-body><nav-view :show-save='false' validate='" + validate + "' public-key='" + publicKey + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
 		route.greedy = true;
 		return route;
 	}
@@ -8477,6 +8477,8 @@ Websom.Result = function () {
 
 	this.hadError = false;
 
+	this.status = 200;
+
 	this.data = null;
 
 	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1]instanceof Array || typeof arguments[1] == 'boolean' || typeof arguments[1] == 'number' || typeof arguments[1] == 'number' || typeof arguments[1] == 'object' || typeof arguments[1] == 'string') || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
@@ -8623,8 +8625,11 @@ Websom.RequestChain.prototype.makeRequest = function () {
 				if (this.doParse) {
 					body = JSON.parse(body);
 				}
+				
+				let wres = new Websom.Result(err, body);
+				wres.status = res.statusCode;
 
-				callback(new Websom.Result(err, body));
+				callback(wres);
 			});
 		
 	}
@@ -10762,6 +10767,7 @@ Websom.Containers.Table.prototype.insertFromInterfaceCallback = function (opts, 
 		if (subParent != null) {
 			insert.set("parentId", subParent.getField("id"));
 			}
+		obj.websomContainer = this;
 		obj.containerInsert(input, this, insert, values, function () {
 			var call = function () {
 				var fieldWaits = 0;
@@ -11116,7 +11122,7 @@ if (err != null && err.length > 0) {
 				var close = function (f) {
 					var field = that.dataInfo.fields[f];
 					if ("Parent" in field.attributes == false) {
-						if (field.onlyServer == false && field.structure.hasFlag("edit")) {
+						if (field.onlyServer == false && field.structure.hasFlag("edit") && (field.realName in input.raw)) {
 							if (field.structure.hasFlag("linked")) {
 								var link = field.structure.getFlag("linked");
 								if (link.linkType == "array") {
@@ -11162,7 +11168,7 @@ if (err != null && err.length > 0) {
 											updateReady(field, null);
 										}
 									}else{
-										updateReady(field, obj.getField(field.realName));
+										updateReady(field, null);
 									}
 							}
 						}
