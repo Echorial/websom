@@ -149,7 +149,6 @@ return $rtn;}));
 $this->server->router->quickRoute("/websom.console", "websom-console");
 $this->server->router->post("/websom.run.command", function ($inp) use (&$that, &$builder, &$designer) {$req = $inp->request;
 if ($req->session->get("dashboard") != null) {
-$req->header("Content-Type", "text/json");
 $that->server->micro->command->exec($inp->raw["command"], $inp->request);}else{
 $req->send("{\"status\": \"error\", \"message\": \"Not logged in\"}");}});
 $this->server->router->quickRoute("/websom.dashboard", "dashboard");

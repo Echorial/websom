@@ -4,6 +4,36 @@ class Websom.Micro.Command inherits Websom.MicroService {
 	Websom.Status start() {
 		var that = this;
 
+		this.register("help")
+			.command("[command]")
+			.on(void (Websom.CommandInvocation invo) => {
+				var string name = invo.get("command");
+				invo.output("----------- HELP -----------");
+				invo.output("\t- Commands:");
+				if (name != null) {
+
+				}else{
+					for (var int i in that.commands) {
+						var cmd = that.commands[i];
+						invo.output("\t\t- <b>" + cmd.name + "</b>");
+						for (var int j in cmd.patterns) {
+							var ptrn = cmd.patterns[j];
+							invo.output("\t\t\t- " + ptrn.pattern.regularReplace("<([^>]*)>", "<span style='color: lime'>&lt;$1&gt;</span>").replace("[", "<span style='color: #9fd0ff'>[").replace("]", "]</span>"));
+						}
+					}
+				}
+
+				invo.finish();
+			});
+
+		this.register("deploy")
+			.command("<name>")
+			.on(void (Websom.CommandInvocation invo) => {
+				that.server.resource.deploy(invo.get("name"), void (string msg) => {
+					invo.output(msg);
+				}, void () => { invo.output("<span style='color: lime;'>Complete</span>"); invo.finish(); });
+			});
+
 		this.register("theme")
 			.command("init <name> <author> [version=\"1.0\"]")
 				.flag("option")
@@ -22,12 +52,14 @@ class Websom.Micro.Command inherits Websom.MicroService {
 				native javascript {
 					setTimeout(() => {
 						invo.output("After");
+						invo.finish();
 					}, 2000);
 				}
 
 				native php {
 					sleep(2);
 					$invo->output("After");
+					$invo->finish();
 				}
 			});
 	}
@@ -47,6 +79,7 @@ class Websom.Micro.Command inherits Websom.MicroService {
 		var found = inv.search(this.commands);
 
 		if (found != null) {
+			found.cook();
 			var out = found.run(inv);
 			if (out == null) {
 				found.handler(inv);
@@ -64,6 +97,7 @@ class Websom.Micro.Command inherits Websom.MicroService {
 		var found = inv.search(this.commands);
 
 		if (found != null) {
+			found.cook();
 			var output = found.run(inv);
 			found.handler(inv);
 			Console.log(output);
@@ -271,6 +305,9 @@ class Websom.CommandPattern {
 	}
 
 	Websom.CommandPattern cook() {
+		if (this.cooked)
+			return this;
+
 		this.cooked = true;
 		this.buildParts();
 		return this;
@@ -295,6 +332,8 @@ class Websom.CommandInvocation {
 	map flags = new map();
 
 	map values = new map();
+
+	<string>array rawOutput = new <string>array();
 
 	<string>array arguments = new <string>array();
 
@@ -327,8 +366,13 @@ class Websom.CommandInvocation {
 		if (this.local) {
 			this.handler(false, message);
 		}else{
-			this.request.write('{"status": "chunk", "message": ' + Websom.Json.encode(message) + '}');
-			this.request.flush();
+			this.rawOutput.push('{"status": "chunk", "message": ' + Websom.Json.encode(message) + '}');
+		}
+	}
+
+	void finish() {
+		if (this.local == false) {
+			this.request.send("[" + this.rawOutput.join(", ") + "]");
 		}
 	}
 	

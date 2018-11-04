@@ -421,15 +421,18 @@ class Websom.DeployHandler {
 
 	void getFiles(<void, <string>array>function callback) {
 		native javascript {
+			const path = require("fs");
 			const fs = require("fs");
 			let outFiles = [];
 
 			function scanDir(base, abs, files) {
 				for (let file of files) {
-					if (file.isDirectory()) {
-						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					if (file.name != ".git")
+					if (file.isDirectory() || (file.isSymbolicLink() && fs.statSync(abs + file.name).isDirectory())) {
+						let rp = fs.realpathSync(abs + file.name);
+						scanDir(base + file.name + "/", rp + "/", fs.readdirSync(rp, {withFileTypes: true}));
 					}else{
-						outFiles.push(file);
+						outFiles.push(base + file.name);
 					}
 				}
 			}
@@ -488,16 +491,28 @@ class Websom.LocalHandler inherits Websom.DeployHandler {
 			}
 
 			let root = this.server.config.root;
-			let to = config.location;
+			let to = config.location + "/website/";
+
+			try { fs.mkdirSync(to); } catch (e) {}
+
+			function mkdir(dir) {
+				let upDir = path.resolve(dir + "/../");
+				if (!fs.existsSync(upDir))
+					mkdir(upDir);
+				
+				fs.mkdirSync(dir);
+			}
 
 			this.getFiles((files) => {
 				files = files.sort((a, b) => {return a.length - b.length});
+				let remaining = files.length;
 
 				for (let file of files) {
-					if (!fs.existsSync(path.dirname(to + file)))
-						fs.mkdir(path.dirname(to + file));
+					if (!fs.existsSync(path.dirname(to + "/" + file)))
+						mkdir(path.dirname(to + "/" + file));
 					
-					fs.createReadStream(root + file).pipe(fs.createWriteStream(to));
+					fs.copyFile(root + "/" + file, to + "/" + file, () => { if (--remaining == 0) finish(); });
+					//fs.createReadStream(root + "/" + file).pipe(fs.createWriteStream(to + "/" + file));
 				}
 			});
 		}

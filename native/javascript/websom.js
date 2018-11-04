@@ -2106,15 +2106,18 @@ Websom.DeployHandler.prototype.getFiles = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var callback = arguments[0];
 		
+			const path = require("fs");
 			const fs = require("fs");
 			let outFiles = [];
 
 			function scanDir(base, abs, files) {
 				for (let file of files) {
-					if (file.isDirectory()) {
-						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					if (file.name != ".git")
+					if (file.isDirectory() || (file.isSymbolicLink() && fs.statSync(abs + file.name).isDirectory())) {
+						let rp = fs.realpathSync(abs + file.name);
+						scanDir(base + file.name + "/", rp + "/", fs.readdirSync(rp, {withFileTypes: true}));
 					}else{
-						outFiles.push(file);
+						outFiles.push(base + file.name);
 					}
 				}
 			}
@@ -2173,15 +2176,18 @@ Websom.FtpHandler.prototype.getFiles = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var callback = arguments[0];
 		
+			const path = require("fs");
 			const fs = require("fs");
 			let outFiles = [];
 
 			function scanDir(base, abs, files) {
 				for (let file of files) {
-					if (file.isDirectory()) {
-						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					if (file.name != ".git")
+					if (file.isDirectory() || (file.isSymbolicLink() && fs.statSync(abs + file.name).isDirectory())) {
+						let rp = fs.realpathSync(abs + file.name);
+						scanDir(base + file.name + "/", rp + "/", fs.readdirSync(rp, {withFileTypes: true}));
 					}else{
-						outFiles.push(file);
+						outFiles.push(base + file.name);
 					}
 				}
 			}
@@ -2223,16 +2229,28 @@ Websom.LocalHandler.prototype.execute = function () {
 			}
 
 			let root = this.server.config.root;
-			let to = config.location;
+			let to = config.location + "/website/";
+
+			try { fs.mkdirSync(to); } catch (e) {}
+
+			function mkdir(dir) {
+				let upDir = path.resolve(dir + "/../");
+				if (!fs.existsSync(upDir))
+					mkdir(upDir);
+				
+				fs.mkdirSync(dir);
+			}
 
 			this.getFiles((files) => {
 				files = files.sort((a, b) => {return a.length - b.length});
+				let remaining = files.length;
 
 				for (let file of files) {
-					if (!fs.existsSync(path.dirname(to + file)))
-						fs.mkdir(path.dirname(to + file));
+					if (!fs.existsSync(path.dirname(to + "/" + file)))
+						mkdir(path.dirname(to + "/" + file));
 					
-					fs.createReadStream(root + file).pipe(fs.createWriteStream(to));
+					fs.copyFile(root + "/" + file, to + "/" + file, () => { if (--remaining == 0) finish(); });
+					                                                                                     
 				}
 			});
 		
@@ -2243,15 +2261,18 @@ Websom.LocalHandler.prototype.getFiles = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var callback = arguments[0];
 		
+			const path = require("fs");
 			const fs = require("fs");
 			let outFiles = [];
 
 			function scanDir(base, abs, files) {
 				for (let file of files) {
-					if (file.isDirectory()) {
-						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					if (file.name != ".git")
+					if (file.isDirectory() || (file.isSymbolicLink() && fs.statSync(abs + file.name).isDirectory())) {
+						let rp = fs.realpathSync(abs + file.name);
+						scanDir(base + file.name + "/", rp + "/", fs.readdirSync(rp, {withFileTypes: true}));
 					}else{
-						outFiles.push(file);
+						outFiles.push(base + file.name);
 					}
 				}
 			}
@@ -10169,6 +10190,32 @@ Websom.Micro.Command = function () {
 Websom.Micro.Command.prototype.start = function () {
 	if (arguments.length == 0) {
 		var that = this;
+		this.register("help").command("[command]").on(function (invo) {
+			var name = invo.get("command");
+			invo.output("----------- HELP -----------");
+			invo.output("	- Commands:");
+			if (name != null) {
+
+				}else{
+					for (var i = 0; i < that.commands.length; i++) {
+						var cmd = that.commands[i];
+						invo.output("		- <b>" + cmd.name + "</b>");
+						for (var j = 0; j < cmd.patterns.length; j++) {
+							var ptrn = cmd.patterns[j];
+							invo.output("			- " + ptrn.pattern.replace(new RegExp("<([^>]*)>", 'g'), "<span style='color: lime'>&lt;$1&gt;</span>").replace(new RegExp("[".replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'g'), "<span style='color: #9fd0ff'>[").replace(new RegExp("]".replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'g'), "]</span>"));
+							}
+						}
+				}
+			invo.finish();
+			});
+		this.register("deploy").command("<name>").on(function (invo) {
+			that.server.resource.deploy(invo.get("name"), function (msg) {
+				invo.output(msg);
+				}, function () {
+				invo.output("<span style='color: lime;'>Complete</span>");
+				invo.finish();
+				});
+			});
 		this.register("theme").command("init <name> <author> [version=\"1.0\"]").flag("option").default("Value").cook().on(function (invo) {
 
 			});
@@ -10178,6 +10225,7 @@ Websom.Micro.Command.prototype.start = function () {
 			
 					setTimeout(() => {
 						invo.output("After");
+						invo.finish();
 					}, 2000);
 				
 			
@@ -10205,6 +10253,7 @@ Websom.Micro.Command.prototype.exec = function () {
 		inv.parse();
 		var found = inv.search(this.commands);
 		if (found != null) {
+			found.cook();
 			var out = found.run(inv);
 			if (out == null) {
 				found.handler(inv);
@@ -10221,6 +10270,7 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof ar
 		inv.parse();
 		var found = inv.search(this.commands);
 		if (found != null) {
+			found.cook();
 			var output = found.run(inv);
 			found.handler(inv);
 			console.log(output);
@@ -10482,6 +10532,9 @@ Websom.CommandPattern.prototype.buildParts = function () {
 
 Websom.CommandPattern.prototype.cook = function () {
 	if (arguments.length == 0) {
+		if (this.cooked) {
+			return this;
+			}
 		this.cooked = true;
 		this.buildParts();
 		return this;
@@ -10504,6 +10557,8 @@ Websom.CommandInvocation = function () {
 	this.flags = {};
 
 	this.values = {};
+
+	this.rawOutput = [];
 
 	this.arguments = [];
 
@@ -10546,8 +10601,15 @@ Websom.CommandInvocation.prototype.output = function () {
 		if (this.local) {
 			this.handler(false, message);
 			}else{
-				this.request.write("{\"status\": \"chunk\", \"message\": " + Websom.Json.encode(message) + "}");
-				this.request.flush();
+				this.rawOutput.push("{\"status\": \"chunk\", \"message\": " + Websom.Json.encode(message) + "}");
+			}
+	}
+}
+
+Websom.CommandInvocation.prototype.finish = function () {
+	if (arguments.length == 0) {
+		if (this.local == false) {
+			this.request.send("[" + this.rawOutput.join(", ") + "]");
 			}
 	}
 }

@@ -137,7 +137,6 @@ class Dashboard.Module inherits Websom.Standard.Dashboard.Module {
 			var req = inp.request;
 
 			if (req.session.get("dashboard") != null) {
-				req.header("Content-Type", "text/json");
 				that.server.micro.command.exec(inp.raw["command"], inp.request);
 			}else{
 				req.send('{"status": "error", "message": "Not logged in"}');

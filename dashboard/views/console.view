@@ -5,21 +5,27 @@ info {
 template {
 	<div class="websom-console" @click="focus()">
 		<div class="websom-console-log">
-			<div v-for="(v, i) in log">{{v}}</div>
+			<template v-for="(v, i) in log">
+				<div v-if="typeof v == 'string'" v-html="v"></div>
+				<div v-else :style="'color: ' + v.color + ';'" v-html="v.message"></div>
+			</template>
 		</div>
-		<div class="websom-console-line"><span><icon fa :icon="authenticated ? 'angle-right' : 'key'"></icon></span><input ref="input" :type="authenticated ? 'text' : (user != null && pass == null ? 'password' : 'text')" @keyup.enter="sendCommand()" v-model="command"/></div>
+		<div class="websom-console-line"><span><icon fa :icon="authenticated ? 'angle-right' : 'key'"></icon></span><input ref="input" :type="authenticated ? 'text' : (user != null && pass == null ? 'password' : 'text')" @keyup.enter="sendCommand()" @keyup.up="upLog()" @keyup.down="downLog()" v-model="command"/></div>
 	</div>
 }
 
 client {
 	data: function () {
 		return {
+			curLog: 0,
+			inputLog: [],
 			log: [],
 			command: "",
 			user: null,
 			pass: null,
 			authenticated: false,
-			info: {}
+			info: {},
+			cache: null
 		};
 	},
 	created: function () {
@@ -33,41 +39,17 @@ client {
 		});
 	},
 	methods: {
+		process: function (command) {
+			if (command.status == "error") {
+				this.log.push({color: "red", message: command.message});
+			}else{
+				this.log.push(command.message);
+			}
+		},
 		sendRequest: function (data, gchunk, finish) {
-			fetch("/websom.run.command", {method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"}, body: $.param(data)})
-				.then(processChunkedResponse)
-				.then(onChunkedResponseComplete)
-				.catch(onChunkedResponseError);
-
-			function onChunkedResponseComplete(result) {
-				finish();
-			}
-
-			function onChunkedResponseError(err) {
-				finish();
-			}
-
-			function processChunkedResponse(response) {
-				let reader = response.body.getReader()
-				let decoder = new TextDecoder();
-
-				return readChunk();
-
-				function readChunk() {
-					return reader.read().then(appendChunks);
-				}
-
-				function appendChunks(result) {
-					let chunk = decoder.decode(result.value || new Uint8Array, {stream: !result.done});
-					gchunk(chunk);
-
-					if (result.done) {
-						return "";
-					}else{
-						return readChunk();
-					}
-				}
-			}
+			$.post("/websom.run.command", data, (out) => {
+				finish(out);
+			});
 		},
 		sendCommand: function () {
 			if (!this.authenticated) {
@@ -92,12 +74,26 @@ client {
 					});
 				}
 			}else{
-				this.log.push(this.command);
+				if (this.command == "")	 {
+					this.log.push("\n");
+					return;
+				}
+
+				this.log.push('<span style="margin-left: -1em; font-family: monospace; font-weight: bold;">></span> ' + this.command.replace("<", "&lt;"));
+				this.inputLog.unshift(this.command);
+				this.cache = null;
+				this.curLog = 0;
 
 				this.sendRequest({command: this.command}, (txt) => {
-					this.log.push(txt);
-				}, () => {
-
+					
+				}, (txt) => {
+					let parsed = JSON.parse(txt);
+					if (Array.isArray(parsed)) {
+						for (let p of parsed)
+							this.process(p);
+					}else{
+						this.process(parsed);
+					}
 				});
 			}
 
@@ -105,6 +101,26 @@ client {
 		},
 		focus: function () {
 			$(this.$refs.input).focus();
+		},
+		upLog: function () {
+			if (this.curLog == 0)
+				this.cache = this.command;
+			
+			if (this.curLog < this.inputLog.length) {
+				this.command = this.inputLog[this.curLog];
+				this.curLog++;
+			}
+		},
+		downLog: function () {
+			if (this.curLog > 0) {
+				this.curLog--;
+				this.command = this.inputLog[this.curLog];
+
+				if (this.curLog == -1)
+					this.command = this.cache;
+			}else{
+				this.command = this.cache;
+			}
 		}
 	}
 }
