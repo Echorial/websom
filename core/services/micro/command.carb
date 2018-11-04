@@ -12,14 +12,50 @@ class Websom.Micro.Command inherits Websom.MicroService {
 			.on(void (Websom.CommandInvocation invo) => {
 
 			});
-		
-		this.exec("theme init name echorial --option Hello");
+
+		this.register("test")
+			.command("<name>")
+			.on(void (Websom.CommandInvocation invo) => {
+				invo.output("Starting command with name " + invo.get("name"));
+				invo.output("Waiting 2 seconds");
+
+				native javascript {
+					setTimeout(() => {
+						invo.output("After");
+					}, 2000);
+				}
+
+				native php {
+					sleep(2);
+					$invo->output("After");
+				}
+			});
 	}
 
 	Websom.Command register(string topName) {
 		var cmd = new Websom.Command(this.server, topName);
 		this.commands.push(cmd);
 		return cmd;
+	}
+
+	void exec(string command, Websom.Request req) {
+		var inv = new Websom.CommandInvocation(this.server, command);
+		inv.request = req;
+		inv.sender = "Console";
+		inv.local = false;
+		inv.parse();
+		var found = inv.search(this.commands);
+
+		if (found != null) {
+			var out = found.run(inv);
+			if (out == null) {
+				found.handler(inv);
+			}else{
+				req.send('{"status": "error", "message": ' + Websom.Json.encode(out) + '}');
+			}
+		}else{
+			req.send('{"status": "error", "message": "Unknown command"}');
+		}
 	}
 
 	void exec(string command) {
@@ -29,6 +65,7 @@ class Websom.Micro.Command inherits Websom.MicroService {
 
 		if (found != null) {
 			var output = found.run(inv);
+			found.handler(inv);
 			Console.log(output);
 		}
 	}
@@ -290,7 +327,8 @@ class Websom.CommandInvocation {
 		if (this.local) {
 			this.handler(false, message);
 		}else{
-			this.request.send('{"status": "success", "message": ' + Websom.Json.encode(message) + '}');
+			this.request.write('{"status": "chunk", "message": ' + Websom.Json.encode(message) + '}');
+			this.request.flush();
 		}
 	}
 	

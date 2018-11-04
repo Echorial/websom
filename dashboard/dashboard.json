@@ -32,6 +32,7 @@
 		{"type": "view", "path": "views/build.view"},
 		{"type": "view", "path": "views/designerPage.view"},
 		{"type": "view", "path": "views/listObject.view"},
+		{"type": "view", "path": "views/console.view"},
 		{"type": "view", "path": "views/modules.view"},
 		{"type": "view", "path": "views/containers.view"},
 		{"type": "view", "path": "views/dashboard-editor.view"},

@@ -4,7 +4,7 @@ info {
 
 template {
 	<div style="height: 100%" :class="{'dashboard-background': !info.status}">
-		<div  v-if="info.status" class="dashboard-main">
+		<div v-if="info.status" class="dashboard-main">
 			<nav class="dashboard-head blue-grey darken-4">
 				<img src="/resources/dashboard/Websom.svg" @click="tab = 'Home'" style="max-width: 50px; max-height: 50px;" class="logo"></img>
 				<a href="#" @click="setSub('Home', 'Account')" class="right"><icon fa>user</icon></a>

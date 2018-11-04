@@ -175,6 +175,25 @@ class Websom.Server {
 				that.router.handle(websomRequest);
 			});
 
+			server.post(/^((?!\/postInput|\/postBridge|\/postInputM).)*$/, bodyParser.urlencoded({limit: '160mb', extended: true}), (req, res) => {
+				if (!req.body) {
+					res.sendStatus(400);
+					res.send("Invalid post");
+				}else{
+					var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+			
+					client.family = req.socket.remoteFamily;
+					client.localAddress = req.socket.localAddress;
+					client.localPort = req.socket.localPort;
+					
+					var websomRequest = new Websom.Request(that, client);
+					websomRequest.path = req.path;
+					websomRequest.response.jsResponse = res;
+					websomRequest.jsRequest = req;
+					that.router.handlePost(req.body, websomRequest);
+				}
+			});
+
 			server.post("/postInput", bodyParser.urlencoded({limit: '160mb', extended: true}), (req, res) => {
 				if (!req.body) {
 					res.sendStatus(400);

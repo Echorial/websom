@@ -10,6 +10,16 @@ class Websom.Services.Router inherits Websom.Service {
 		return route;
 	}
 
+	Websom.Route post(string routeString, <void, Websom.Input>function handler) {
+		var splits = this.buildSplits(routeString);
+		
+		var route = new Websom.Route(routeString, splits, null);
+		route.postHandler = handler;
+		route.post = true;
+		this.routes.push(route);
+		return route;
+	}
+
 	override Websom.Status start() {
 		for (var int i in this.server.view.pages) {
 			var view = this.server.view.pages[i];
@@ -199,12 +209,12 @@ class Websom.Services.Router inherits Websom.Service {
 		return route.split("/"); //Parse out query and validate each split.
 	}
 
-	Websom.Route find(string query) {
+	Websom.Route find(string query, bool post) {
 		var <string>array splits = this.buildSplits(query);
 		
 		for (var int i in this.routes) {
 			var route = this.routes[i];
-			if (route.match(splits)) {
+			if (route.match(splits) and route.post == post) {
 				return route;
 			}
 		}
@@ -213,12 +223,25 @@ class Websom.Services.Router inherits Websom.Service {
 	}
 
 	void handle(Websom.Request req) {
-		var route = this.find(req.path);
+		var route = this.find(req.path, false);
 		if (route == null) {
 			req.code(404);
 			req.send("Error page not found."); //Setup 404 view
 		}else{
 			route.handle(req);
+		}
+	}
+
+	void handlePost(map raw, Websom.Request req) {
+		var input = new Websom.Input("", raw, req);
+		input.server = this.server;
+
+		var route = this.find(req.path, true);
+		if (route == null) {
+			req.code(404);
+			req.send("Error route not found."); //Setup 404 view
+		}else{
+			route.handlePost(input);
 		}
 	}
 }
@@ -227,16 +250,26 @@ class Websom.Route {
 	`Should this route capture all sub routes` //TODO: Provide example
 	bool greedy = false;
 
+	bool post = false;
+
 	string route = "";
 	<string>array splits = null;
 
 	<void, Websom.Request>function handler = null;
+	<void, Websom.Input>function postHandler = null;
 
 	void @construct(string route, <string>array splits, <void, Websom.Request>function handler) {
 		this.route = route;
 		this.splits = splits;
 		
 		this.handler = handler;
+	}
+
+	void @construct(string route, <string>array splits, <void, Websom.Input>function handler) {
+		this.route = route;
+		this.splits = splits;
+		
+		this.postHandler = handler;
 	}
 
 	bool match(<string>array otherSplits) { //Could use some cleaning
@@ -265,5 +298,9 @@ class Websom.Route {
 
 	void handle(Websom.Request req) {
 		this.handler(req);
+	}
+
+	void handlePost(Websom.Input input) {
+		this.postHandler(input);
 	}
 }

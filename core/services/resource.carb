@@ -2,10 +2,72 @@ class Websom.Services.Resource inherits Websom.Service {
 	<string>array globalScripts = new <string>array();
 	<string>array globalStyles = new <string>array();
 
+	map deployConfig = null;
+
 	bool assetFontAwesome = false;
 
+	<Websom.DeployHandler>array deployHandlers = new <Websom.DeployHandler>array();
+
 	override Websom.Status start() {
-		
+		this.deployHandlers.push(new Websom.FtpHandler(this.server));
+		this.deployHandlers.push(new Websom.LocalHandler(this.server));
+	}
+
+	void loadDeployConfig() {
+		if (this.deployConfig == null) {
+			var path = this.server.config.root + "/deploy.json";
+			if (FileSystem.exists(path) == false) {
+				FileSystem.writeSync(path, '{\n	"deploys": []\n}');
+			}
+
+			this.deployConfig = Websom.Json.parse(FileSystem.readSync(path, "utf8"));
+		}
+	}
+
+	void deploy(string name, <void>function callback) {
+		this.deploy(name, void (string msg) => {
+				Console.log(msg);
+			}, callback);
+	}
+
+	Websom.DeployHandler findHandler(string name) {
+		for (var int i in this.deployHandlers)
+			if (this.deployHandlers[i].name == name)
+				return this.deployHandlers[i];
+
+		return null;
+	}
+
+	map findDeploy(string name) {
+		var <map>array cast = this.deployConfig["deploys"];
+
+		for (var int i in cast)
+			if (cast[i]["name"] == name)
+				return cast[i];
+
+		return null;
+	}
+
+	void deploy(string name, <void, string>function progress, <void>function callback) {
+		this.loadDeployConfig();
+
+		progress("Searching for deploy " + name);
+
+		var deploy = this.findDeploy(name);
+
+		if (deploy == null) {
+			progress("Unknown deploy " + name);
+			return null;
+		}
+
+		var handler = this.findHandler(deploy["handler"]);
+
+		if (handler == null) {
+			progress("Unknown handler " + name);
+			return null;
+		}
+
+		handler.execute(deploy, progress, callback);
 	}
 
 	string buildViews(bool saveToFiles) { //TODO: Clean up
@@ -344,6 +406,101 @@ class Websom.Services.Resource inherits Websom.Service {
 		}
 
 		return output;
+	}
+}
+
+class Websom.DeployHandler {
+	string name = "";
+	Websom.Server server = null;
+	
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	void execute(map config, <void, string>function progress, <void>function finish);
+
+	void getFiles(<void, <string>array>function callback) {
+		native javascript {
+			const fs = require("fs");
+			let outFiles = [];
+
+			function scanDir(base, abs, files) {
+				for (let file of files) {
+					if (file.isDirectory()) {
+						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					}else{
+						outFiles.push(file);
+					}
+				}
+			}
+
+			scanDir("", this.server.config.root + "/", fs.readdirSync(this.server.config.root, {withFileTypes: true}));
+
+			callback(outFiles);
+		}
+	}
+}
+
+class Websom.FtpHandler inherits Websom.DeployHandler {
+	override string name = "ftp";
+
+	void execute(map config, <void, string>function progress, <void>function finish) {
+		native javascript {
+			const ftp = require("ftp");
+
+			let client = new ftp();
+
+			progress("Connecting to " + config.host);
+
+			client.connect({
+				host: config.host,
+				user: config.user,
+				password: config.password,
+				port: config.port || 21
+			});
+
+			client.on("error", (err) => {
+				progress(err.toString());
+			});
+
+			client.on("ready", () => {
+				progress("Connected");
+			});
+
+		}
+	}
+}
+
+class Websom.LocalHandler inherits Websom.DeployHandler {
+	override string name = "local";
+
+	void execute(map config, <void, string>function progress, <void>function finish) {
+		native javascript {
+			const fs = require("fs");
+			const path = require("path");
+
+			progress("Checking local location");
+
+			if (!fs.existsSync(config.location)) {
+				progress(config.location + " does not exist");
+				finish();
+				return;
+			}
+
+			let root = this.server.config.root;
+			let to = config.location;
+
+			this.getFiles((files) => {
+				files = files.sort((a, b) => {return a.length - b.length});
+
+				for (let file of files) {
+					if (!fs.existsSync(path.dirname(to + file)))
+						fs.mkdir(path.dirname(to + file));
+					
+					fs.createReadStream(root + file).pipe(fs.createWriteStream(to));
+				}
+			});
+		}
 	}
 }
 

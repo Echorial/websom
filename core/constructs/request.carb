@@ -20,6 +20,16 @@ class Websom.Request {
 		this.session = new Websom.Session(this);
 	}
 
+	void header(string name, primitive value) {
+		native javascript {
+			this.response.jsResponse.setHeader(name, value);
+		}
+
+		native php {
+			header($name . ": " . $value);
+		}
+	}
+
 	`Sets the response code`
 	void code(int code) {
 		this.response.code = code;
@@ -30,6 +40,28 @@ class Websom.Request {
 
 		native php {
 			http_response_code($code);
+		}
+	}
+
+	void end() {
+		native javascript {
+			this.response.jsResponse.end();
+		}
+	}
+
+	void flush() {
+		native javascript {
+			this.response.jsResponse.flush();
+		}
+	}
+
+	void write(string content) {
+		native javascript {
+			this.response.jsResponse.write(content);
+		}
+
+		native php {
+			echo $content;
 		}
 	}
 

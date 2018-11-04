@@ -1,0 +1,110 @@
+info {
+	"name": "websom-console"
+}
+
+template {
+	<div class="websom-console" @click="focus()">
+		<div class="websom-console-log">
+			<div v-for="(v, i) in log">{{v}}</div>
+		</div>
+		<div class="websom-console-line"><span><icon fa :icon="authenticated ? 'angle-right' : 'key'"></icon></span><input ref="input" :type="authenticated ? 'text' : (user != null && pass == null ? 'password' : 'text')" @keyup.enter="sendCommand()" v-model="command"/></div>
+	</div>
+}
+
+client {
+	data: function () {
+		return {
+			log: [],
+			command: "",
+			user: null,
+			pass: null,
+			authenticated: false,
+			info: {}
+		};
+	},
+	created: function () {
+		DashboardBridge.awaitInfo().then((data) => {
+			this.info = data;
+			this.authenticated = this.info.status;
+
+			if (!this.authenticated) {
+				this.log.push("Username:");
+			}
+		});
+	},
+	methods: {
+		sendRequest: function (data, gchunk, finish) {
+			fetch("/websom.run.command", {method: "POST", headers: {"Content-Type": "application/x-www-form-urlencoded"}, body: $.param(data)})
+				.then(processChunkedResponse)
+				.then(onChunkedResponseComplete)
+				.catch(onChunkedResponseError);
+
+			function onChunkedResponseComplete(result) {
+				finish();
+			}
+
+			function onChunkedResponseError(err) {
+				finish();
+			}
+
+			function processChunkedResponse(response) {
+				let reader = response.body.getReader()
+				let decoder = new TextDecoder();
+
+				return readChunk();
+
+				function readChunk() {
+					return reader.read().then(appendChunks);
+				}
+
+				function appendChunks(result) {
+					let chunk = decoder.decode(result.value || new Uint8Array, {stream: !result.done});
+					gchunk(chunk);
+
+					if (result.done) {
+						return "";
+					}else{
+						return readChunk();
+					}
+				}
+			}
+		},
+		sendCommand: function () {
+			if (!this.authenticated) {
+				if (this.user == null) {
+					this.user = this.command;
+					this.log.push(this.user);
+					this.log.push("Password:");
+				}else{
+					this.pass = this.command;
+					
+					DashboardBridge.login(this.user, this.pass).then((data) => {
+						if (data.hadError) {
+							this.log.push(data.error);
+							this.user = null;
+							this.pass = null;
+							this.log.push("Username:");
+						}else {
+							this.info = data;
+							this.authenticated = this.info.status;
+							this.log.push("Logged in");
+						}
+					});
+				}
+			}else{
+				this.log.push(this.command);
+
+				this.sendRequest({command: this.command}, (txt) => {
+					this.log.push(txt);
+				}, () => {
+
+				});
+			}
+
+			this.command = "";
+		},
+		focus: function () {
+			$(this.$refs.input).focus();
+		}
+	}
+}

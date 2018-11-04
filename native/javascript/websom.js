@@ -206,6 +206,25 @@ Websom.Server.prototype.listen = function () {
 				that.router.handle(websomRequest);
 			});
 
+			server.post(/^((?!\/postInput|\/postBridge|\/postInputM).)*$/, bodyParser.urlencoded({limit: '160mb', extended: true}), (req, res) => {
+				if (!req.body) {
+					res.sendStatus(400);
+					res.send("Invalid post");
+				}else{
+					var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+			
+					client.family = req.socket.remoteFamily;
+					client.localAddress = req.socket.localAddress;
+					client.localPort = req.socket.localPort;
+					
+					var websomRequest = new Websom.Request(that, client);
+					websomRequest.path = req.path;
+					websomRequest.response.jsResponse = res;
+					websomRequest.jsRequest = req;
+					that.router.handlePost(req.body, websomRequest);
+				}
+			});
+
 			server.post("/postInput", bodyParser.urlencoded({limit: '160mb', extended: true}), (req, res) => {
 				if (!req.body) {
 					res.sendStatus(400);
@@ -1674,7 +1693,11 @@ Websom.Services.Resource = function () {
 
 	this.globalStyles = [];
 
+	this.deployConfig = null;
+
 	this.assetFontAwesome = false;
+
+	this.deployHandlers = [];
 
 	this.server = null;
 
@@ -1687,7 +1710,73 @@ Websom.Services.Resource = function () {
 
 Websom.Services.Resource.prototype.start = function () {
 	if (arguments.length == 0) {
+		this.deployHandlers.push(new Websom.FtpHandler(this.server));
+		this.deployHandlers.push(new Websom.LocalHandler(this.server));
+	}
+}
 
+Websom.Services.Resource.prototype.loadDeployConfig = function () {
+	if (arguments.length == 0) {
+		if (this.deployConfig == null) {
+			var path = this.server.config.root + "/deploy.json";
+			if (Oxygen.FileSystem.exists(path) == false) {
+				Oxygen.FileSystem.writeSync(path, "{\n	\"deploys\": []\n}");
+				}
+			this.deployConfig = Websom.Json.parse(Oxygen.FileSystem.readSync(path, "utf8"));
+			}
+	}
+}
+
+Websom.Services.Resource.prototype.deploy = function () {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var name = arguments[0];
+		var callback = arguments[1];
+		this.deploy(name, function (msg) {
+			console.log(msg);
+			}, callback);
+	}
+else 	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'function' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var name = arguments[0];
+		var progress = arguments[1];
+		var callback = arguments[2];
+		this.loadDeployConfig();
+		progress("Searching for deploy " + name);
+		var deploy = this.findDeploy(name);
+		if (deploy == null) {
+			progress("Unknown deploy " + name);
+			return null;
+			}
+		var handler = this.findHandler(deploy["handler"]);
+		if (handler == null) {
+			progress("Unknown handler " + name);
+			return null;
+			}
+		handler.execute(deploy, progress, callback);
+	}
+}
+
+Websom.Services.Resource.prototype.findHandler = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		for (var i = 0; i < this.deployHandlers.length; i++) {
+			if (this.deployHandlers[i].name == name) {
+				return this.deployHandlers[i];
+				}
+			}
+		return null;
+	}
+}
+
+Websom.Services.Resource.prototype.findDeploy = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		var cast = this.deployConfig["deploys"];
+		for (var i = 0; i < cast.length; i++) {
+			if (cast[i]["name"] == name) {
+				return cast[i];
+				}
+			}
+		return null;
 	}
 }
 
@@ -1998,6 +2087,179 @@ Websom.Services.Resource.prototype.stop = function () {
 Websom.Services.Resource.prototype.end = function () {
 	if (arguments.length == 0) {
 
+	}
+}
+
+Websom.DeployHandler = function () {
+	this.name = "";
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.DeployHandler.prototype.getFiles = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		
+			const fs = require("fs");
+			let outFiles = [];
+
+			function scanDir(base, abs, files) {
+				for (let file of files) {
+					if (file.isDirectory()) {
+						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					}else{
+						outFiles.push(file);
+					}
+				}
+			}
+
+			scanDir("", this.server.config.root + "/", fs.readdirSync(this.server.config.root, {withFileTypes: true}));
+
+			callback(outFiles);
+		
+	}
+}
+
+Websom.FtpHandler = function () {
+	this.name = "ftp";
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.FtpHandler.prototype.execute = function () {
+	if (arguments.length == 3 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'function' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var config = arguments[0];
+		var progress = arguments[1];
+		var finish = arguments[2];
+		
+			const ftp = require("ftp");
+
+			let client = new ftp();
+
+			progress("Connecting to " + config.host);
+
+			client.connect({
+				host: config.host,
+				user: config.user,
+				password: config.password,
+				port: config.port || 21
+			});
+
+			client.on("error", (err) => {
+				progress(err.toString());
+			});
+
+			client.on("ready", () => {
+				progress("Connected");
+			});
+
+		
+	}
+}
+
+Websom.FtpHandler.prototype.getFiles = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		
+			const fs = require("fs");
+			let outFiles = [];
+
+			function scanDir(base, abs, files) {
+				for (let file of files) {
+					if (file.isDirectory()) {
+						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					}else{
+						outFiles.push(file);
+					}
+				}
+			}
+
+			scanDir("", this.server.config.root + "/", fs.readdirSync(this.server.config.root, {withFileTypes: true}));
+
+			callback(outFiles);
+		
+	}
+}
+
+Websom.LocalHandler = function () {
+	this.name = "local";
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.LocalHandler.prototype.execute = function () {
+	if (arguments.length == 3 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'function' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var config = arguments[0];
+		var progress = arguments[1];
+		var finish = arguments[2];
+		
+			const fs = require("fs");
+			const path = require("path");
+
+			progress("Checking local location");
+
+			if (!fs.existsSync(config.location)) {
+				progress(config.location + " does not exist");
+				finish();
+				return;
+			}
+
+			let root = this.server.config.root;
+			let to = config.location;
+
+			this.getFiles((files) => {
+				files = files.sort((a, b) => {return a.length - b.length});
+
+				for (let file of files) {
+					if (!fs.existsSync(path.dirname(to + file)))
+						fs.mkdir(path.dirname(to + file));
+					
+					fs.createReadStream(root + file).pipe(fs.createWriteStream(to));
+				}
+			});
+		
+	}
+}
+
+Websom.LocalHandler.prototype.getFiles = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var callback = arguments[0];
+		
+			const fs = require("fs");
+			let outFiles = [];
+
+			function scanDir(base, abs, files) {
+				for (let file of files) {
+					if (file.isDirectory()) {
+						scanDir(base + file.name + "/", abs + file.name + "/", fs.readdirSync(base + file.name, {withFileTypes: true}));
+					}else{
+						outFiles.push(file);
+					}
+				}
+			}
+
+			scanDir("", this.server.config.root + "/", fs.readdirSync(this.server.config.root, {withFileTypes: true}));
+
+			callback(outFiles);
+		
 	}
 }
 
@@ -2590,6 +2852,19 @@ Websom.Services.Router.prototype.route = function () {
 	}
 }
 
+Websom.Services.Router.prototype.post = function () {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var routeString = arguments[0];
+		var handler = arguments[1];
+		var splits = this.buildSplits(routeString);
+		var route = new Websom.Route(routeString, splits, null);
+		route.postHandler = handler;
+		route.post = true;
+		this.routes.push(route);
+		return route;
+	}
+}
+
 Websom.Services.Router.prototype.start = function () {
 	if (arguments.length == 0) {
 		for (var i = 0; i < this.server.view.pages.length; i++) {
@@ -2793,12 +3068,13 @@ Websom.Services.Router.prototype.buildSplits = function () {
 }
 
 Websom.Services.Router.prototype.find = function () {
-	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'boolean' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
 		var query = arguments[0];
+		var post = arguments[1];
 		var splits = this.buildSplits(query);
 		for (var i = 0; i < this.routes.length; i++) {
 			var route = this.routes[i];
-			if (route.match(splits)) {
+			if (route.match(splits) && route.post == post) {
 				return route;
 				}
 			}
@@ -2809,12 +3085,28 @@ Websom.Services.Router.prototype.find = function () {
 Websom.Services.Router.prototype.handle = function () {
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Request) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var req = arguments[0];
-		var route = this.find(req.path);
+		var route = this.find(req.path, false);
 		if (route == null) {
 			req.code(404);
 			req.send("Error page not found.");
 			}else{
 				route.handle(req);
+			}
+	}
+}
+
+Websom.Services.Router.prototype.handlePost = function () {
+	if (arguments.length == 2 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.Request) || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var raw = arguments[0];
+		var req = arguments[1];
+		var input = new Websom.Input("", raw, req);
+		input.server = this.server;
+		var route = this.find(req.path, true);
+		if (route == null) {
+			req.code(404);
+			req.send("Error route not found.");
+			}else{
+				route.handlePost(input);
 			}
 	}
 }
@@ -2834,11 +3126,15 @@ Websom.Services.Router.prototype.end = function () {
 Websom.Route = function () {
 	this.greedy = false;
 
+	this.post = false;
+
 	this.route = "";
 
 	this.splits = null;
 
 	this.handler = null;
+
+	this.postHandler = null;
 
 	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (arguments[1]instanceof Array || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'function' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
 		var route = arguments[0];
@@ -2847,6 +3143,14 @@ Websom.Route = function () {
 		this.route = route;
 		this.splits = splits;
 		this.handler = handler;
+	}
+else 	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (arguments[1]instanceof Array || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'function' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var route = arguments[0];
+		var splits = arguments[1];
+		var handler = arguments[2];
+		this.route = route;
+		this.splits = splits;
+		this.postHandler = handler;
 	}
 
 }
@@ -2884,6 +3188,13 @@ Websom.Route.prototype.handle = function () {
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Request) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var req = arguments[0];
 		this.handler(req);
+	}
+}
+
+Websom.Route.prototype.handlePost = function () {
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Input) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var input = arguments[0];
+		this.postHandler(input);
 	}
 }
 
@@ -6834,12 +7145,49 @@ Websom.Request = function () {
 
 }
 
+Websom.Request.prototype.header = function () {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1]instanceof Array || typeof arguments[1] == 'boolean' || typeof arguments[1] == 'number' || typeof arguments[1] == 'number' || typeof arguments[1] == 'object' || typeof arguments[1] == 'string') || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var name = arguments[0];
+		var value = arguments[1];
+		
+			this.response.jsResponse.setHeader(name, value);
+		
+		
+	}
+}
+
 Websom.Request.prototype.code = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'number' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var code = arguments[0];
 		this.response.code = code;
 		
 			this.response.jsResponse.status(code);
+		
+		
+	}
+}
+
+Websom.Request.prototype.end = function () {
+	if (arguments.length == 0) {
+		
+			this.response.jsResponse.end();
+		
+	}
+}
+
+Websom.Request.prototype.flush = function () {
+	if (arguments.length == 0) {
+		
+			this.response.jsResponse.flush();
+		
+	}
+}
+
+Websom.Request.prototype.write = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var content = arguments[0];
+		
+			this.response.jsResponse.write(content);
 		
 		
 	}
@@ -9824,7 +10172,16 @@ Websom.Micro.Command.prototype.start = function () {
 		this.register("theme").command("init <name> <author> [version=\"1.0\"]").flag("option").default("Value").cook().on(function (invo) {
 
 			});
-		this.exec("theme init name echorial --option Hello");
+		this.register("test").command("<name>").on(function (invo) {
+			invo.output("Starting command with name " + invo.get("name"));
+			invo.output("Waiting 2 seconds");
+			
+					setTimeout(() => {
+						invo.output("After");
+					}, 2000);
+				
+			
+			});
 	}
 }
 
@@ -9838,13 +10195,34 @@ Websom.Micro.Command.prototype.register = function () {
 }
 
 Websom.Micro.Command.prototype.exec = function () {
-	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.Request) || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var command = arguments[0];
+		var req = arguments[1];
+		var inv = new Websom.CommandInvocation(this.server, command);
+		inv.request = req;
+		inv.sender = "Console";
+		inv.local = false;
+		inv.parse();
+		var found = inv.search(this.commands);
+		if (found != null) {
+			var out = found.run(inv);
+			if (out == null) {
+				found.handler(inv);
+				}else{
+					req.send("{\"status\": \"error\", \"message\": " + Websom.Json.encode(out) + "}");
+				}
+			}else{
+				req.send("{\"status\": \"error\", \"message\": \"Unknown command\"}");
+			}
+	}
+else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var command = arguments[0];
 		var inv = new Websom.CommandInvocation(this.server, command);
 		inv.parse();
 		var found = inv.search(this.commands);
 		if (found != null) {
 			var output = found.run(inv);
+			found.handler(inv);
 			console.log(output);
 			}
 	}
@@ -10168,7 +10546,8 @@ Websom.CommandInvocation.prototype.output = function () {
 		if (this.local) {
 			this.handler(false, message);
 			}else{
-				this.request.send("{\"status\": \"success\", \"message\": " + Websom.Json.encode(message) + "}");
+				this.request.write("{\"status\": \"chunk\", \"message\": " + Websom.Json.encode(message) + "}");
+				this.request.flush();
 			}
 	}
 }

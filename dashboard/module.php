@@ -146,6 +146,12 @@ $rtn["sub"]["Users"]["view"] = "user-system-user-search";
 $rtn["sub"]["Groups"] = new _carb_map();
 $rtn["sub"]["Groups"]["view"] = "user-system-group-editor";
 return $rtn;}));
+$this->server->router->quickRoute("/websom.console", "websom-console");
+$this->server->router->post("/websom.run.command", function ($inp) use (&$that, &$builder, &$designer) {$req = $inp->request;
+if ($req->session->get("dashboard") != null) {
+$req->header("Content-Type", "text/json");
+$that->server->micro->command->exec($inp->raw["command"], $inp->request);}else{
+$req->send("{\"status\": \"error\", \"message\": \"Not logged in\"}");}});
 $this->server->router->quickRoute("/websom.dashboard", "dashboard");
 $this->server->router->quickRoute("/websom.studio", "dashboard-studio");
 $builder = $this->server->router->quickRoute("/websom.builder", "dashboard-builder");

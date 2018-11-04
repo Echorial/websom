@@ -196,3 +196,40 @@
 		}
 	}
 }
+
+.websom-console {
+	padding: 0 .2em;
+	background: black;
+	color: white;
+	font-family: "Lucida Console", "Lucida Sans Typewriter", monaco, "Bitstream Vera Sans Mono", monospace;
+	height: 100%;
+	font-size: 13.33333px;
+
+	.websom-console-log {
+		padding-left: 13px;
+	}
+
+	.websom-console-line {
+		min-height: 1em;
+
+		position: relative;
+
+		input {
+			font-family: "Lucida Console", "Lucida Sans Typewriter", monaco, "Bitstream Vera Sans Mono", monospace;
+			background: black;
+			border: none;
+			width: 100%;
+			color: white;
+			outline: none;
+			padding-left: 1.3em;
+			position: absolute;
+			top: 0;
+		}
+
+		span {
+			top: 2.8px;
+			position: absolute;
+			z-index: 10;
+		}
+	}
+}
