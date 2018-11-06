@@ -3128,7 +3128,7 @@ Websom.Services.Router.prototype.navView = function () {
 		if (canEdit) {
 			canEditStr = "true";
 			}
-		var route = this.routeString(routeStr, "<default-body><nav-view validate='" + validate + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
+		var route = this.routeString(routeStr, "<default-body content-type='navView' container='" + container + "' auto='true' view-name='" + view + "'><nav-view validate='" + validate + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
 		route.greedy = true;
 		return route;
 	}
@@ -3144,7 +3144,7 @@ else 	if (arguments.length == 7 && (typeof arguments[0] == 'string' || typeof ar
 		if (canEdit) {
 			canEditStr = "true";
 			}
-		var route = this.routeString(routeStr, "<default-body><nav-view :show-save='false' validate='" + validate + "' public-key='" + publicKey + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
+		var route = this.routeString(routeStr, "<default-body content-type='navView' container='" + container + "' auto='true' view-name='" + view + "'><nav-view :show-save='false' validate='" + validate + "' public-key='" + publicKey + "' container='" + container + "' edit-key='" + editKey + "' view='" + view + "' :show-edit='" + canEditStr + "' /></default-body>");
 		route.greedy = true;
 		return route;
 	}
