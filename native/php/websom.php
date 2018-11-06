@@ -125,6 +125,9 @@ return null;}
 function log($value) {
 }
 
+function request($url) {
+return new Websom_RequestChain($this, $url);}
+
 function getBucket($name) {
 for ($i = 0; $i < count($this->buckets); $i++) {
 if (_c_lib__arrUtils::readIndex($this->buckets, $i)->name == $name) {
@@ -663,7 +666,7 @@ array_push($this->inputTypes, "\"" . $name . "\": {" . $this->buildDataValidatio
 $fieldValidation = [];
 array_push($fieldValidation, "type: \"" . $type . "\"");
 foreach ($field->attributes as $key => $_c_v__k0) {
-if ($key == "Min" or $key == "Max" or $key == "Matches" or $key == "Length") {
+if ($key == "Min" or $key == "Max" or $key == "Match" or $key == "MatchMessage" or $key == "Not" or $key == "Length") {
 array_push($fieldValidation, $key . ": " . Websom_Json::encode($field->attributes[$key]));}}
 array_push($keys, $field->realName . ": {" . implode(", ", $fieldValidation) . "}");}
 return implode(", ", $keys);}
@@ -751,6 +754,8 @@ public $key;
 
 public $route;
 
+public $updateData;
+
 function __construct($key, $raw, $request) {
 $this->server = null;
 $this->raw = null;
@@ -758,6 +763,7 @@ $this->files = new _carb_map();
 $this->request = null;
 $this->key = "";
 $this->route = "";
+$this->updateData = null;
 
 $this->key = $key;
 $this->raw = $raw;
@@ -805,14 +811,11 @@ $that = $this;
 $url = "https://www.google.com/recaptcha/api/siteverify";
 if (isset($this->raw["_captcha"]) and (gettype($this->raw["_captcha"]) == 'double' ? 'float' : (gettype($this->raw["_captcha"]) == 'array' ? (isset($this->raw["_captcha"]['_c__mapC']) ? 'map' : 'array') : gettype($this->raw["_captcha"]))) == "string") {
 $this->server->security->load();
-$data = new _carb_map();
-$data["body"] = new _carb_map();
-$data["body"]["secret"] = $this->server->security->serviceKey;
-$data["body"]["response"] = $this->raw["_captcha"];
-Websom_Http::postJson($this->server, $url, $data, function ($raw) use (&$data, &$callback, &$that, &$url) {$cast = $raw["success"];
-if (isset($raw["error_codes"])) {
-$that->server->log($raw);}
-$callback->__invoke($cast);});}else{
+$this->server->request($url)->form("response", $this->raw["_captcha"])->form("secret", $this->server->security->serviceKey)->parseJson()->post(function ($res) use (&$callback, &$that, &$url) {if ($res->hadError) {
+$that->server->log($res->error);}else{
+if (isset($res->data["error-codes"])) {
+$that->server->log($res->data["error-codes"]);}
+$callback->__invoke($res->data["success"]);}});}else{
 $callback->__invoke(false);}}
 
 
@@ -1176,20 +1179,73 @@ public $globalScripts;
 
 public $globalStyles;
 
+public $deployConfig;
+
 public $assetFontAwesome;
+
+public $deployHandlers;
 
 public $server;
 
 function __construct($server) {
 $this->globalScripts = [];
 $this->globalStyles = [];
+$this->deployConfig = null;
 $this->assetFontAwesome = false;
+$this->deployHandlers = [];
 $this->server = null;
 
 $this->server = $server;
 }
 function start() {
+array_push($this->deployHandlers, new Websom_FtpHandler($this->server));
+array_push($this->deployHandlers, new Websom_LocalHandler($this->server));}
+
+function loadDeployConfig() {
+if ($this->deployConfig == null) {
+$path = $this->server->config->root . "/deploy.json";
+if (Oxygen_FileSystem::exists($path) == false) {
+Oxygen_FileSystem::writeSync($path, "{\n\t\"deploys\": []\n}");}
+$this->deployConfig = Websom_Json::parse(Oxygen_FileSystem::readSync($path, "utf8"));}}
+
+function deploy(...$arguments) {
+if (count($arguments) == 2 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
+$name = $arguments[0];
+$callback = $arguments[1];
+$this->deploy($name, function ($msg) use (&$name, &$callback) {;}, $callback);
 }
+else if (count($arguments) == 3 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL') and (is_callable($arguments[2]) or gettype($arguments[2]) == 'NULL')) {
+$name = $arguments[0];
+$progress = $arguments[1];
+$callback = $arguments[2];
+$this->loadDeployConfig();
+$progress->__invoke("Searching for deploy " . $name);
+$deploy = &$this->findDeploy($name);
+if ($deploy == null) {
+$progress->__invoke("Unknown deploy " . $name);
+$callback->__invoke();
+return null;}
+$handler = $this->findHandler($deploy["handler"]);
+if ($handler == null) {
+$progress->__invoke("Unknown handler " . $name);
+$callback->__invoke();
+return null;}
+$handler->execute($deploy, $progress, $callback);
+}
+}
+
+function findHandler($name) {
+for ($i = 0; $i < count($this->deployHandlers); $i++) {
+if (_c_lib__arrUtils::readIndex($this->deployHandlers, $i)->name == $name) {
+return _c_lib__arrUtils::readIndex($this->deployHandlers, $i);}}
+return null;}
+
+function &findDeploy($name) {
+$cast = &$this->deployConfig["deploys"];
+for ($i = 0; $i < count($cast); $i++) {
+if (_c_lib__arrUtils::readIndex($cast, $i)["name"] == $name) {
+return _c_lib__arrUtils::readIndex($cast, $i);}}
+return null;}
 
 function buildViews($saveToFiles) {
 $viewStr = "";
@@ -1244,6 +1300,11 @@ if ($saveToFiles == false) {
 return $viewStr;}}
 
 function exportToFolder($path, $callback) {
+$that = $this;
+Oxygen_FileSystem::writeSync($path . "/client.js", Oxygen_FileSystem::readSync($this->server->config->resources . "/client.js", null));
+Oxygen_FileSystem::writeSync($path . "/jquery.min.js", Oxygen_FileSystem::readSync($this->server->config->resources . "/jquery.min.js", null));
+if (Oxygen_FileSystem::exists($this->server->config->resources . "/text.js")) {
+Oxygen_FileSystem::writeSync($path . "/text.js", Oxygen_FileSystem::readSync($this->server->config->resources . "/text.js", null));}
 $resources = &$this->collect();
 $unbuilt = count($resources) + count($this->server->theme->themes);
 $error = false;
@@ -1256,30 +1317,45 @@ $totalJs .= $page->buildDev();}
 for ($i = 0; $i < count($this->server->view->views); $i++) {
 $view = _c_lib__arrUtils::readIndex($this->server->view->views, $i);
 $totalJs .= $view->buildDev();}
-$finish = function () use (&$path, &$callback, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss) {Oxygen_FileSystem::writeSync($path . "/js.js", $totalJs);
+$finish = function () use (&$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {$closureCompiler = function ($content, $callback) use (&$closureCompiler, &$writeOut, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {};
+$writeOut = function ($vue) use (&$closureCompiler, &$writeOut, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {$closureCompiler->__invoke(Oxygen_FileSystem::readSync($that->server->config->resources . "/jquery.min.js", "utf8") . "\n" . $vue . "\n" . Oxygen_FileSystem::readSync($that->server->config->resources . "/client.js", "utf8") . "\n" . $totalJs, function ($compiled) use (&$vue, &$closureCompiler, &$writeOut, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {Oxygen_FileSystem::writeSync($path . "/js.js", $compiled);
 Oxygen_FileSystem::writeSync($path . "/css.css", $totalCss);
-$callback->__invoke($error, $errMsg);};
+$callback->__invoke($error, $errMsg);});};
+};
 for ($i = 0; $i < count($this->server->theme->themes); $i++) {
 $theme = _c_lib__arrUtils::readIndex($this->server->theme->themes, $i);
-$theme->build(function ($err, $js, $css) use (&$i, &$theme, &$path, &$callback, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss) {$totalJs .= $js;
+$theme->build(function ($err, $js, $css) use (&$i, &$theme, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {$totalJs .= $js;
 $totalCss .= $css;
 $unbuilt--;
 if ($unbuilt <= 0) {
 $finish->__invoke();}});}
-$builtJs = function ($hadError, $content) use (&$path, &$callback, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss) {if ($hadError) {
+$builtJs = function ($hadError, $content) use (&$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {if ($hadError) {
 $error = true;
 $errMsg = $content;}
 $unbuilt--;
 $totalJs .= $content . "\n\n";
 if ($unbuilt <= 0) {
 $finish->__invoke();}};
-$builtCss = function ($hadError, $content) use (&$path, &$callback, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss) {if ($hadError) {
+$builtCss = function ($hadError, $content) use (&$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {if ($hadError) {
 $error = true;
 $errMsg = $content;}
 $unbuilt--;
 $totalCss .= $content;
 if ($unbuilt <= 0) {
 $finish->__invoke();}};
+$files = &$this->collect();
+for ($i = 0; $i < count($files); $i++) {
+$file = _c_lib__arrUtils::readIndex($files, $i);
+if ($file->type == "file") {
+$base = Oxygen_FileSystem::basename(_c_lib__arrUtils::readIndex($files, $i)->file);
+$bpath = $base;
+if (_c_lib__arrUtils::readIndex($files, $i)->raw != null) {
+if (isset(_c_lib__arrUtils::readIndex($files, $i)->raw["toPath"])) {
+$toPath = _c_lib__arrUtils::readIndex($files, $i)->raw["toPath"];
+$bpath = $toPath . "/" . $base;
+if (Oxygen_FileSystem::exists($path . "/" . $toPath) == false) {
+Oxygen_FileSystem::makeDir($path . "/" . $toPath);}}}
+_c_lib__arrUtils::readIndex($files, $i)->buildToFile($path . "/" . $bpath);}}
 for ($i = 0; $i < count($resources); $i++) {
 $resource = _c_lib__arrUtils::readIndex($resources, $i);
 if ($resource->type == "less" or $resource->type == "css") {
@@ -1352,8 +1428,9 @@ Oxygen_FileSystem::makeDir($this->server->config->resources . "/" . $toPath);}}}
 _c_lib__arrUtils::readIndex($files, $i)->buildToFile($this->server->config->resources . "/" . $path);}}}
 
 function _c__include($dev) {
-$output = "<script src=\"" . $this->server->config->clientResources . "/jquery.min.js\"></script>";
+$output = "";
 if ($dev) {
+$output .= "<script src=\"" . $this->server->config->clientResources . "/jquery.min.js\"></script>";
 $files = &$this->collect();
 for ($i = 0; $i < count($files); $i++) {
 $output .= _c_lib__arrUtils::readIndex($files, $i)->toHtmlInclude() . "\n";}
@@ -1394,6 +1471,57 @@ function stop() {
 }
 
 function end() {
+}
+
+
+}class Websom_DeployHandler {
+public $name;
+
+public $server;
+
+function __construct($server) {
+$this->name = "";
+$this->server = null;
+
+$this->server = $server;
+}
+function getFiles($callback) {
+}
+
+
+}class Websom_FtpHandler {
+public $name;
+
+public $server;
+
+function __construct($server) {
+$this->name = "ftp";
+$this->server = null;
+
+$this->server = $server;
+}
+function execute($config, $progress, $finish) {
+}
+
+function getFiles($callback) {
+}
+
+
+}class Websom_LocalHandler {
+public $name;
+
+public $server;
+
+function __construct($server) {
+$this->name = "local";
+$this->server = null;
+
+$this->server = $server;
+}
+function execute($config, $progress, $finish) {
+}
+
+function getFiles($callback) {
 }
 
 
@@ -1802,6 +1930,14 @@ $route = new Websom_Route($routeString, $splits, $handler);
 array_push($this->routes, $route);
 return $route;}
 
+function post($routeString, $handler) {
+$splits = $this->buildSplits($routeString);
+$route = new Websom_Route($routeString, $splits, null);
+$route->postHandler = $handler;
+$route->post = true;
+array_push($this->routes, $route);
+return $route;}
+
 function start() {
 for ($i = 0; $i < count($this->server->view->pages); $i++) {
 $view = _c_lib__arrUtils::readIndex($this->server->view->pages, $i);
@@ -1828,7 +1964,7 @@ $readyToSend->__invoke();}}}
 function _c__include() {
 if ($this->server->config->dev) {
 return "<script src=\"https:/" . "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" . $this->server->config->clientResources . "/client.js\"></script>" . $this->server->view->_c__include() . $this->server->resource->_c__include(true) . $this->server->theme->_c__include() . $this->server->input->clientValidate . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}else{
-return "<script src=\"https:/" . "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" . $this->server->config->clientResources . "/client.js\"></script>" . $this->server->resource->_c__include(false) . "<script src=\"" . $this->server->config->clientResources . "/js.js\"></script>" . "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/css.css\">" . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}}
+return $this->server->resource->_c__include(false) . "<script src=\"" . $this->server->config->clientResources . "/js.js\"></script>" . "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/css.css\">" . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}}
 
 function wrapPage($content) {
 $metas = "";
@@ -1856,13 +1992,37 @@ $rawClientData = "{}";}
 $req->send($that->wrapPage("<script>Websom.Client = " . $rawClientData . "; " . $that->injectScript . "</script><div id='page' class='" . $themeClass . "'>" . $template . "</div><script>document.body.setAttribute('class', document.getElementById('page').getAttribute('class'));page = new Vue({el: '#page', data: {data: {}}});</script>"));};
 $that->injectSends($req, $clientData, $readyToSend);});}
 
-function navView($routeStr, $container, $view, $validate, $canEdit, $editKey) {
+function navView(...$arguments) {
+if (count($arguments) == 6 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (gettype($arguments[1]) == 'string' or gettype($arguments[1]) == 'NULL') and (gettype($arguments[2]) == 'string' or gettype($arguments[2]) == 'NULL') and (gettype($arguments[3]) == 'string' or gettype($arguments[3]) == 'NULL') and (gettype($arguments[4]) == 'boolean' or gettype($arguments[4]) == 'NULL') and (gettype($arguments[5]) == 'string' or gettype($arguments[5]) == 'NULL')) {
+$routeStr = $arguments[0];
+$container = $arguments[1];
+$view = $arguments[2];
+$validate = $arguments[3];
+$canEdit = $arguments[4];
+$editKey = $arguments[5];
 $canEditStr = "false";
 if ($canEdit) {
 $canEditStr = "true";}
-$route = $this->routeString($routeStr, "<default-body><nav-view validate='" . $validate . "' container='" . $container . "' edit-key='" . $editKey . "' view='" . $view . "' :can-edit='" . $canEditStr . "' /></default-body>");
+$route = $this->routeString($routeStr, "<default-body><nav-view validate='" . $validate . "' container='" . $container . "' edit-key='" . $editKey . "' view='" . $view . "' :show-edit='" . $canEditStr . "' /></default-body>");
 $route->greedy = true;
-return $route;}
+return $route;
+}
+else if (count($arguments) == 7 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (gettype($arguments[1]) == 'string' or gettype($arguments[1]) == 'NULL') and (gettype($arguments[2]) == 'string' or gettype($arguments[2]) == 'NULL') and (gettype($arguments[3]) == 'string' or gettype($arguments[3]) == 'NULL') and (gettype($arguments[4]) == 'string' or gettype($arguments[4]) == 'NULL') and (gettype($arguments[5]) == 'boolean' or gettype($arguments[5]) == 'NULL') and (gettype($arguments[6]) == 'string' or gettype($arguments[6]) == 'NULL')) {
+$routeStr = $arguments[0];
+$container = $arguments[1];
+$view = $arguments[2];
+$validate = $arguments[3];
+$publicKey = $arguments[4];
+$canEdit = $arguments[5];
+$editKey = $arguments[6];
+$canEditStr = "false";
+if ($canEdit) {
+$canEditStr = "true";}
+$route = $this->routeString($routeStr, "<default-body><nav-view :show-save='false' validate='" . $validate . "' public-key='" . $publicKey . "' container='" . $container . "' edit-key='" . $editKey . "' view='" . $view . "' :show-edit='" . $canEditStr . "' /></default-body>");
+$route->greedy = true;
+return $route;
+}
+}
 
 function quickRoute($route, $viewName) {
 $that = $this;
@@ -1904,20 +2064,29 @@ $r->greedy = $view->greedy;}
 function buildSplits($route) {
 return explode("/", $route);}
 
-function find($query) {
+function find($query, $post) {
 $splits = $this->buildSplits($query);
 for ($i = 0; $i < count($this->routes); $i++) {
 $route = _c_lib__arrUtils::readIndex($this->routes, $i);
-if ($route->match($splits)) {
+if ($route->match($splits) and $route->post == $post) {
 return $route;}}
 return null;}
 
 function handle($req) {
-$route = $this->find($req->path);
+$route = $this->find($req->path, false);
 if ($route == null) {
 $req->code(404);
 $req->send("Error page not found.");}else{
 $route->handle($req);}}
+
+function handlePost($raw, $req) {
+$input = new Websom_Input("", $raw, $req);
+$input->server = $this->server;
+$route = $this->find($req->path, true);
+if ($route == null) {
+$req->code(404);
+$req->send("Error route not found.");}else{
+$route->handlePost($input);}}
 
 function stop() {
 }
@@ -1929,21 +2098,41 @@ function end() {
 }class Websom_Route {
 public $greedy;
 
+public $post;
+
 public $route;
 
 public $splits;
 
 public $handler;
 
-function __construct($route, $splits, $handler) {
+public $postHandler;
+
+function __construct(...$arguments) {
 $this->greedy = false;
+$this->post = false;
 $this->route = "";
 $this->splits = null;
 $this->handler = null;
+$this->postHandler = null;
 
+if (count($arguments) == 3 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array') or gettype($arguments[1]) == 'NULL') and (is_callable($arguments[2]) or gettype($arguments[2]) == 'NULL')) {
+$route = $arguments[0];
+$splits = $arguments[1];
+$handler = $arguments[2];
 $this->route = $route;
 $this->splits = $splits;
 $this->handler = $handler;
+}
+else if (count($arguments) == 3 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array') or gettype($arguments[1]) == 'NULL') and (is_callable($arguments[2]) or gettype($arguments[2]) == 'NULL')) {
+$route = $arguments[0];
+$splits = $arguments[1];
+$handler = $arguments[2];
+$this->route = $route;
+$this->splits = $splits;
+$this->postHandler = $handler;
+}
+
 }
 function match($otherSplits) {
 if ($this->greedy == false) {
@@ -1963,6 +2152,9 @@ return true;}
 
 function handle($req) {
 $this->handler->__invoke($req);}
+
+function handlePost($input) {
+$this->postHandler->__invoke($input);}
 
 
 }class Websom_Services_Security {
@@ -2474,6 +2666,8 @@ public $clientResources;
 
 public $databaseFile;
 
+public $gzip;
+
 function __construct() {
 $this->data = null;
 $this->https = false;
@@ -2498,6 +2692,7 @@ $this->devSendMail = false;
 $this->forceSsr = false;
 $this->clientResources = "";
 $this->databaseFile = "";
+$this->gzip = false;
 
 
 }
@@ -2525,6 +2720,9 @@ $config->forceSsr = true;}}
 if (isset($out["sslVerifyPeer"])) {
 if ($out["sslVerifyPeer"] !== "1") {
 $config->sslVerifyPeer = false;}}
+if (isset($out["gzip"])) {
+if ($out["gzip"] === "1") {
+$config->gzip = true;}}
 if (isset($out["manifestPath"])) {
 $config->manifestPath = $out["manifestPath"];}
 if (isset($out["bucket"])) {
@@ -2607,12 +2805,12 @@ $that = $this;
 if ($opts->canInsert) {
 if ($opts->overrideInsert != null) {
 $opts->overrideInsert->__invoke($input);}else{
-if ($opts->mustLogin) {
+if ($opts->mustLogin or $opts->mustOwnInsert) {
 if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $msg = Websom_ClientMessage::quickError("Please login.");
 $input->send($msg->stringify());
 return null;}}
-$this->server->security->request("insert", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
+$this->server->security->request("insert", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($that->dataInfo);
 $v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
@@ -2683,8 +2881,17 @@ if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $cMsg = Websom_ClientMessage::quickError("Please login.");
 $input->send($cMsg->stringify());
 return null;}}
-$this->server->security->request("update", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
-$v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
+if (isset($input->raw["publicId"]) == false or (gettype($input->raw["publicId"]) == 'double' ? 'float' : (gettype($input->raw["publicId"]) == 'array' ? (isset($input->raw["publicId"]['_c__mapC']) ? 'map' : 'array') : gettype($input->raw["publicId"]))) != "string") {
+$qMsg = Websom_ClientMessage::quickError("Invalid publicId");
+$input->send($qMsg->stringify());
+return null;}
+$publicId = $input->raw["publicId"];
+if (strlen($publicId) < 10 or strlen($publicId) > 256) {
+$qMsg = Websom_ClientMessage::quickError("Invalid publicId");
+$input->send($qMsg->stringify());
+return null;}
+$this->server->security->request("update", $opts, $input, function () use (&$publicId, &$opts, &$input, &$that) {$v = new Websom_DataValidator($that->dataInfo);
+$v->validate($input, function ($msg) use (&$v, &$publicId, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
 $values = &$input->raw;
@@ -2692,18 +2899,18 @@ $clientMessage = new Websom_ClientMessage();
 $clientMessage->message = $opts->baseSuccess;
 $dones+=count($opts->controls) + count($opts->updateControls);
 $cast = $that;
-$update = $that->server->database->primary->from($cast->table)->where("publicId")->equals($input->raw["publicId"])->update();
+$update = $that->server->database->primary->from($cast->table)->where("publicId")->equals($publicId)->update();
 $obj = $that->dataInfo->spawn($that->server);
-$checkDone = function () use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {if ($dones == 0) {
+$checkDone = function () use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {if ($dones == 0) {
 if ($clientMessage->hadError) {
 $input->send($clientMessage->stringify());}else{
 $that->updateFromInterface($opts, $update, $obj, $input, $values, $clientMessage);}}};
-$obj->loadFromPublicKey($that, $input->raw["publicId"], function ($err) use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$shouldContinue = true;
-$doContinue = function () use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$runControl = function ($control) use (&$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$control->validate($input, function ($cMsg) use (&$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$dones--;
+$obj->loadFromPublicKey($that, $publicId, function ($err) use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$shouldContinue = true;
+$doContinue = function () use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$runControl = function ($control) use (&$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$control->validate($input, function ($cMsg) use (&$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$dones--;
 if ($cMsg != null and $cMsg->hadError) {
 $clientMessage->add($cMsg);
 $checkDone->__invoke();}else{
-$control->fill($input, $values, function () use (&$cMsg, &$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$checkDone->__invoke();});}});};
+$control->fill($input, $values, function () use (&$cMsg, &$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$checkDone->__invoke();});}});};
 for ($i = 0; $i < count($opts->controls); $i++) {
 $control = _c_lib__arrUtils::readIndex($opts->controls, $i);
 $runControl->__invoke($control);}
@@ -2714,7 +2921,7 @@ if ($dones == 0) {
 $that->server->security->countRequest("update", $opts, $input);
 $that->updateFromInterface($opts, $update, $obj, $input, $values, $clientMessage);}}};
 if ($opts->mustOwnUpdate) {
-$that->server->userSystem->getLoggedIn($input->request, function ($user) use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {
+$that->server->userSystem->getLoggedIn($input->request, function ($user) use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {
 
 											if ($user->id != $obj->owner->id) {
 												$shouldContinue = false;
@@ -2881,6 +3088,10 @@ public $mustLogin;
 
 public $mustOwnUpdate;
 
+public $mustOwnSelect;
+
+public $mustOwnInsert;
+
 public $autoPublicId;
 
 public $autoTimestamp;
@@ -2960,6 +3171,8 @@ $this->multipart = false;
 $this->canUpdate = false;
 $this->mustLogin = false;
 $this->mustOwnUpdate = false;
+$this->mustOwnSelect = false;
+$this->mustOwnInsert = false;
 $this->autoPublicId = false;
 $this->autoTimestamp = false;
 $this->autoOwn = false;
@@ -4010,7 +4223,7 @@ $typeName = $arguments[0];
 if (count($this->keys) > 0) {
 if ($typeName == "string") {
 _c_lib__arrUtils::readIndex($this->keys, count($this->keys) - 1)->setFilter(new Websom_InputFilters_String());}else{
-throw new Exception("Unkown is typeName " . $typeName);}}
+throw new Exception("Unknown is typeName " . $typeName);}}
 return $this;
 }
 }
@@ -4371,7 +4584,10 @@ $cast = $this->subs[$fieldName];
 return $cast;}}
 
 function mustOwn() {
-$this->io->mustOwnUpdate = true;
+if ($this->currentMode == "insert") {
+$this->io->mustOwnInsert = true;}else if ($this->currentMode == "update") {
+$this->io->mustOwnUpdate = true;}else if ($this->currentMode == "select") {
+$this->io->mustOwnSelect = true;}
 return $this;}
 
 function mustLogin() {
@@ -4434,6 +4650,8 @@ public $message;
 
 public $href;
 
+public $doReload;
+
 public $hadError;
 
 public $validations;
@@ -4441,6 +4659,7 @@ public $validations;
 function __construct() {
 $this->message = "";
 $this->href = "";
+$this->doReload = false;
 $this->hadError = false;
 $this->validations = [];
 
@@ -4454,6 +4673,9 @@ return $err;}
 
 function navigate($href) {
 $this->href = $href;}
+
+function reload() {
+$this->doReload = true;}
 
 function add($validation) {
 if ($validation->hadError) {
@@ -4472,6 +4694,9 @@ array_push($anon, "\"" . _c_lib__arrUtils::readIndex($this->validations, $i)->st
 $add = "";
 if (strlen($this->href) > 0) {
 $add .= ", \"action\": \"navigate\", \"href\": \"" . $this->href . "\"";
+$status = "action";}
+if ($this->doReload) {
+$add .= ", \"action\": \"reload\"";
 $status = "action";}
 return "{\"status\": \"" . $status . "\", \"messages\": [" . implode(", ", $anon) . "], \"message\": " . Websom_Json::encode($this->message) . $add . "}";}
 
@@ -4637,6 +4862,8 @@ public $sent;
 
 public $path;
 
+public $userCache;
+
 public $response;
 
 public $jsRequest;
@@ -4648,6 +4875,7 @@ $this->server = null;
 $this->client = null;
 $this->sent = false;
 $this->path = "";
+$this->userCache = null;
 $this->response = null;
 $this->jsRequest = null;
 $this->session = null;
@@ -4657,11 +4885,29 @@ $this->client = $client;
 $this->response = new Websom_Response();
 $this->session = new Websom_Session($this);
 }
+function header($name, $value) {
+
+
+			header($name . ": " . $value);
+		}
+
 function code($code) {
 $this->response->code = $code;
 
 
 			http_response_code($code);
+		}
+
+function end() {
+}
+
+function flush() {
+}
+
+function write($content) {
+
+
+			echo $content;
 		}
 
 function send($content) {
@@ -5972,6 +6218,191 @@ static function get($url, $data, $callback) {
 }
 
 
+}class Websom_Result {
+public $error;
+
+public $hadError;
+
+public $status;
+
+public $data;
+
+function __construct($error, $data) {
+$this->error = "";
+$this->hadError = false;
+$this->status = 200;
+$this->data = null;
+
+$this->error = $error;
+if ($error != null and strlen($error) > 0) {
+$this->hadError = true;}
+$this->data = $data;
+}
+
+}class Websom_RequestChain {
+public $server;
+
+public $url;
+
+public $urlencode;
+
+public $jsonencode;
+
+public $data;
+
+public $doAuth;
+
+public $user;
+
+public $pass;
+
+public $bearer;
+
+public $doParse;
+
+public $_headers;
+
+function __construct($server, $url) {
+$this->server = null;
+$this->url = "";
+$this->urlencode = false;
+$this->jsonencode = false;
+$this->data = new _carb_map();
+$this->doAuth = false;
+$this->user = null;
+$this->pass = null;
+$this->bearer = null;
+$this->doParse = false;
+$this->_headers = new _carb_map();
+
+$this->server = $server;
+$this->url = $url;
+}
+function auth(...$arguments) {
+if (count($arguments) == 2 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (gettype($arguments[1]) == 'string' or gettype($arguments[1]) == 'NULL')) {
+$user = $arguments[0];
+$pass = $arguments[1];
+$this->doAuth = true;
+$this->user = $user;
+$this->pass = $pass;
+return $this;
+}
+else if (count($arguments) == 1 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL')) {
+$bearer = $arguments[0];
+$this->doAuth = true;
+$this->bearer = $bearer;
+return $this;
+}
+}
+
+function parseJson() {
+$this->doParse = true;
+return $this;}
+
+function json($data) {
+$this->jsonencode = true;
+$this->data = $data;}
+
+function form(...$arguments) {
+if (count($arguments) == 1 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'NULL')) {
+$data = $arguments[0];
+$this->urlencode = true;
+$this->data = $data;
+return $this;
+}
+else if (count($arguments) == 2 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (((gettype($arguments[1]) == 'array') or gettype($arguments[1]) == 'boolean' or gettype($arguments[1]) == 'double' or gettype($arguments[1]) == 'integer' or (gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : get_class($arguments[1]) == '_carb_map') or gettype($arguments[1]) == 'string') or gettype($arguments[1]) == 'NULL')) {
+$key = $arguments[0];
+$value = $arguments[1];
+$this->urlencode = true;
+$this->data[$key] = $value;
+return $this;
+}
+}
+
+function header($key, $value) {
+$this->_headers[$key] = $value;
+return $this;}
+
+function headers($headers) {
+$this->_headers = $headers;
+return $this;}
+
+function makeRequest($method, $callback) {
+
+			$ch = curl_init($url);
+			$data = "";
+			if ($this->urlencode) {
+				$data = http_build_query($this->data);
+				$this->header("Content-Type", "application/x-www-form-urlencoded");
+			}else if ($this->jsonencode) {
+				$data = json_encode($this->data);
+				$this->header("Content-Type", "application/json");
+			}
+			$this->header("Content-Length", strlen($data));
+
+			if (!$this->server->config->sslVerifyPeer)
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+			
+			if ($method == "POST") {
+				curl_setopt($ch, CURLOPT_POST, 1);
+			}else if ($method == "GET") {
+				curl_setopt($ch, CURLOPT_GET, 1);
+			}
+
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			
+			if ($this->doAuth) {
+				if ($this->bearer == null) {
+					curl_setopt($ch, CURLOPT_USERPWD, $this->user . ":" . $this->pass);
+				}else{
+					$this->header("Authorization", "Bearer " . $this->bearer);
+				}
+			}
+
+			$headers = [];
+			
+			foreach ($this->_headers as $key => $val) {
+				$headers[] = $key . ": " . $val;
+			}
+
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+			$response = curl_exec($ch);
+			$error = null;
+			
+			if ($response === false) {
+				$error = curl_error($ch);
+			}else{
+				if ($this->doParse)
+					$response = json_decode($response, true);
+			}
+
+			$res = new Websom_Result($error, $response);
+			$res->status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			curl_close($ch);
+
+			$callback($res);
+		
+}
+
+function delete($callback) {
+$this->makeRequest("DELETE", $callback);
+return $this;}
+
+function put($callback) {
+$this->makeRequest("PUT", $callback);
+return $this;}
+
+function get($callback) {
+$this->makeRequest("GET", $callback);
+return $this;}
+
+function post($callback) {
+$this->makeRequest("POST", $callback);
+return $this;}
+
+
 }class Websom_Time {
 
 function __construct(...$arguments) {
@@ -6815,21 +7246,65 @@ $this->server = $server;
 }
 function start() {
 $that = $this;
+$this->register("help")->command("[command]")->on(function ($invo) use (&$that) {$name = $invo->get("command");
+$invo->output("----------- HELP -----------");
+$invo->output("\t- Commands:");
+if ($name != null) {
+}else{
+for ($i = 0; $i < count($that->commands); $i++) {
+$cmd = _c_lib__arrUtils::readIndex($that->commands, $i);
+$invo->output("\t\t- <b>" . $cmd->name . "</b>");
+for ($j = 0; $j < count($cmd->patterns); $j++) {
+$ptrn = _c_lib__arrUtils::readIndex($cmd->patterns, $j);
+$invo->output("\t\t\t- " . preg_replace('/'."]".'/', "]</span>", preg_replace('/'."[".'/', "<span style='color: #9fd0ff'>[", preg_replace('/'."<([^>]*)>".'/', "<span style='color: lime'>&lt;\$1&gt;</span>", $ptrn->pattern))));}}}
+$invo->finish();});
+$this->register("deploy")->command("<name>")->on(function ($invo) use (&$that) {$that->server->resource->deploy($invo->get("name"), function ($msg) use (&$invo, &$that) {$invo->output($msg);}, function () use (&$invo, &$that) {$invo->output("<span style='color: lime;'>Complete</span>");
+$invo->finish();});});
 $this->register("theme")->command("init <name> <author> [version=\"1.0\"]")->flag("option")->_c__default("Value")->cook()->on(function ($invo) use (&$that) {});
-$this->exec("theme init name echorial --option Hello");}
+$this->register("test")->command("<name>")->on(function ($invo) use (&$that) {$invo->output("Starting command with name " . $invo->get("name"));
+$invo->output("Waiting 2 seconds");
+
+
+					sleep(2);
+					$invo->output("After");
+					$invo->finish();
+				});}
 
 function register($topName) {
 $cmd = new Websom_Command($this->server, $topName);
 array_push($this->commands, $cmd);
 return $cmd;}
 
-function exec($command) {
+function exec(...$arguments) {
+if (count($arguments) == 2 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and ((_c_lib_run::getClass($arguments[1]) == 'Websom_Request') or gettype($arguments[1]) == 'NULL')) {
+$command = $arguments[0];
+$req = $arguments[1];
+$inv = new Websom_CommandInvocation($this->server, $command);
+$inv->request = $req;
+$inv->sender = "Console";
+$inv->local = false;
+$inv->parse();
+$found = $inv->search($this->commands);
+if ($found != null) {
+$found->cook();
+$out = $found->run($inv);
+if ($out == null) {
+$found->handler->__invoke($inv);}else{
+$req->send("{\"status\": \"error\", \"message\": " . Websom_Json::encode($out) . "}");}}else{
+$req->send("{\"status\": \"error\", \"message\": \"Unknown command\"}");}
+}
+else if (count($arguments) == 1 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL')) {
+$command = $arguments[0];
 $inv = new Websom_CommandInvocation($this->server, $command);
 $inv->parse();
 $found = $inv->search($this->commands);
 if ($found != null) {
+$found->cook();
 $output = $found->run($inv);
-;}}
+$found->handler->__invoke($inv);
+;}
+}
+}
 
 
 }class Websom_Command {
@@ -7014,6 +7489,8 @@ $build = "";
 $equals = "";}}}
 
 function cook() {
+if ($this->cooked) {
+return $this;}
 $this->cooked = true;
 $this->buildParts();
 return $this;}
@@ -7036,6 +7513,8 @@ public $flags;
 
 public $values;
 
+public $rawOutput;
+
 public $arguments;
 
 public $raw;
@@ -7049,6 +7528,7 @@ $this->pattern = null;
 $this->server = null;
 $this->flags = new _carb_map();
 $this->values = new _carb_map();
+$this->rawOutput = [];
 $this->arguments = [];
 $this->raw = "";
 
@@ -7068,7 +7548,11 @@ $this->request->send("{\"status\": \"error\", \"message\": " . Websom_Json::enco
 function output($message) {
 if ($this->local) {
 $this->handler->__invoke(false, $message);}else{
-$this->request->send("{\"status\": \"success\", \"message\": " . Websom_Json::encode($message) . "}");}}
+array_push($this->rawOutput, "{\"status\": \"chunk\", \"message\": " . Websom_Json::encode($message) . "}");}}
+
+function finish() {
+if ($this->local == false) {
+$this->request->send("[" . implode(", ", $this->rawOutput) . "]");}}
 
 function searchPatterns($patterns) {
 for ($i = 0; $i < count($patterns); $i++) {
@@ -7328,9 +7812,16 @@ $parentTable = $this->parentContainer;
 $parentTable->loadFromSelect($parentTable->from()->where("publicId")->equals($docPublicId), function ($docs) use (&$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$docPublicId, &$parentTable) {if (count($docs) == 0) {
 $input->sendError("Invalid document");
 return null;}
-$ctx->subContainerCall = true;
+$doCall = function () use (&$docs, &$doCall, &$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$docPublicId, &$parentTable) {$ctx->subContainerCall = true;
 $ctx->data = _c_lib__arrUtils::readIndex($docs, 0);
-$that->insertFromInterfaceCallback($opts, $input, $values, $message, $fieldInfo, $parentData, $callback, $ctx);});}
+$that->insertFromInterfaceCallback($opts, $input, $values, $message, $fieldInfo, $parentData, $callback, $ctx);};
+if ($opts->mustOwnInsert) {
+$that->server->userSystem->getLoggedIn($input->request, function ($user) use (&$docs, &$doCall, &$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$docPublicId, &$parentTable) {if ($user != null) {
+if ($user->id == _c_lib__arrUtils::readIndex($docs, 0)->getField("id")) {
+$doCall->__invoke();}else{
+$input->sendError("You do not own this.");}}else{
+$input->sendError("Please login.");}});}else{
+$doCall->__invoke();}});}
 
 function interfaceSelect($opts, $input, $ctx) {
 $that = $this;
@@ -7487,6 +7978,7 @@ $insert->set("timestamp", $now);
 $obj->setField("timestamp", $now);}}
 if ($subParent != null) {
 $insert->set("parentId", $subParent->getField("id"));}
+$obj->websomContainer = $this;
 $obj->containerInsert($input, $this, $insert, $values, function () use (&$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$obj, &$subParent, &$insert) {$call = function () use (&$call, &$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$obj, &$subParent, &$insert) {$fieldWaits = 0;
 for ($f = 0; $f < count($that->dataInfo->fields); $f++) {
 $field = _c_lib__arrUtils::readIndex($that->dataInfo->fields, $f);
@@ -7582,7 +8074,7 @@ $insertReady->__invoke();}}}};
 $close->__invoke($ff);}};
 if ($opts != null) {
 $nextCall = function () use (&$nextCall, &$call, &$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$obj, &$subParent, &$insert) {if ($opts->onInsert != null) {
-$opts->onInsert->__invoke($input, $insert, function ($err) use (&$nextCall, &$call, &$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$obj, &$subParent, &$insert) {if (strlen($err) > 0) {
+$opts->onInsert->__invoke($input, $insert, function ($err) use (&$nextCall, &$call, &$opts, &$input, &$values, &$message, &$fieldInfo, &$parentData, &$callback, &$ctx, &$that, &$obj, &$subParent, &$insert) {if ($err != null and strlen($err) > 0) {
 $input->send($err);}else{
 $call->__invoke();}});}else{
 $call->__invoke();}};
@@ -7629,7 +8121,7 @@ for ($f = 0; $f < count($that->dataInfo->fields); $f++) {
 $field = _c_lib__arrUtils::readIndex($that->dataInfo->fields, $f);
 if (isset($field->attributes["Parent"]) == false) {
 $fieldWaits++;}}
-$updateReady = function ($readyField, $readyValue) use (&$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {$that->checkRestrictions($opts, $input, "update", $readyField, function ($doChange) use (&$readyField, &$readyValue, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if ($doChange == true and $readyValue != null) {
+$updateReady = function ($readyField, $readyValue) use (&$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {$callUpdate = function () use (&$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {$that->checkRestrictions($opts, $input, "update", $readyField, function ($doChange) use (&$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if ($doChange == true and $readyValue != null) {
 $update->set($readyField->fieldName, $readyValue);}
 $fieldWaits--;
 if ($fieldWaits <= 0) {
@@ -7637,13 +8129,13 @@ if ($values["parentId"] != null) {
 $update->set("parentId", $values["parentId"]);}
 if ($values["arrayIndex"] != null) {
 $update->set("arrayIndex", $values["arrayIndex"]);}
-$update->run(function ($err, $res) use (&$doChange, &$readyField, &$readyValue, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if ($opts != null) {
+$update->run(function ($err, $res) use (&$doChange, &$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if ($opts != null) {
 for ($iControl = 0; $iControl < count($opts->controls); $iControl++) {
 _c_lib__arrUtils::readIndex($opts->controls, $iControl)->update($input, $obj);}
 for ($iControl = 0; $iControl < count($opts->updateControls); $iControl++) {
 _c_lib__arrUtils::readIndex($opts->updateControls, $iControl)->update($input, $obj);}}
 for ($ff = 0; $ff < count($that->dataInfo->fields); $ff++) {
-$fieldClose = function ($f) use (&$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {$field = _c_lib__arrUtils::readIndex($that->dataInfo->fields, $f);
+$fieldClose = function ($f) use (&$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {$field = _c_lib__arrUtils::readIndex($that->dataInfo->fields, $f);
 if ($field->onlyServer == false and $field->structure->hasFlag("edit")) {
 if ($field->structure->hasFlag("linked")) {
 $link = $field->structure->getFlag("linked");
@@ -7652,7 +8144,7 @@ $value = &$input->raw[$field->realName];
 if ((gettype($value) == 'double' ? 'float' : (gettype($value) == 'array' ? (isset($value['_c__mapC']) ? 'map' : 'array') : gettype($value))) == "array") {
 $tempContainer = new Websom_Containers_Table($that->server, $that->table . "_" . $field->fieldName, Websom_DataInfo::getDataInfoFromRoute($link->fieldType));
 for ($ii = 0; $ii < count($value); $ii++) {
-$close = function ($i) use (&$ii, &$close, &$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {_c_lib__arrUtils::readIndex($value, $i)["parentId"] = $obj->getField("id");
+$close = function ($i) use (&$ii, &$close, &$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {_c_lib__arrUtils::readIndex($value, $i)["parentId"] = $obj->getField("id");
 _c_lib__arrUtils::readIndex($value, $i)["arrayIndex"] = $i;
 $subSelect = $that->server->database->primary->from($that->table . "_" . $field->fieldName)->where("parentId")->equals(_c_lib__arrUtils::readIndex($value, $i)["parentId"])->and()->where("arrayIndex")->equals(_c_lib__arrUtils::readIndex($value, $i)["arrayIndex"]);
 $subObj = $tempContainer->dataInfo->spawn($that->server);
@@ -7660,24 +8152,34 @@ $subObj->websomFieldInfo = $field;
 $subObj->websomServer = $that->server;
 $subObj->websomParentData = $obj;
 $subObj->websomContainer = $tempContainer;
-$subSelect->run(function ($err2, $sres) use (&$i, &$subSelect, &$subObj, &$ii, &$close, &$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if ($err2 != null) {
+$subSelect->run(function ($err2, $sres) use (&$i, &$subSelect, &$subObj, &$ii, &$close, &$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if ($err2 != null) {
 
 $input->send("Internal Error");}else if (count($sres) == 0) {
 $tempContainer->insertFromInterface(null, new Websom_Input("", _c_lib__arrUtils::readIndex($value, $i), $input->request), _c_lib__arrUtils::readIndex($value, $i), null, $field, $obj, new Websom_CallContext());}else{
-$subObj->nativeLoadFromMap(_c_lib__arrUtils::readIndex($sres, 0), function ($err3) use (&$err2, &$sres, &$i, &$subSelect, &$subObj, &$ii, &$close, &$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if (strlen($err3) > 0) {
+$subObj->nativeLoadFromMap(_c_lib__arrUtils::readIndex($sres, 0), function ($err3) use (&$err2, &$sres, &$i, &$subSelect, &$subObj, &$ii, &$close, &$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if (strlen($err3) > 0) {
 
 $input->send("Internal Error");}else{
 $subUpdate = $subSelect->update();
 $tempContainer->updateFromInterface(null, $subUpdate, $subObj, new Websom_Input("", _c_lib__arrUtils::readIndex($value, $i), $input->request), _c_lib__arrUtils::readIndex($value, $i), null);}});}});};
 $close->__invoke($ii);}
-$that->server->database->primary->from($tempContainer->table)->where("parentId")->equals($obj->getField("id"))->and()->where("arrayIndex")->greater(count($value) - 1)->delete()->run(function ($err2, $res2) use (&$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {});}}}}};
+$that->server->database->primary->from($tempContainer->table)->where("parentId")->equals($obj->getField("id"))->and()->where("arrayIndex")->greater(count($value) - 1)->delete()->run(function ($err2, $res2) use (&$tempContainer, &$value, &$link, &$f, &$field, &$ff, &$fieldClose, &$err, &$res, &$doChange, &$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {});}}}}};
 $fieldClose->__invoke($ff);}
 if ($message != null) {
-$input->send($message->stringify());}});}});};
+if ($opts->successUpdate) {
+$opts->successUpdate->__invoke($input, $obj, $message, function ($msg) use (&$err, &$res, &$doChange, &$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {$input->send($msg->stringify());});}else{
+$input->send($message->stringify());}}});}});};
+if ($opts != null) {
+if ($opts->onUpdate != null) {
+$input->updateData = $obj;
+$opts->onUpdate->__invoke($input, $update, function ($err) use (&$readyField, &$readyValue, &$callUpdate, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {if ($err != null and strlen($err) > 0) {
+$input->send($err);}else{
+$callUpdate->__invoke();}});}else{
+$callUpdate->__invoke();}}else{
+$callUpdate->__invoke();}};
 for ($ff = 0; $ff < count($that->dataInfo->fields); $ff++) {
 $close = function ($f) use (&$ff, &$close, &$fieldWaits, &$updateReady, &$opts, &$update, &$obj, &$input, &$values, &$message, &$that) {$field = _c_lib__arrUtils::readIndex($that->dataInfo->fields, $f);
 if (isset($field->attributes["Parent"]) == false) {
-if ($field->onlyServer == false and $field->structure->hasFlag("edit")) {
+if ($field->onlyServer == false and $field->structure->hasFlag("edit") and isset($input->raw[$field->realName])) {
 if ($field->structure->hasFlag("linked")) {
 $link = $field->structure->getFlag("linked");
 if ($link->linkType == "array") {
@@ -7707,7 +8209,7 @@ $objId = -1;
  $objId = $obj->getField($field->realName)->id; 
 $updateReady->__invoke($field, $objId);}else{
 $updateReady->__invoke($field, null);}}else{
-$updateReady->__invoke($field, $obj->getField($field->realName));}}}};
+$updateReady->__invoke($field, null);}}}};
 $close->__invoke($ff);}});}
 
 function from() {
@@ -7780,12 +8282,12 @@ $that = $this;
 if ($opts->canInsert) {
 if ($opts->overrideInsert != null) {
 $opts->overrideInsert->__invoke($input);}else{
-if ($opts->mustLogin) {
+if ($opts->mustLogin or $opts->mustOwnInsert) {
 if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $msg = Websom_ClientMessage::quickError("Please login.");
 $input->send($msg->stringify());
 return null;}}
-$this->server->security->request("insert", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
+$this->server->security->request("insert", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($that->dataInfo);
 $v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
@@ -7853,8 +8355,17 @@ if ($this->server->userSystem->isLoggedIn($input->request) == false) {
 $cMsg = Websom_ClientMessage::quickError("Please login.");
 $input->send($cMsg->stringify());
 return null;}}
-$this->server->security->request("update", $opts, $input, function () use (&$opts, &$input, &$that) {$v = new Websom_DataValidator($this->dataInfo);
-$v->validate($input, function ($msg) use (&$v, &$opts, &$input, &$that) {if ($msg->hadError) {
+if (isset($input->raw["publicId"]) == false or (gettype($input->raw["publicId"]) == 'double' ? 'float' : (gettype($input->raw["publicId"]) == 'array' ? (isset($input->raw["publicId"]['_c__mapC']) ? 'map' : 'array') : gettype($input->raw["publicId"]))) != "string") {
+$qMsg = Websom_ClientMessage::quickError("Invalid publicId");
+$input->send($qMsg->stringify());
+return null;}
+$publicId = $input->raw["publicId"];
+if (strlen($publicId) < 10 or strlen($publicId) > 256) {
+$qMsg = Websom_ClientMessage::quickError("Invalid publicId");
+$input->send($qMsg->stringify());
+return null;}
+$this->server->security->request("update", $opts, $input, function () use (&$publicId, &$opts, &$input, &$that) {$v = new Websom_DataValidator($that->dataInfo);
+$v->validate($input, function ($msg) use (&$v, &$publicId, &$opts, &$input, &$that) {if ($msg->hadError) {
 $input->sendError($msg->stringify());}else{
 $dones = 0;
 $values = &$input->raw;
@@ -7862,18 +8373,18 @@ $clientMessage = new Websom_ClientMessage();
 $clientMessage->message = $opts->baseSuccess;
 $dones+=count($opts->controls) + count($opts->updateControls);
 $cast = $that;
-$update = $that->server->database->primary->from($cast->table)->where("publicId")->equals($input->raw["publicId"])->update();
+$update = $that->server->database->primary->from($cast->table)->where("publicId")->equals($publicId)->update();
 $obj = $that->dataInfo->spawn($that->server);
-$checkDone = function () use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {if ($dones == 0) {
+$checkDone = function () use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {if ($dones == 0) {
 if ($clientMessage->hadError) {
 $input->send($clientMessage->stringify());}else{
 $that->updateFromInterface($opts, $update, $obj, $input, $values, $clientMessage);}}};
-$obj->loadFromPublicKey($that, $input->raw["publicId"], function ($err) use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$shouldContinue = true;
-$doContinue = function () use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$runControl = function ($control) use (&$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$control->validate($input, function ($cMsg) use (&$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$dones--;
+$obj->loadFromPublicKey($that, $publicId, function ($err) use (&$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$shouldContinue = true;
+$doContinue = function () use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$runControl = function ($control) use (&$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$control->validate($input, function ($cMsg) use (&$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$dones--;
 if ($cMsg != null and $cMsg->hadError) {
 $clientMessage->add($cMsg);
 $checkDone->__invoke();}else{
-$control->fill($input, $values, function () use (&$cMsg, &$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {$checkDone->__invoke();});}});};
+$control->fill($input, $values, function () use (&$cMsg, &$control, &$runControl, &$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {$checkDone->__invoke();});}});};
 for ($i = 0; $i < count($opts->controls); $i++) {
 $control = _c_lib__arrUtils::readIndex($opts->controls, $i);
 $runControl->__invoke($control);}
@@ -7884,7 +8395,7 @@ if ($dones == 0) {
 $that->server->security->countRequest("update", $opts, $input);
 $that->updateFromInterface($opts, $update, $obj, $input, $values, $clientMessage);}}};
 if ($opts->mustOwnUpdate) {
-$that->server->userSystem->getLoggedIn($input->request, function ($user) use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$opts, &$input, &$that) {
+$that->server->userSystem->getLoggedIn($input->request, function ($user) use (&$err, &$shouldContinue, &$doContinue, &$dones, &$values, &$clientMessage, &$cast, &$update, &$obj, &$checkDone, &$msg, &$v, &$publicId, &$opts, &$input, &$that) {
 
 											if ($user->id != $obj->owner->id) {
 												$shouldContinue = false;

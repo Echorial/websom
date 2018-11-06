@@ -57,6 +57,7 @@ class Websom.Services.Resource inherits Websom.Service {
 
 		if (deploy == null) {
 			progress("Unknown deploy " + name);
+			callback();
 			return null;
 		}
 
@@ -64,6 +65,7 @@ class Websom.Services.Resource inherits Websom.Service {
 
 		if (handler == null) {
 			progress("Unknown handler " + name);
+			callback();
 			return null;
 		}
 
@@ -160,6 +162,14 @@ class Websom.Services.Resource inherits Websom.Service {
 
 	`Minifies and writes all website css, and js to the folder path under the names css.css and js.js`
 	void exportToFolder(string path, <void, bool, string>function callback) {
+		var that = this;
+
+		FileSystem.writeSync(path + "/client.js", FileSystem.readSync(this.server.config.resources + "/client.js", null));
+		FileSystem.writeSync(path + "/jquery.min.js", FileSystem.readSync(this.server.config.resources + "/jquery.min.js", null));
+
+		if (FileSystem.exists(this.server.config.resources + "/text.js"))
+			FileSystem.writeSync(path + "/text.js", FileSystem.readSync(this.server.config.resources + "/text.js", null));
+
 		var resources = this.collect();
 		var unbuilt = resources.length + this.server.theme.themes.length;
 
@@ -180,9 +190,26 @@ class Websom.Services.Resource inherits Websom.Service {
 		}
 
 		var finish = void () => {
-			FileSystem.writeSync(path + "/js.js", totalJs);
-			FileSystem.writeSync(path + "/css.css", totalCss);
-			callback(error, errMsg);
+			var closureCompiler = void (string content, <void, string>function callback) => {
+				native javascript {
+					require("request").post({url: "https://closure-compiler.appspot.com/compile", form: {js_code: content, compilation_level: "SIMPLE_OPTIMIZATIONS", output_info: "compiled_code", language_out: "ECMASCRIPT5", output_format: "text"}}, (err, res, body) => {
+						callback(body);
+					});
+				}
+			};
+
+			var writeOut = void (string vue) => {
+				closureCompiler(FileSystem.readSync(that.server.config.resources + "/jquery.min.js", "utf8") + "\n" + vue + "\n" + FileSystem.readSync(that.server.config.resources + "/client.js", "utf8") + "\n" + totalJs, void (string compiled) => {
+					FileSystem.writeSync(path + "/js.js", compiled);
+					FileSystem.writeSync(path + "/css.css", totalCss);
+
+					callback(error, errMsg);
+				});
+			};
+
+			native javascript {
+				require("request")("https://vuejs.org/js/vue.min.js", (err, res, body) => {writeOut(body);});
+			}
 		};
 
 		for (var int i in this.server.theme.themes) {
@@ -224,6 +251,25 @@ class Websom.Services.Resource inherits Websom.Service {
 				finish();
 			}
 		};
+
+		var files = this.collect();
+		for (var int i in files) {
+			var file = files[i];
+
+			if (file.type == "file") {
+				var base = FileSystem.basename(files[i].file);
+				var bpath = base;
+				if (files[i].raw != null)
+					if ("toPath" in files[i].raw) {
+						var toPath = files[i].raw["toPath"];
+						bpath = toPath + "/" + base;
+						if (FileSystem.exists(path + "/" + toPath) == false)
+							FileSystem.makeDir(path + "/" + toPath);
+					}
+
+				files[i].buildToFile(path + "/" + bpath);
+			}
+		}
 
 		for (var int i in resources) {
 			var resource = resources[i];
@@ -347,11 +393,12 @@ class Websom.Services.Resource inherits Websom.Service {
 		}
 	}
 
-	`Builds an html string that includes all of the resources for the current dev enviroment`
+	`Builds an html string that includes all of the resources for the current dev environment`
 	string include(bool dev) {
-		var output = '<script src="' + this.server.config.clientResources + '/jquery.min.js"></script>';
+		var output = "";
 
 		if (dev) {
+			output += '<script src="' + this.server.config.clientResources + '/jquery.min.js"></script>';
 			var files = this.collect();
 
 			for (var int i in files) {
@@ -479,6 +526,8 @@ class Websom.LocalHandler inherits Websom.DeployHandler {
 
 	void execute(map config, <void, string>function progress, <void>function finish) {
 		native javascript {
+			let that = this;
+
 			const fs = require("fs");
 			const path = require("path");
 
@@ -491,9 +540,7 @@ class Websom.LocalHandler inherits Websom.DeployHandler {
 			}
 
 			let root = this.server.config.root;
-			let to = config.location + "/website/";
-
-			try { fs.mkdirSync(to); } catch (e) {}
+			let to = config.location;
 
 			function mkdir(dir) {
 				let upDir = path.resolve(dir + "/../");
@@ -503,18 +550,99 @@ class Websom.LocalHandler inherits Websom.DeployHandler {
 				fs.mkdirSync(dir);
 			}
 
-			this.getFiles((files) => {
-				files = files.sort((a, b) => {return a.length - b.length});
-				let remaining = files.length;
+			
+			if (!fs.existsSync(to + "/resources")) {
+				mkdir(to + "/resources");
+			}
 
-				for (let file of files) {
-					if (!fs.existsSync(path.dirname(to + "/" + file)))
-						mkdir(path.dirname(to + "/" + file));
-					
-					fs.copyFile(root + "/" + file, to + "/" + file, () => { if (--remaining == 0) finish(); });
-					//fs.createReadStream(root + "/" + file).pipe(fs.createWriteStream(to + "/" + file));
+			if (!fs.existsSync(to + "/website")) {
+				mkdir(to + "/website");
+			}
+
+			if (!fs.existsSync(to + "/websom")) {
+				mkdir(to + "/websom");
+				mkdir(to + "/websom/native/php");
+				mkdir(to + "/websom/native/javascript");
+				mkdir(to + "/websom/dashboard");
+				mkdir(to + "/websom/coreModule");
+			}
+
+			fs.copyFileSync(this.server.websomRoot + "/coreModule/module.js", to + "/websom/coreModule/module.js");
+			fs.copyFileSync(this.server.websomRoot + "/coreModule/module.php", to + "/websom/coreModule/module.php");
+			fs.copyFileSync(this.server.websomRoot + "/coreModule/coreModule.json", to + "/websom/coreModule/coreModule.json");
+
+			fs.copyFileSync(this.server.websomRoot + "/dashboard/module.js", to + "/websom/dashboard/module.js");
+			fs.copyFileSync(this.server.websomRoot + "/dashboard/module.php", to + "/websom/dashboard/module.php");
+			fs.copyFileSync(this.server.websomRoot + "/dashboard/dashboard.json", to + "/websom/dashboard/dashboard.json");
+
+			fs.copyFileSync(this.server.websomRoot + "/native/php/websom.php", to + "/websom/native/php/websom.php");
+			fs.copyFileSync(this.server.websomRoot + "/native/javascript/websom.js", to + "/websom/native/javascript/websom.js");
+
+			this.server.resource.exportToFolder(to + "/resources", (err) => {
+				if (config.gzip) {
+					const zlib = require("zlib");
+
+					function gzip(file) {
+						let fileContents = fs.createReadStream(file);
+						let writeStream = fs.createWriteStream(file + ".gz");
+						let zip = zlib.createGzip();
+
+						fileContents.pipe(zip).pipe(writeStream).on('finish', (err) => {
+							if (err) console.log(err);
+						});
+					}
+
+					gzip(to + "/resources/js.js");
+					gzip(to + "/resources/css.css");
 				}
+
+
+				that.getFiles((files) => {
+					files = files.sort((a, b) => {return a.length - b.length});
+					let remaining = files.length;
+
+					for (let file of files) {
+						if (!fs.existsSync(path.dirname(to + "/website/" + file)))
+							mkdir(path.dirname(to + "/website/" + file));
+						
+						fs.copyFile(root + "/" + file, to + "/website/" + file, () => { if (--remaining == 0) finish(); });
+						//fs.createReadStream(root + "/" + file).pipe(fs.createWriteStream(to + "/" + file));
+					}
+				});
 			});
+
+			if (config.index) {
+				fs.writeFileSync(to + "/index.php", "<?php \n\ninclude('websom/native/php/websom.php'); \nWebsom_PHP::load(); \n$server = new Websom_Server(Websom_Config::load('website/config.ini')); \n$route = ''; \nif (isset($_GET['route'])) \n\t$route = $_GET['route']; \n\n$server->run('/' . $route); \n\n?>");
+			}
+
+			if (config[".htaccess"]) {
+				fs.writeFileSync(to + "/websom/.htaccess", "Deny from all");
+				fs.writeFileSync(to + "/website/.htaccess", "Deny from all");
+
+				fs.writeFileSync(to + "/.htaccess", `RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond $1 !^(index\.php|public|css|js|robots\.txt)
+RewriteRule ^(.*)$ index.php?route=$1 [L,QSA]
+
+ErrorDocument 404 /index.php`);
+			}
+
+			if (config.platform == "php" && config.gzip) {
+				fs.writeFileSync(to + "/resources/.htaccess", `AddEncoding gzip .gz
+
+RewriteCond %{HTTP:Accept-encoding} gzip
+RewriteCond %{REQUEST_FILENAME}\.gz -s
+RewriteRule ^(.*)\.css $1\.css\.gz [QSA]
+
+RewriteCond %{HTTP:Accept-encoding} gzip
+RewriteCond %{REQUEST_FILENAME}\.gz -s
+RewriteRule ^(.*)\.js $1\.js\.gz [QSA]
+
+RewriteRule \.css\.gz$ - [T=text/css,E=no-gzip:1]
+RewriteRule \.js\.gz$ - [T=text/javascript,E=no-gzip:1]`);
+			}
 		}
 	}
 }

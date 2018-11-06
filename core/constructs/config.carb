@@ -63,6 +63,8 @@ class Websom.Config {
 	`Location of the database config file`
 	string databaseFile = "";
 
+	bool gzip = false;
+
 	void @construct() {
 		
 	}
@@ -99,6 +101,10 @@ class Websom.Config {
 		if ("sslVerifyPeer" in out)
 			if (out["sslVerifyPeer"] !== "1")
 				config.sslVerifyPeer = false;
+
+		if ("gzip" in out)
+			if (out["gzip"] === "1")
+				config.gzip = true;
 
 		if ("manifestPath" in out)
 			config.manifestPath = out["manifestPath"];

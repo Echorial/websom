@@ -163,7 +163,11 @@ Websom.Server.prototype.listen = function () {
 			const fs = require("fs");
 
 			var server = express();
-			server.use("/resources", express.static(this.config.resources));
+			if (!this.config.gzip) {
+				server.use("/resources", express.static(this.config.resources));
+			}else{
+				server.use("/resources", require("express-static-gzip")(this.config.resources));
+			}
 			
 			var sessionSecret = crypto.randomBytes(64).toString('hex');
 			
@@ -1744,11 +1748,13 @@ else 	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof ar
 		var deploy = this.findDeploy(name);
 		if (deploy == null) {
 			progress("Unknown deploy " + name);
+			callback();
 			return null;
 			}
 		var handler = this.findHandler(deploy["handler"]);
 		if (handler == null) {
 			progress("Unknown handler " + name);
+			callback();
 			return null;
 			}
 		handler.execute(deploy, progress, callback);
@@ -1852,6 +1858,12 @@ Websom.Services.Resource.prototype.exportToFolder = function () {
 	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
 		var path = arguments[0];
 		var callback = arguments[1];
+		var that = this;
+		Oxygen.FileSystem.writeSync(path + "/client.js", Oxygen.FileSystem.readSync(this.server.config.resources + "/client.js", null));
+		Oxygen.FileSystem.writeSync(path + "/jquery.min.js", Oxygen.FileSystem.readSync(this.server.config.resources + "/jquery.min.js", null));
+		if (Oxygen.FileSystem.exists(this.server.config.resources + "/text.js")) {
+			Oxygen.FileSystem.writeSync(path + "/text.js", Oxygen.FileSystem.readSync(this.server.config.resources + "/text.js", null));
+			}
 		var resources = this.collect();
 		var unbuilt = resources.length + this.server.theme.themes.length;
 		var error = false;
@@ -1867,9 +1879,23 @@ Websom.Services.Resource.prototype.exportToFolder = function () {
 			totalJs += view.buildDev();
 			}
 		var finish = function () {
-			Oxygen.FileSystem.writeSync(path + "/js.js", totalJs);
-			Oxygen.FileSystem.writeSync(path + "/css.css", totalCss);
-			callback(error, errMsg);
+			var closureCompiler = function (content, callback) {
+				
+					require("request").post({url: "https://closure-compiler.appspot.com/compile", form: {js_code: content, compilation_level: "SIMPLE_OPTIMIZATIONS", output_info: "compiled_code", language_out: "ECMASCRIPT5", output_format: "text"}}, (err, res, body) => {
+						callback(body);
+					});
+				
+				};
+			var writeOut = function (vue) {
+				closureCompiler(Oxygen.FileSystem.readSync(that.server.config.resources + "/jquery.min.js", "utf8") + "\n" + vue + "\n" + Oxygen.FileSystem.readSync(that.server.config.resources + "/client.js", "utf8") + "\n" + totalJs, function (compiled) {
+Oxygen.FileSystem.writeSync(path + "/js.js", compiled);
+Oxygen.FileSystem.writeSync(path + "/css.css", totalCss);
+callback(error, errMsg);
+});
+				};
+			
+				require("request")("https://vuejs.org/js/vue.min.js", (err, res, body) => {writeOut(body);});
+			
 			};
 		for (var i = 0; i < this.server.theme.themes.length; i++) {
 			var theme = this.server.theme.themes[i];
@@ -1904,6 +1930,24 @@ Websom.Services.Resource.prototype.exportToFolder = function () {
 				finish();
 				}
 			};
+		var files = this.collect();
+		for (var i = 0; i < files.length; i++) {
+			var file = files[i];
+			if (file.type == "file") {
+				var base = Oxygen.FileSystem.basename(files[i].file);
+				var bpath = base;
+				if (files[i].raw != null) {
+					if ("toPath" in files[i].raw) {
+						var toPath = files[i].raw["toPath"];
+						bpath = toPath + "/" + base;
+						if (Oxygen.FileSystem.exists(path + "/" + toPath) == false) {
+							Oxygen.FileSystem.makeDir(path + "/" + toPath);
+							}
+						}
+					}
+				files[i].buildToFile(path + "/" + bpath);
+				}
+			}
 		for (var i = 0; i < resources.length; i++) {
 			var resource = resources[i];
 			if (resource.type == "less" || resource.type == "css") {
@@ -2015,8 +2059,9 @@ Websom.Services.Resource.prototype.build = function () {
 Websom.Services.Resource.prototype.include = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'boolean' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var dev = arguments[0];
-		var output = "<script src=\"" + this.server.config.clientResources + "/jquery.min.js\"></script>";
+		var output = "";
 		if (dev) {
+			output += "<script src=\"" + this.server.config.clientResources + "/jquery.min.js\"></script>";
 			var files = this.collect();
 			for (var i = 0; i < files.length; i++) {
 				output += files[i].toHtmlInclude() + "\n";
@@ -2217,6 +2262,8 @@ Websom.LocalHandler.prototype.execute = function () {
 		var progress = arguments[1];
 		var finish = arguments[2];
 		
+			let that = this;
+
 			const fs = require("fs");
 			const path = require("path");
 
@@ -2229,9 +2276,7 @@ Websom.LocalHandler.prototype.execute = function () {
 			}
 
 			let root = this.server.config.root;
-			let to = config.location + "/website/";
-
-			try { fs.mkdirSync(to); } catch (e) {}
+			let to = config.location;
 
 			function mkdir(dir) {
 				let upDir = path.resolve(dir + "/../");
@@ -2241,18 +2286,99 @@ Websom.LocalHandler.prototype.execute = function () {
 				fs.mkdirSync(dir);
 			}
 
-			this.getFiles((files) => {
-				files = files.sort((a, b) => {return a.length - b.length});
-				let remaining = files.length;
+			
+			if (!fs.existsSync(to + "/resources")) {
+				mkdir(to + "/resources");
+			}
 
-				for (let file of files) {
-					if (!fs.existsSync(path.dirname(to + "/" + file)))
-						mkdir(path.dirname(to + "/" + file));
-					
-					fs.copyFile(root + "/" + file, to + "/" + file, () => { if (--remaining == 0) finish(); });
-					                                                                                     
+			if (!fs.existsSync(to + "/website")) {
+				mkdir(to + "/website");
+			}
+
+			if (!fs.existsSync(to + "/websom")) {
+				mkdir(to + "/websom");
+				mkdir(to + "/websom/native/php");
+				mkdir(to + "/websom/native/javascript");
+				mkdir(to + "/websom/dashboard");
+				mkdir(to + "/websom/coreModule");
+			}
+
+			fs.copyFileSync(this.server.websomRoot + "/coreModule/module.js", to + "/websom/coreModule/module.js");
+			fs.copyFileSync(this.server.websomRoot + "/coreModule/module.php", to + "/websom/coreModule/module.php");
+			fs.copyFileSync(this.server.websomRoot + "/coreModule/coreModule.json", to + "/websom/coreModule/coreModule.json");
+
+			fs.copyFileSync(this.server.websomRoot + "/dashboard/module.js", to + "/websom/dashboard/module.js");
+			fs.copyFileSync(this.server.websomRoot + "/dashboard/module.php", to + "/websom/dashboard/module.php");
+			fs.copyFileSync(this.server.websomRoot + "/dashboard/dashboard.json", to + "/websom/dashboard/dashboard.json");
+
+			fs.copyFileSync(this.server.websomRoot + "/native/php/websom.php", to + "/websom/native/php/websom.php");
+			fs.copyFileSync(this.server.websomRoot + "/native/javascript/websom.js", to + "/websom/native/javascript/websom.js");
+
+			this.server.resource.exportToFolder(to + "/resources", (err) => {
+				if (config.gzip) {
+					const zlib = require("zlib");
+
+					function gzip(file) {
+						let fileContents = fs.createReadStream(file);
+						let writeStream = fs.createWriteStream(file + ".gz");
+						let zip = zlib.createGzip();
+
+						fileContents.pipe(zip).pipe(writeStream).on('finish', (err) => {
+							if (err) console.log(err);
+						});
+					}
+
+					gzip(to + "/resources/js.js");
+					gzip(to + "/resources/css.css");
 				}
+
+
+				that.getFiles((files) => {
+					files = files.sort((a, b) => {return a.length - b.length});
+					let remaining = files.length;
+
+					for (let file of files) {
+						if (!fs.existsSync(path.dirname(to + "/website/" + file)))
+							mkdir(path.dirname(to + "/website/" + file));
+						
+						fs.copyFile(root + "/" + file, to + "/website/" + file, () => { if (--remaining == 0) finish(); });
+						                                                                                     
+					}
+				});
 			});
+
+			if (config.index) {
+				fs.writeFileSync(to + "/index.php", "<?php \n\ninclude('websom/native/php/websom.php'); \nWebsom_PHP::load(); \n$server = new Websom_Server(Websom_Config::load('website/config.ini')); \n$route = ''; \nif (isset($_GET['route'])) \n\t$route = $_GET['route']; \n\n$server->run('/' . $route); \n\n?>");
+			}
+
+			if (config[".htaccess"]) {
+				fs.writeFileSync(to + "/websom/.htaccess", "Deny from all");
+				fs.writeFileSync(to + "/website/.htaccess", "Deny from all");
+
+				fs.writeFileSync(to + "/.htaccess", `RewriteEngine On
+RewriteBase /
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond $1 !^(index\.php|public|css|js|robots\.txt)
+RewriteRule ^(.*)$ index.php?route=$1 [L,QSA]
+
+ErrorDocument 404 /index.php`);
+			}
+
+			if (config.platform == "php" && config.gzip) {
+				fs.writeFileSync(to + "/resources/.htaccess", `AddEncoding gzip .gz
+
+RewriteCond %{HTTP:Accept-encoding} gzip
+RewriteCond %{REQUEST_FILENAME}\.gz -s
+RewriteRule ^(.*)\.css $1\.css\.gz [QSA]
+
+RewriteCond %{HTTP:Accept-encoding} gzip
+RewriteCond %{REQUEST_FILENAME}\.gz -s
+RewriteRule ^(.*)\.js $1\.js\.gz [QSA]
+
+RewriteRule \.css\.gz$ - [T=text/css,E=no-gzip:1]
+RewriteRule \.js\.gz$ - [T=text/javascript,E=no-gzip:1]`);
+			}
 		
 	}
 }
@@ -2933,7 +3059,7 @@ Websom.Services.Router.prototype.include = function () {
 		if (this.server.config.dev) {
 			return "<script src=\"https:/" + "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" + this.server.config.clientResources + "/client.js\"></script>" + this.server.view.include() + this.server.resource.include(true) + this.server.theme.include() + this.server.input.clientValidate + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
 			}else{
-				return "<script src=\"https:/" + "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" + this.server.config.clientResources + "/client.js\"></script>" + this.server.resource.include(false) + "<script src=\"" + this.server.config.clientResources + "/js.js\"></script>" + "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/css.css\">" + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
+				return this.server.resource.include(false) + "<script src=\"" + this.server.config.clientResources + "/js.js\"></script>" + "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/css.css\">" + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
 			}
 	}
 }
@@ -3971,6 +4097,8 @@ Websom.Config = function () {
 
 	this.databaseFile = "";
 
+	this.gzip = false;
+
 	if (arguments.length == 0) {
 
 	}
@@ -4011,6 +4139,11 @@ Websom.Config.load = function () {
 		if ("sslVerifyPeer" in out) {
 			if (out["sslVerifyPeer"] !== "1") {
 				config.sslVerifyPeer = false;
+				}
+			}
+		if ("gzip" in out) {
+			if (out["gzip"] === "1") {
+				config.gzip = true;
 				}
 			}
 		if ("manifestPath" in out) {

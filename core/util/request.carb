@@ -172,7 +172,7 @@ class Websom.RequestChain {
 
 			$headers = [];
 			
-			for ($this->_headers as $key => $val) {
+			foreach ($this->_headers as $key => $val) {
 				$headers[] = $key . ": " . $val;
 			}
 

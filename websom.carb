@@ -132,7 +132,11 @@ class Websom.Server {
 			const fs = require("fs");
 
 			var server = express();
-			server.use("/resources", express.static(this.config.resources));
+			if (!this.config.gzip) {
+				server.use("/resources", express.static(this.config.resources));
+			}else{
+				server.use("/resources", require("express-static-gzip")(this.config.resources));
+			}
 			
 			var sessionSecret = crypto.randomBytes(64).toString('hex');
 			

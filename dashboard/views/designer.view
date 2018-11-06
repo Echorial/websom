@@ -254,7 +254,6 @@ client {
 			pointer: {x: 0, y: 0},
 			translate: {x: 0, y: 0},
 			templateViews: [],
-			groups: {},
 			history: {undo: [], redo: []},
 			undoPoint: 0,
 			globalTriggers: Websom.Designer.triggers,
@@ -302,9 +301,6 @@ client {
 
 			return {x: rel.x, y: rel.y, x2: rel2.x, y2: rel2.y, w: (this.selectBounds.x2 - this.selectBounds.x) * this.zoom, h: (this.selectBounds.y2 - this.selectBounds.y) * this.zoom};
 		}
-	},
-	created: function () {
-		$("body").css({overflow: "hidden"});
 	},
 	methods: {
 		selectObject: function (e, obj, canFocus, dbl) {

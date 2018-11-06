@@ -65,8 +65,7 @@ class Websom.Services.Router inherits Websom.Service {
 				+ this.server.input.clientValidate
 				+ '<script src="' + this.server.config.clientResources + '/text.js"></script>';
 		}else{
-			return '<script src="https:/' + '/cdn.jsdelivr.net/npm/vue/dist/vue.js"></script><script src="' + this.server.config.clientResources + '/client.js"></script>'
-				+ this.server.resource.include(false)
+			return this.server.resource.include(false)
 				+ '<script src="' + this.server.config.clientResources + '/js.js"></script>'
 				+ '<link rel="stylesheet" href="' + this.server.config.clientResources + '/css.css">'
 				+ '<script src="' + this.server.config.clientResources + '/text.js"></script>';

@@ -77,6 +77,12 @@ client {
 				if (this.command == "")	 {
 					this.log.push("\n");
 					return;
+				}else if (this.command.trim() == "clear") {
+					this.log.splice(0, this.log.length);
+					this.command = "";
+					this.cache = null;
+					this.curLog = 0;
+					return;
 				}
 
 				this.log.push('<span style="margin-left: -1em; font-family: monospace; font-weight: bold;">></span> ' + this.command.replace("<", "&lt;"));
