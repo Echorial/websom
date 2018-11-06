@@ -209,6 +209,9 @@ class Websom.View {
 		if ("handles" in this.meta)
 			this.handles = this.meta["handles"];
 
+		if ("greedy" in this.meta)
+			this.greedy = this.meta["greedy"];
+
 		this.renderViewData = data["render"];
 	}
 }

@@ -190,10 +190,10 @@ class Websom.Services.Resource inherits Websom.Service {
 		}
 
 		var finish = void () => {
-			var closureCompiler = void (string content, <void, string>function callback) => {
+			var closureCompiler = void (string content, <void, string>function compiledBack) => {
 				native javascript {
 					require("request").post({url: "https://closure-compiler.appspot.com/compile", form: {js_code: content, compilation_level: "SIMPLE_OPTIMIZATIONS", output_info: "compiled_code", language_out: "ECMASCRIPT5", output_format: "text"}}, (err, res, body) => {
-						callback(body);
+						compiledBack(body);
 					});
 				}
 			};

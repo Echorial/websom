@@ -15,6 +15,9 @@ class Websom.Services.View inherits Websom.Service {
 			refresh = true; // Always reload on node
 		}
 
+		if (this.server.config.refreshViews)
+			refresh = true;
+
 		if (refresh == false) { // Make sure a cache exists if not make one
 			if (FileSystem.exists(this.server.config.root + "/viewCache.json") == false)
 				refresh = true;

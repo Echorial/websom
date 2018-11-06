@@ -1317,7 +1317,7 @@ $totalJs .= $page->buildDev();}
 for ($i = 0; $i < count($this->server->view->views); $i++) {
 $view = _c_lib__arrUtils::readIndex($this->server->view->views, $i);
 $totalJs .= $view->buildDev();}
-$finish = function () use (&$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {$closureCompiler = function ($content, $callback) use (&$closureCompiler, &$writeOut, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {};
+$finish = function () use (&$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {$closureCompiler = function ($content, $compiledBack) use (&$closureCompiler, &$writeOut, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {};
 $writeOut = function ($vue) use (&$closureCompiler, &$writeOut, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {$closureCompiler->__invoke(Oxygen_FileSystem::readSync($that->server->config->resources . "/jquery.min.js", "utf8") . "\n" . $vue . "\n" . Oxygen_FileSystem::readSync($that->server->config->resources . "/client.js", "utf8") . "\n" . $totalJs, function ($compiled) use (&$vue, &$closureCompiler, &$writeOut, &$path, &$callback, &$that, &$resources, &$unbuilt, &$error, &$errMsg, &$totalJs, &$totalCss, &$finish, &$builtJs, &$builtCss, &$files) {Oxygen_FileSystem::writeSync($path . "/js.js", $compiled);
 Oxygen_FileSystem::writeSync($path . "/css.css", $totalCss);
 $callback->__invoke($error, $errMsg);});};
@@ -2351,6 +2351,8 @@ $refresh = false;
 if ($this->server->config->dev) {
 $refresh = true;}
 
+if ($this->server->config->refreshViews) {
+$refresh = true;}
 if ($refresh == false) {
 if (Oxygen_FileSystem::exists($this->server->config->root . "/viewCache.json") == false) {
 $refresh = true;}}
@@ -2668,6 +2670,8 @@ public $databaseFile;
 
 public $gzip;
 
+public $refreshViews;
+
 function __construct() {
 $this->data = null;
 $this->https = false;
@@ -2693,6 +2697,7 @@ $this->forceSsr = false;
 $this->clientResources = "";
 $this->databaseFile = "";
 $this->gzip = false;
+$this->refreshViews = false;
 
 
 }
@@ -2723,6 +2728,9 @@ $config->sslVerifyPeer = false;}}
 if (isset($out["gzip"])) {
 if ($out["gzip"] === "1") {
 $config->gzip = true;}}
+if (isset($out["refreshViews"])) {
+if ($out["refreshViews"] === "1") {
+$config->refreshViews = true;}}
 if (isset($out["manifestPath"])) {
 $config->manifestPath = $out["manifestPath"];}
 if (isset($out["bucket"])) {
@@ -5346,6 +5354,8 @@ $this->meta = $data["meta"];
 $this->name = $this->meta["name"];
 if (isset($this->meta["handles"])) {
 $this->handles = $this->meta["handles"];}
+if (isset($this->meta["greedy"])) {
+$this->greedy = $this->meta["greedy"];}
 $this->renderViewData = $data["render"];}
 
 
