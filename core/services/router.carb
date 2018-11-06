@@ -78,7 +78,7 @@ class Websom.Services.Router inherits Websom.Service {
 		if (this.server.config.hasManifest)
 			metas += "<link rel='manifest' href='" + this.server.config.manifestPath + "'>";
 
-		return "<html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
+		return "<!DOCTYPE html><html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
 	}
 
 	void sendStringView(Websom.Request req, string template) {

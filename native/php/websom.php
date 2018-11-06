@@ -1875,7 +1875,7 @@ function buildToFile($path) {
 $this->build(function ($err, $content) use (&$path) {Oxygen_FileSystem::writeSync($path, $content);});}
 
 function toHtmlInclude() {
-return "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/" . $this->owner . "-" . Oxygen_FileSystem::basename($this->file) . "\"/>";}
+return "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/" . $this->owner . "-" . Oxygen_FileSystem::basename(preg_replace('/'."/.*undefined(.+)\$/".'/', "", $this->file)) . "\"/>";}
 
 function build($callback) {
 
@@ -1970,7 +1970,7 @@ function wrapPage($content) {
 $metas = "";
 if ($this->server->config->hasManifest) {
 $metas .= "<link rel='manifest' href='" . $this->server->config->manifestPath . "'>";}
-return "<html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" . $this->server->config->brandColor . "'/>" . $metas . $this->_c__include() . "</head><body>" . $content . "</body></html>";}
+return "<!DOCTYPE html><html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" . $this->server->config->brandColor . "'/>" . $metas . $this->_c__include() . "</head><body>" . $content . "</body></html>";}
 
 function sendStringView($req, $template) {
 $themeClass = "theme";

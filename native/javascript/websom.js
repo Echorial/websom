@@ -1879,10 +1879,10 @@ Websom.Services.Resource.prototype.exportToFolder = function () {
 			totalJs += view.buildDev();
 			}
 		var finish = function () {
-			var closureCompiler = function (content, callback) {
+			var closureCompiler = function (content, compiledBack) {
 				
 					require("request").post({url: "https://closure-compiler.appspot.com/compile", form: {js_code: content, compilation_level: "SIMPLE_OPTIMIZATIONS", output_info: "compiled_code", language_out: "ECMASCRIPT5", output_format: "text"}}, (err, res, body) => {
-						callback(body);
+						compiledBack(body);
 					});
 				
 				};
@@ -2040,6 +2040,9 @@ Websom.Services.Resource.prototype.build = function () {
 			Oxygen.FileSystem.writeSync(this.server.config.resources + "/client.js", client.read() + theme.read() + input.read());
 			for (var i = 0; i < files.length; i++) {
 				var base = Oxygen.FileSystem.basename(files[i].file);
+				if (files[i].type == "less") {
+					base = base.replace(new RegExp("\\.[^\\.]+$", 'g'), "") + ".css";
+					}
 				var path = files[i].owner + "-" + base;
 				if (files[i].raw != null) {
 					if ("toPath" in files[i].raw) {
@@ -2911,7 +2914,8 @@ Websom.Resources.Less.prototype.buildToFile = function () {
 
 Websom.Resources.Less.prototype.toHtmlInclude = function () {
 	if (arguments.length == 0) {
-		return "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/" + this.owner + "-" + Oxygen.FileSystem.basename(this.file) + "\"/>";
+		var basename = Oxygen.FileSystem.basename(this.file);
+		return "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/" + this.owner + "-" + basename.replace(new RegExp("\\.[^\\.]+$", 'g'), "") + ".css\"/>";
 	}
 }
 
@@ -3071,7 +3075,7 @@ Websom.Services.Router.prototype.wrapPage = function () {
 		if (this.server.config.hasManifest) {
 			metas += "<link rel='manifest' href='" + this.server.config.manifestPath + "'>";
 			}
-		return "<html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
+		return "<!DOCTYPE html><html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
 	}
 }
 
@@ -3639,6 +3643,9 @@ Websom.Services.View.prototype.start = function () {
 		
 			refresh = true;                         
 		
+		if (this.server.config.refreshViews) {
+			refresh = true;
+			}
 		if (refresh == false) {
 			if (Oxygen.FileSystem.exists(this.server.config.root + "/viewCache.json") == false) {
 				refresh = true;
@@ -4099,6 +4106,8 @@ Websom.Config = function () {
 
 	this.gzip = false;
 
+	this.refreshViews = false;
+
 	if (arguments.length == 0) {
 
 	}
@@ -4144,6 +4153,11 @@ Websom.Config.load = function () {
 		if ("gzip" in out) {
 			if (out["gzip"] === "1") {
 				config.gzip = true;
+				}
+			}
+		if ("refreshViews" in out) {
+			if (out["refreshViews"] === "1") {
+				config.refreshViews = true;
 				}
 			}
 		if ("manifestPath" in out) {
@@ -7933,6 +7947,9 @@ Websom.View.prototype.deserialize = function () {
 		this.name = this.meta["name"];
 		if ("handles" in this.meta) {
 			this.handles = this.meta["handles"];
+			}
+		if ("greedy" in this.meta) {
+			this.greedy = this.meta["greedy"];
 			}
 		this.renderViewData = data["render"];
 	}

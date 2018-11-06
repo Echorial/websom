@@ -379,6 +379,9 @@ class Websom.Services.Resource inherits Websom.Service {
 
 			for (var int i in files) {
 				var base = FileSystem.basename(files[i].file);
+				if (files[i].type == "less")
+					base = base.regularReplace("\\.[^\\.]+$", "") + ".css";
+				
 				var path = files[i].owner + "-" + base;
 				if (files[i].raw != null)
 					if ("toPath" in files[i].raw) {
@@ -783,7 +786,8 @@ class Websom.Resources.Less inherits Websom.Resource {
 	}
 
 	string toHtmlInclude() {
-		return '<link rel="stylesheet" href="' + this.server.config.clientResources + '/' + this.owner + '-' + FileSystem.basename(this.file) + '"/>';
+		var basename = FileSystem.basename(this.file);
+		return '<link rel="stylesheet" href="' + this.server.config.clientResources + '/' + this.owner + '-' + basename.regularReplace("\\.[^\\.]+$", "") + '.css"/>';
 	}
 
 	void build(<void, bool, string>function callback) {
