@@ -148,7 +148,7 @@ class Websom.Config {
 				config.dev = true;
 			
 		if ("url" in out)
-				config.url = out["url"];
+			config.url = out["url"];
 
 		if ("devSendMail" in out)
 			if (out["devSendMail"] === "1")

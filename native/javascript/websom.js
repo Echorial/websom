@@ -93,6 +93,13 @@ Websom.Server = function () {
 
 }
 
+Websom.Server.prototype.command = function () {
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		return this.micro.command.register(name);
+	}
+}
+
 Websom.Server.prototype.injectExpression = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var src = arguments[0];
@@ -1148,6 +1155,8 @@ Websom.Services.Micro = function () {
 
 	this.command = null;
 
+	this.sitemap = null;
+
 	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
@@ -1162,8 +1171,10 @@ Websom.Services.Micro.prototype.start = function () {
 		var status = new Websom.Status();
 		this.text = new Websom.Micro.Text(this.server);
 		this.command = new Websom.Micro.Command(this.server);
+		this.sitemap = new Websom.Micro.Sitemap(this.server);
 		status.inherit(this.text.start());
 		status.inherit(this.command.start());
+		status.inherit(this.sitemap.start());
 		return status;
 	}
 else 	if (arguments.length == 0) {
@@ -3063,7 +3074,15 @@ Websom.Services.Router.prototype.include = function () {
 		if (this.server.config.dev) {
 			return "<script src=\"https:/" + "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" + this.server.config.clientResources + "/client.js\"></script>" + this.server.view.include() + this.server.resource.include(true) + this.server.theme.include() + this.server.input.clientValidate + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
 			}else{
-				return this.server.resource.include(false) + "<script src=\"" + this.server.config.clientResources + "/js.js\"></script>" + "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/css.css\">" + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
+				return "<script src=\"" + this.server.config.clientResources + "/js.js\"></script>" + "<link rel=\"stylesheet\" href=\"" + this.server.config.clientResources + "/css.css\">" + "<script src=\"" + this.server.config.clientResources + "/text.js\"></script>";
+			}
+	}
+}
+
+Websom.Services.Router.prototype.includeAfter = function () {
+	if (arguments.length == 0) {
+		if (this.server.config.dev == false) {
+			return this.server.resource.include(false);
 			}
 	}
 }
@@ -3075,7 +3094,7 @@ Websom.Services.Router.prototype.wrapPage = function () {
 		if (this.server.config.hasManifest) {
 			metas += "<link rel='manifest' href='" + this.server.config.manifestPath + "'>";
 			}
-		return "<!DOCTYPE html><html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + "</body></html>";
+		return "<!DOCTYPE html><html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" + this.server.config.brandColor + "'/>" + metas + this.include() + "</head><body>" + content + this.includeAfter() + "</body></html>";
 	}
 }
 
@@ -10840,6 +10859,67 @@ Websom.CommandInvocation.prototype.parse = function () {
 				}
 			}
 		this.arguments = builds;
+	}
+}
+
+Websom.Micro.Sitemap = function () {
+	this.loaded = false;
+
+	this.data = null;
+
+	this.sitemapOptions = "";
+
+	this.sitemapFile = "";
+
+	this.sitemapOutput = "/sitemap.xml";
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		this.server = server;
+	}
+
+}
+
+Websom.Micro.Sitemap.prototype.start = function () {
+	if (arguments.length == 0) {
+		var that = this;
+		var sitemapOptions = this.server.config.root + "/sitemap.json";
+		this.sitemapOptions = sitemapOptions;
+		var sitemapFile = this.server.config.root + "/sitemap.txt";
+		this.sitemapFile = sitemapFile;
+		if (this.server.config.dev) {
+			if (Oxygen.FileSystem.exists(sitemapOptions) == false) {
+				Oxygen.FileSystem.writeSync(sitemapOptions, "{\n	\"items\": []\n}");
+				}
+			}
+		this.server.command("sitemap").command("build [map=*]").on(function (invo) {
+			var name = invo.get("command");
+			invo.output("- Building sitemap");
+			that.load();
+			that.build(that.data["items"], that.server.config.resources + that.sitemapOutput);
+			invo.output("- <span style='color: lime;'>Finished</span>");
+			invo.finish();
+			});
+	}
+}
+
+Websom.Micro.Sitemap.prototype.build = function () {
+	if (arguments.length == 2 && (arguments[0]instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var baseUrls = arguments[0];
+		var outputPath = arguments[1];
+		var outs = "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">";
+		for (var i = 0; i < baseUrls.length; i++) {
+			outs += "\n	<url>\n		<loc>" + this.server.config.url + baseUrls[i] + "</loc>\n	</url>";
+			}
+		Oxygen.FileSystem.writeSync(outputPath, outs + "\n</urlset>");
+	}
+}
+
+Websom.Micro.Sitemap.prototype.load = function () {
+	if (arguments.length == 0) {
+		this.data = Websom.Json.parse(Oxygen.FileSystem.readSync(this.sitemapOptions, "utf8"));
 	}
 }
 

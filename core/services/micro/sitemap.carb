@@ -1,0 +1,53 @@
+class Websom.Micro.Sitemap inherits Websom.MicroService {
+	bool loaded = false; // text.json is lazy loaded
+	map data = null;
+	string sitemapOptions = "";
+	string sitemapFile = "";
+
+	string sitemapOutput = "/sitemap.xml";
+
+	Websom.Status start() {
+		var that = this;
+
+		var sitemapOptions = this.server.config.root + "/sitemap.json";
+		this.sitemapOptions = sitemapOptions;
+
+		var sitemapFile = this.server.config.root + "/sitemap.txt";
+		this.sitemapFile = sitemapFile;
+
+		if (this.server.config.dev) {
+			if (FileSystem.exists(sitemapOptions) == false) {
+				FileSystem.writeSync(sitemapOptions, "{\n\t\"items\": []\n}");
+			}
+		}
+
+		this.server.command("sitemap")
+			.command("build [map=*]")
+			.on(void (Websom.CommandInvocation invo) => {
+				var string name = invo.get("command");
+				invo.output("- Building sitemap");
+
+
+				that.load();
+				that.build(that.data["items"], that.server.config.resources + that.sitemapOutput);
+
+				invo.output("- <span style='color: lime;'>Finished</span>");
+
+				invo.finish();
+			});
+
+	}
+
+	void build(<string>array baseUrls, string outputPath) {
+		var outs = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+		for (var int i in baseUrls) {
+			outs += "\n\t<url>\n\t\t<loc>" + this.server.config.url + baseUrls[i] + "</loc>\n\t</url>";
+		}
+
+		FileSystem.writeSync(outputPath, outs + "\n</urlset>");
+	}
+
+	void load() {
+		this.data = Websom.Json.parse(FileSystem.readSync(this.sitemapOptions, "utf8"));
+	}
+}

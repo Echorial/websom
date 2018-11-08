@@ -81,6 +81,10 @@ class Websom.Server {
 				this.bucketReference = this.config.bucket["reference"];
 	}
 
+	Websom.Command command(string name) {
+		return this.micro.command.register(name);
+	}
+
 	void injectExpression(string src) {
 		this.router.injectScript = src;
 	}

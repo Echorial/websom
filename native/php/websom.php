@@ -114,6 +114,9 @@ if ($this->config->bucket) {
 if (isset($this->config->bucket["reference"])) {
 $this->bucketReference = $this->config->bucket["reference"];}}
 }
+function command($name) {
+return $this->micro->command->register($name);}
+
 function injectExpression($src) {
 $this->router->injectScript = $src;}
 
@@ -872,11 +875,14 @@ public $text;
 
 public $command;
 
+public $sitemap;
+
 public $server;
 
 function __construct($server) {
 $this->text = null;
 $this->command = null;
+$this->sitemap = null;
 $this->server = null;
 
 $this->server = $server;
@@ -886,8 +892,10 @@ if (count($arguments) == 0) {
 $status = new Websom_Status();
 $this->text = new Websom_Micro_Text($this->server);
 $this->command = new Websom_Micro_Command($this->server);
+$this->sitemap = new Websom_Micro_Sitemap($this->server);
 $status->inherit($this->text->start());
 $status->inherit($this->command->start());
+$status->inherit($this->sitemap->start());
 return $status;
 }
 else if (count($arguments) == 0) {
@@ -1418,6 +1426,8 @@ $theme = new Websom_Resources_Javascript($this->server, "Websom.Core", $this->se
 Oxygen_FileSystem::writeSync($this->server->config->resources . "/client.js", $client->read() . $theme->read() . $input->read());
 for ($i = 0; $i < count($files); $i++) {
 $base = Oxygen_FileSystem::basename(_c_lib__arrUtils::readIndex($files, $i)->file);
+if (_c_lib__arrUtils::readIndex($files, $i)->type == "less") {
+$base = preg_replace('/'."\\.[^\\.]+\$".'/', "", $base) . ".css";}
 $path = _c_lib__arrUtils::readIndex($files, $i)->owner . "-" . $base;
 if (_c_lib__arrUtils::readIndex($files, $i)->raw != null) {
 if (isset(_c_lib__arrUtils::readIndex($files, $i)->raw["toPath"])) {
@@ -1875,7 +1885,8 @@ function buildToFile($path) {
 $this->build(function ($err, $content) use (&$path) {Oxygen_FileSystem::writeSync($path, $content);});}
 
 function toHtmlInclude() {
-return "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/" . $this->owner . "-" . Oxygen_FileSystem::basename(preg_replace('/'."/.*undefined(.+)\$/".'/', "", $this->file)) . "\"/>";}
+$basename = Oxygen_FileSystem::basename($this->file);
+return "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/" . $this->owner . "-" . preg_replace('/'."\\.[^\\.]+\$".'/', "", $basename) . ".css\"/>";}
 
 function build($callback) {
 
@@ -1964,13 +1975,17 @@ $readyToSend->__invoke();}}}
 function _c__include() {
 if ($this->server->config->dev) {
 return "<script src=\"https:/" . "/cdn.jsdelivr.net/npm/vue/dist/vue.js\"></script><script src=\"" . $this->server->config->clientResources . "/client.js\"></script>" . $this->server->view->_c__include() . $this->server->resource->_c__include(true) . $this->server->theme->_c__include() . $this->server->input->clientValidate . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}else{
-return $this->server->resource->_c__include(false) . "<script src=\"" . $this->server->config->clientResources . "/js.js\"></script>" . "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/css.css\">" . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}}
+return "<script src=\"" . $this->server->config->clientResources . "/js.js\"></script>" . "<link rel=\"stylesheet\" href=\"" . $this->server->config->clientResources . "/css.css\">" . "<script src=\"" . $this->server->config->clientResources . "/text.js\"></script>";}}
+
+function includeAfter() {
+if ($this->server->config->dev == false) {
+return $this->server->resource->_c__include(false);}}
 
 function wrapPage($content) {
 $metas = "";
 if ($this->server->config->hasManifest) {
 $metas .= "<link rel='manifest' href='" . $this->server->config->manifestPath . "'>";}
-return "<!DOCTYPE html><html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" . $this->server->config->brandColor . "'/>" . $metas . $this->_c__include() . "</head><body>" . $content . "</body></html>";}
+return "<!DOCTYPE html><html lang=\"en\"><head><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='theme-color' content='" . $this->server->config->brandColor . "'/>" . $metas . $this->_c__include() . "</head><body>" . $content . $this->includeAfter() . "</body></html>";}
 
 function sendStringView($req, $template) {
 $themeClass = "theme";
@@ -2003,7 +2018,7 @@ $editKey = $arguments[5];
 $canEditStr = "false";
 if ($canEdit) {
 $canEditStr = "true";}
-$route = $this->routeString($routeStr, "<default-body><nav-view validate='" . $validate . "' container='" . $container . "' edit-key='" . $editKey . "' view='" . $view . "' :show-edit='" . $canEditStr . "' /></default-body>");
+$route = $this->routeString($routeStr, "<default-body content-type='navView' container='" . $container . "' auto='true' view-name='" . $view . "'><nav-view validate='" . $validate . "' container='" . $container . "' edit-key='" . $editKey . "' view='" . $view . "' :show-edit='" . $canEditStr . "' /></default-body>");
 $route->greedy = true;
 return $route;
 }
@@ -2018,7 +2033,7 @@ $editKey = $arguments[6];
 $canEditStr = "false";
 if ($canEdit) {
 $canEditStr = "true";}
-$route = $this->routeString($routeStr, "<default-body><nav-view :show-save='false' validate='" . $validate . "' public-key='" . $publicKey . "' container='" . $container . "' edit-key='" . $editKey . "' view='" . $view . "' :show-edit='" . $canEditStr . "' /></default-body>");
+$route = $this->routeString($routeStr, "<default-body content-type='navView' container='" . $container . "' auto='true' view-name='" . $view . "'><nav-view :show-save='false' validate='" . $validate . "' public-key='" . $publicKey . "' container='" . $container . "' edit-key='" . $editKey . "' view='" . $view . "' :show-edit='" . $canEditStr . "' /></default-body>");
 $route->greedy = true;
 return $route;
 }
@@ -6314,13 +6329,13 @@ $this->jsonencode = true;
 $this->data = $data;}
 
 function form(...$arguments) {
-if (count($arguments) == 1 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'NULL')) {
+if (count($arguments) == 1 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'NULL')) {
 $data = $arguments[0];
 $this->urlencode = true;
 $this->data = $data;
 return $this;
 }
-else if (count($arguments) == 2 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (((gettype($arguments[1]) == 'array') or gettype($arguments[1]) == 'boolean' or gettype($arguments[1]) == 'double' or gettype($arguments[1]) == 'integer' or (gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : get_class($arguments[1]) == '_carb_map') or gettype($arguments[1]) == 'string') or gettype($arguments[1]) == 'NULL')) {
+else if (count($arguments) == 2 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (((gettype($arguments[1]) == 'array') or gettype($arguments[1]) == 'boolean' or gettype($arguments[1]) == 'double' or gettype($arguments[1]) == 'integer' or (gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : (gettype($arguments[1]) == 'object' ? get_class($arguments[1]) == '_carb_map' : false)) or gettype($arguments[1]) == 'string') or gettype($arguments[1]) == 'NULL')) {
 $key = $arguments[0];
 $value = $arguments[1];
 $this->urlencode = true;
@@ -6339,10 +6354,10 @@ return $this;}
 
 function makeRequest($method, $callback) {
 
-			$ch = curl_init($url);
+			$ch = curl_init($this->url);
 			$data = "";
 			if ($this->urlencode) {
-				$data = http_build_query($this->data);
+				$data = http_build_query($this->data->data);                        
 				$this->header("Content-Type", "application/x-www-form-urlencoded");
 			}else if ($this->jsonencode) {
 				$data = json_encode($this->data);
@@ -7611,6 +7626,55 @@ if (strlen($flagName) > 0) {
 $this->flags[$flagName] = $build;}else{
 array_push($builds, $build);}}
 $this->arguments = $builds;}
+
+
+}class Websom_Micro_Sitemap {
+public $loaded;
+
+public $data;
+
+public $sitemapOptions;
+
+public $sitemapFile;
+
+public $sitemapOutput;
+
+public $server;
+
+function __construct($server) {
+$this->loaded = false;
+$this->data = null;
+$this->sitemapOptions = "";
+$this->sitemapFile = "";
+$this->sitemapOutput = "/sitemap.xml";
+$this->server = null;
+
+$this->server = $server;
+}
+function start() {
+$that = $this;
+$sitemapOptions = $this->server->config->root . "/sitemap.json";
+$this->sitemapOptions = $sitemapOptions;
+$sitemapFile = $this->server->config->root . "/sitemap.txt";
+$this->sitemapFile = $sitemapFile;
+if ($this->server->config->dev) {
+if (Oxygen_FileSystem::exists($sitemapOptions) == false) {
+Oxygen_FileSystem::writeSync($sitemapOptions, "{\n\t\"items\": []\n}");}}
+$this->server->command("sitemap")->command("build [map=*]")->on(function ($invo) use (&$that, &$sitemapOptions, &$sitemapFile) {$name = $invo->get("command");
+$invo->output("- Building sitemap");
+$that->load();
+$that->build($that->data["items"], $that->server->config->resources . $that->sitemapOutput);
+$invo->output("- <span style='color: lime;'>Finished</span>");
+$invo->finish();});}
+
+function build($baseUrls, $outputPath) {
+$outs = "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">";
+for ($i = 0; $i < count($baseUrls); $i++) {
+$outs .= "\n\t<url>\n\t\t<loc>" . $this->server->config->url . _c_lib__arrUtils::readIndex($baseUrls, $i) . "</loc>\n\t</url>";}
+Oxygen_FileSystem::writeSync($outputPath, $outs . "\n</urlset>");}
+
+function load() {
+$this->data = Websom_Json::parse(Oxygen_FileSystem::readSync($this->sitemapOptions, "utf8"));}
 
 
 }class Websom_Micro_Text {

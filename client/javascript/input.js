@@ -139,6 +139,10 @@ Websom.submitForm = function (form, button, extraQuery) {
 	var route = "default";
 	var key = form.attr("form-key");
 
+	if (window.grecaptcha) {
+		grecaptcha.reset();
+	}
+
 	button.addClass("disabled");
 	button.addClass("loading");
 	if (button.attr("data-submit") != "")
