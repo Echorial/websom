@@ -133,7 +133,7 @@ class Websom.Config {
 			if (FileSystem.exists(config.restrictedResources) == false)
 				config.restrictedResources = FileSystem.resolve(config.absolute + out["restrictedResources"]);
 		}else
-			config.resources = FileSystem.resolve(config.absolute + "./private");
+			config.restrictedResources = FileSystem.resolve(config.absolute + "./private");
 
 		if ("clientResources" in out)
 			config.clientResources = out["clientResources"];
