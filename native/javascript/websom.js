@@ -4203,7 +4203,7 @@ Websom.Config.load = function () {
 				config.restrictedResources = Oxygen.FileSystem.resolve(config.absolute + out["restrictedResources"]);
 				}
 			}else{
-				config.resources = Oxygen.FileSystem.resolve(config.absolute + "./private");
+				config.restrictedResources = Oxygen.FileSystem.resolve(config.absolute + "./private");
 			}
 		if ("clientResources" in out) {
 			config.clientResources = out["clientResources"];
