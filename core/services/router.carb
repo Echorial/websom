@@ -75,6 +75,7 @@ class Websom.Services.Router inherits Websom.Service {
 		if (this.server.config.dev == false) {
 			return this.server.resource.include(false);
 		}
+		return "";
 	}
 
 	string wrapPage(string content) {

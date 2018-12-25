@@ -372,6 +372,7 @@ Memory = function () {
 //Relative empty
 //Relative void
 //Relative string
+//Relative Math
 Websom.Service = function () {
 	this.server = null;
 
@@ -592,7 +593,7 @@ Websom.Services.Database = function () {
 Websom.Services.Database.prototype.loadDatabase = function () {
 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var raw = arguments[0];
-		if ("type" in raw == false) {
+		if (("type" in raw) == false) {
 			return Websom.Status.singleError("Services.Database", "No type provided in database config " + raw["name"]);
 			}
 		var type = raw["type"];
@@ -841,7 +842,7 @@ Websom.Services.Input.prototype.buildClientValidation = function () {
 			var input = this.inputs[i];
 			if (input.containerInterface != null) {
 				var name = input.containerInterface.dataInfo.name;
-				if (name in this.completed == false) {
+				if ((name in this.completed) == false) {
 					this.completed[name] = true;
 					strs.push("\"" + name + "\": {" + this.buildDataValidation(input.containerInterface.dataInfo) + "}");
 					}
@@ -882,7 +883,7 @@ Websom.Services.Input.prototype.buildDataValidation = function () {
 			if (type != "primitive") {
 				var dataInfo = Websom.DataInfo.getDataInfoFromRoute(type);
 				var name = dataInfo.name;
-				if (name in this.completed == false) {
+				if ((name in this.completed) == false) {
 					this.completed[name] = true;
 					this.inputTypes.push("\"" + name + "\": {" + this.buildDataValidation(dataInfo) + "}");
 					}
@@ -1047,7 +1048,7 @@ Websom.Input.prototype.has = function () {
 	if (arguments.length == 1 && (arguments[0]instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var keys = arguments[0];
 		for (var i = 0; i < keys.length; i++) {
-			if (keys[i] in this.raw == false) {
+			if ((keys[i] in this.raw) == false) {
 				return false;
 				}
 			}
@@ -1535,7 +1536,7 @@ Websom.Services.Pack.prototype.load = function () {
 		var packDir = arguments[0];
 		var config = arguments[1];
 		var that = this;
-		if ("name" in config == false) {
+		if (("name" in config) == false) {
 			return Websom.Status.singleError("Pack", "Must provide name in pack config " + packDir);
 			}
 		var pack = new Websom.Pack(this.server, config["name"], packDir, config);
@@ -1826,7 +1827,7 @@ Websom.Services.Resource.prototype.buildViews = function () {
 					var res = raw[r];
 					var type = "";
 					var path = res["path"];
-					if ("type" in res == false) {
+					if (("type" in res) == false) {
 						var realPath = Oxygen.FileSystem.resolve(module.root + "/" + path);
 						if (Oxygen.FileSystem.isDir(realPath)) {
 							var files = Oxygen.FileSystem.readDirSync(realPath);
@@ -1984,7 +1985,7 @@ Websom.Services.Resource.prototype.collect = function () {
 				var res = raw[r];
 				var type = "";
 				var path = res["path"];
-				if ("type" in res == false) {
+				if (("type" in res) == false) {
 					var realPath = Oxygen.FileSystem.resolve(root + "/" + path);
 					if (Oxygen.FileSystem.isDir(realPath)) {
 						var files = Oxygen.FileSystem.readDirSync(realPath);
@@ -3084,6 +3085,7 @@ Websom.Services.Router.prototype.includeAfter = function () {
 		if (this.server.config.dev == false) {
 			return this.server.resource.include(false);
 			}
+		return "";
 	}
 }
 
@@ -3523,7 +3525,7 @@ Websom.Services.Theme.prototype.load = function () {
 		var themeDir = arguments[0];
 		var config = arguments[1];
 		var that = this;
-		if ("name" in config == false) {
+		if (("name" in config) == false) {
 			return Websom.Status.singleError("Theme", "Must provide name in theme config " + themeDir);
 			}
 		var theme = new Websom.Theme(this.server, config["name"], themeDir, config);
@@ -3760,7 +3762,7 @@ Websom.Services.View.prototype.getModuleViews = function () {
 					var res = raw[r];
 					var type = "";
 					var path = res["path"];
-					if ("type" in res == false) {
+					if (("type" in res) == false) {
 						var realPath = Oxygen.FileSystem.resolve(module.root + "/" + path);
 						if (Oxygen.FileSystem.isDir(realPath)) {
 							var files = Oxygen.FileSystem.readDirSync(realPath);
@@ -4256,7 +4258,7 @@ Websom.Container.prototype.checkRestrictions = function () {
 		var callback = arguments[4];
 		for (var i = 0; i < opts.restricts.length; i++) {
 			var r = opts.restricts[i];
-			if (r.field == field.realName && r.mode == "global" || r.mode == mode) {
+			if (r.field == field.realName && ((r.mode == "global") || (r.mode == mode))) {
 				if (r.simple) {
 					var ct = this.server.input.restrictHandlers;
 					if (r.key in ct) {
@@ -4373,7 +4375,7 @@ Websom.Container.prototype.interfaceSelect = function () {
 Websom.Container.prototype.interfaceSend = function (opts, input) {
 		var that = this;
 		if (opts.canInterface) {
-			if ("publicId" in input.raw && "route" in input.raw && "data" in input.raw) {
+			if (("publicId" in input.raw) && ("route" in input.raw) && ("data" in input.raw)) {
 				var obj = that.dataInfo.spawn(that.server);
 				obj.websomServer = this.server;
 				obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
@@ -4626,7 +4628,7 @@ Websom.Container.prototype.register = function () {
 				}
 			}
 		var handler = this.server.input.register(this.name, function (input) {
-			if ("_w_type" in input.raw && "_w_route" in input.raw) {
+			if (("_w_type" in input.raw) && ("_w_route" in input.raw)) {
 				var type = input.raw["_w_type"];
 				var route = input.raw["_w_route"];
 				var opts = that.getInterface(route);
@@ -5332,7 +5334,7 @@ Websom.Controls.Component.prototype.validate = function () {
 		var input = arguments[0];
 		var done = arguments[1];
 		var that = this;
-		if ("parent" in input.raw && (typeof input.raw["parent"] == 'object' ? (Array.isArray(input.raw["parent"]) ? 'array' : 'map') : (typeof input.raw["parent"] == 'number' ? 'float' : typeof input.raw["parent"])) == "string") {
+		if (("parent" in input.raw) && ((typeof input.raw["parent"] == 'object' ? (Array.isArray(input.raw["parent"]) ? 'array' : 'map') : (typeof input.raw["parent"] == 'number' ? 'float' : typeof input.raw["parent"])) == "string")) {
 			this.parentContainer.from().where("publicId").equals(input.raw["parent"]).run(function (err, docs) {
 				if (err != null) {
 					done(new Websom.InputValidation(true, "Server error"));
@@ -5373,7 +5375,7 @@ Websom.Controls.Component.prototype.filter = function () {
 		var select = arguments[1];
 		var done = arguments[2];
 		var that = this;
-		if ("parent" in input.raw && (typeof input.raw["parent"] == 'object' ? (Array.isArray(input.raw["parent"]) ? 'array' : 'map') : (typeof input.raw["parent"] == 'number' ? 'float' : typeof input.raw["parent"])) == "string") {
+		if (("parent" in input.raw) && ((typeof input.raw["parent"] == 'object' ? (Array.isArray(input.raw["parent"]) ? 'array' : 'map') : (typeof input.raw["parent"] == 'number' ? 'float' : typeof input.raw["parent"])) == "string")) {
 			this.parentContainer.from().where("publicId").equals(input.raw["parent"]).run(function (err, docs) {
 				if (err != null) {
 					done(new Websom.InputValidation(true, "Server error"));
@@ -5934,7 +5936,7 @@ Websom.DataInfo.prototype.buildStructure = function () {
 						}
 					}
 				}
-			if ("Parent" in this.fields[i].attributes) {
+			if (("Parent" in this.fields[i].attributes)) {
 				hasField = false;
 				}
 			if (hasField) {
@@ -6005,7 +6007,7 @@ Websom.DataInfo.prototype.buildLinkedStructures = function () {
 							}else if ("Component" in dataInfo.attributes) {
 							str.fields.push(new Websom.DatabaseField("parentId", new Websom.DatabaseTypes.Int()));
 							}
-						if ("Linked" in dataInfo.attributes == false) {
+						if (("Linked" in dataInfo.attributes) == false) {
 							var subs = dataInfo.buildLinkedStructures(field.realName);
 							for (var s = 0; s < subs.length; s++) {
 								var sub = subs[s];
@@ -6496,7 +6498,7 @@ Websom.InputChain.prototype.received = function () {
 		var hasKeys = true;
 		for (var i = 0; i < this.keys.length; i++) {
 			var key = this.keys[i];
-			if (key.key in input.raw == false) {
+			if ((key.key in input.raw) == false) {
 				hasKeys = false;
 				}
 			}
@@ -6726,12 +6728,12 @@ Websom.InputFilters.String.prototype.filter = function () {
 					invalid = true;
 					}
 				}
-			if (invalid == false && this.minLength != -1) {
+			if ((invalid == false) && this.minLength != -1) {
 				if (value.length < this.minLength) {
 					invalid = true;
 					}
 				}
-			if (invalid == false && this.only.length > 0) {
+			if ((invalid == false) && this.only.length > 0) {
 				invalid = true;
 				for (var i = 0; i < this.only.length; i++) {
 					var check = this.only[i];
@@ -6740,7 +6742,7 @@ Websom.InputFilters.String.prototype.filter = function () {
 						break;
 						}
 					}
-				}else if (invalid == false && this.not.length > 0) {
+				}else if ((invalid == false) && this.not.length > 0) {
 				for (var i = 0; i < this.not.length; i++) {
 					var check = this.not[i];
 					if (value == check) {
@@ -6749,7 +6751,7 @@ Websom.InputFilters.String.prototype.filter = function () {
 						}
 					}
 				}
-			if (invalid == false && this.matches.length > 0) {
+			if ((invalid == false) && this.matches.length > 0) {
 				if ((new RegExp(this.matches)).test(value) == false) {
 					invalid = true;
 					}
@@ -8646,7 +8648,7 @@ Websom.Controls.File.prototype.validate = function () {
 			for (var i = 0; i < input.files[this.keyName].length; i++) {
 				var file = input.files[this.keyName];
 				if (file.size > this.maxSize) {
-					done(new Websom.InputValidation(true, "File exceeds limit of " + this.maxSize / 1024 + "kb"));
+					done(new Websom.InputValidation(true, "File exceeds limit of " + (this.maxSize / 1024) + "kb"));
 					return null;
 					}
 				}
@@ -10676,7 +10678,7 @@ Websom.CommandPattern.prototype.buildParts = function () {
 						isOpen = true;
 						build += char;
 					}
-				}else if (isOpen == true && char == " " || closePart == char) {
+				}else if (isOpen == true && ((char == " ") || closePart == char)) {
 				isOpen = false;
 				var type = 2;
 				if (openPart == "") {
@@ -11473,7 +11475,7 @@ Websom.Containers.Table.prototype.insertFromInterfaceCallback = function (opts, 
 				var fieldWaits = 0;
 				for (var f = 0; f < that.dataInfo.fields.length; f++) {
 					var field = that.dataInfo.fields[f];
-					if ("Parent" in field.attributes == false) {
+					if (("Parent" in field.attributes) == false) {
 						if (field.onlyServer == false && field.structure.hasFlag("edit")) {
 							fieldWaits++;
 							}else{
@@ -11566,7 +11568,7 @@ input.send(msg.stringify());
 				for (var ff = 0; ff < that.dataInfo.fields.length; ff++) {
 					var close = function (f) {
 						var field = that.dataInfo.fields[f];
-						if ("Parent" in field.attributes == false) {
+						if (("Parent" in field.attributes) == false) {
 							if (field.onlyServer == false && field.structure.hasFlag("edit")) {
 								if (field.structure.hasFlag("linked")) {
 									var link = field.structure.getFlag("linked");
@@ -11710,7 +11712,7 @@ Websom.Containers.Table.prototype.updateFromInterface = function (opts, update, 
 			var fieldWaits = 0;
 			for (var f = 0; f < that.dataInfo.fields.length; f++) {
 				var field = that.dataInfo.fields[f];
-				if ("Parent" in field.attributes == false) {
+				if (("Parent" in field.attributes) == false) {
 					fieldWaits++;
 					}
 				}
@@ -11821,7 +11823,7 @@ if (err != null && err.length > 0) {
 			for (var ff = 0; ff < that.dataInfo.fields.length; ff++) {
 				var close = function (f) {
 					var field = that.dataInfo.fields[f];
-					if ("Parent" in field.attributes == false) {
+					if (("Parent" in field.attributes) == false) {
 						if (field.onlyServer == false && field.structure.hasFlag("edit") && (field.realName in input.raw)) {
 							if (field.structure.hasFlag("linked")) {
 								var link = field.structure.getFlag("linked");
@@ -11986,7 +11988,7 @@ Websom.Containers.Table.prototype.checkRestrictions = function () {
 		var callback = arguments[4];
 		for (var i = 0; i < opts.restricts.length; i++) {
 			var r = opts.restricts[i];
-			if (r.field == field.realName && r.mode == "global" || r.mode == mode) {
+			if (r.field == field.realName && ((r.mode == "global") || (r.mode == mode))) {
 				if (r.simple) {
 					var ct = this.server.input.restrictHandlers;
 					if (r.key in ct) {
@@ -12094,7 +12096,7 @@ Websom.Containers.Table.prototype.interfaceInsert = function () {
 Websom.Containers.Table.prototype.interfaceSend = function (opts, input) {
 		var that = this;
 		if (opts.canInterface) {
-			if ("publicId" in input.raw && "route" in input.raw && "data" in input.raw) {
+			if (("publicId" in input.raw) && ("route" in input.raw) && ("data" in input.raw)) {
 				var obj = that.dataInfo.spawn(that.server);
 				obj.websomServer = this.server;
 				obj.loadFromPublicKey(that, input.raw["publicId"], function (err) {
@@ -12347,7 +12349,7 @@ Websom.Containers.Table.prototype.register = function () {
 				}
 			}
 		var handler = this.server.input.register(this.name, function (input) {
-			if ("_w_type" in input.raw && "_w_route" in input.raw) {
+			if (("_w_type" in input.raw) && ("_w_route" in input.raw)) {
 				var type = input.raw["_w_type"];
 				var route = input.raw["_w_route"];
 				var opts = that.getInterface(route);

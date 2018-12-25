@@ -56,18 +56,26 @@ Websom.Theme.handle(".theme", (config) => {
 		".modal-trigger": {
 			"click": function (e) {
 				e.stopPropagation();
+				let modal = null;
 				
 				if ($(this).closest(".modal-trigger").attr("href"))
-					$($(this).closest(".modal-trigger").attr("href")).toggleClass("open");
+					modal = $($(this).closest(".modal-trigger").attr("href"));
 				else
-					$(this).closest(".modal").toggleClass("open");
+					modal = $(this).closest(".modal");
+
+				modal.toggleClass("open");
 
 				if ($(".modal-shade").length > 0) {
 					$(".modal-shade").animate({opacity: 0}, 300, () => {
 						$(".modal-shade").remove();
 					});
 				}else{
-					$("<div class='modal-shade' data-target='" + $(this).attr("href") + "'></div>").appendTo(document.body).animate({opacity: 1}, 300);
+					let focus = "";
+					if (modal.is("[focus]")) {
+						focus = modal.attr("focus");
+					}
+					
+					$("<div class='modal-shade " + focus + "' data-target='" + $(this).closest(".modal-trigger").attr("href") + "'></div>").appendTo(document.body).animate({opacity: 1}, 300);
 				}
 			}
 		},

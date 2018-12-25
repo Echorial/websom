@@ -7,3 +7,5 @@ entry = "websom.carb"
 type = "package"
 
 autoCache = true
+
+useOldTemplates = true

@@ -6,12 +6,16 @@ template {
 	<span class="dtext" @click="handleEvent($event)" :class="{editOpen: isEdit}"><span v-html="isEdit ? '' : text"></span>
 		<span ref="editArea" :contenteditable="isEdit" v-if="isEdit" v-html="text"></span>
 		<button v-if="isEdit" style="vertical-align: middle;" class="button" @click="save($event)">Save</button>
-		<span v-if="!isEdit && Websom.hasPermission('text.edit')" style="cursor: pointer;" class="text-inline-edit" @click="toggleEdit($event)"><icon fa>pencil-alt</icon></span>
+		<span v-if="!isEdit && Websom.hasPermission('text.edit')" :style="(push ? '' : 'position:absolute;') + ' cursor: pointer;'" class="text-inline-edit" @click="toggleEdit($event)"><icon fa>pencil-alt</icon></span>
 	</span>
 }
 
 client {
 	props: {
+		push: {
+			type: Boolean,
+			default: false
+		},
 		name: {
 			type: String,
 			default: ""
@@ -33,8 +37,15 @@ client {
 	created: function () {
 		this.isEdit = this.editMode;
 
-		if (this.$slots.default && this.$slots.default.length > 0)
-			this.text = this.$slots.default[0].text;
+		if (this.$slots.default && this.$slots.default.length > 0) {
+			let slt = this.$slots.default[0];
+			if (slt.children && slt.children.length > 0) {
+				this.text = "";
+				for (let n of slt.children)
+					this.text += n.text || `<${slt.tag}>`;
+			}else
+				this.text = slt.text;
+		}
 		
 		if (Websom.text[this.rule][this.name])
 			this.text = Websom.text[this.rule][this.name];

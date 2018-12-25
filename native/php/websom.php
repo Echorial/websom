@@ -2753,15 +2753,20 @@ $file = $out["bucket"];
 $config->bucketFile = Oxygen_FileSystem::resolve(Oxygen_FileSystem::dirName($path) . "/" . $file);
 $config->bucket = Websom_Json::parse(Oxygen_FileSystem::readSync($config->bucketFile, "utf8"));}
 if (isset($out["resources"])) {
-$config->resources = $out["resources"];
-if (Oxygen_FileSystem::exists($config->resources) == false) {
-$config->resources = Oxygen_FileSystem::resolve($config->absolute . $out["resources"]);}}else{
-$config->resources = Oxygen_FileSystem::resolve($config->absolute . "./resources");}
+	$config->resources = $out["resources"];
+
+	
+		
+	$config->resources = Oxygen_FileSystem::resolve($config->absolute . $out["resources"]);
+}else{
+//$config->resources = Oxygen_FileSystem::resolve($config->absolute . "./resources");
+}
 if (isset($out["restrictedResources"])) {
 $config->restrictedResources = $out["restrictedResources"];
 if (Oxygen_FileSystem::exists($config->restrictedResources) == false) {
 $config->restrictedResources = Oxygen_FileSystem::resolve($config->absolute . $out["restrictedResources"]);}}else{
-$config->resources = Oxygen_FileSystem::resolve($config->absolute . "./private");}
+//$config->resources = Oxygen_FileSystem::resolve($config->absolute . "./private");
+}
 if (isset($out["clientResources"])) {
 $config->clientResources = $out["clientResources"];}
 if (isset($out["database"])) {
@@ -7714,7 +7719,9 @@ $input->sendSuccess("Saved");});}
 function save() {
 $encoded = Websom_Json::encode($this->data);
 Oxygen_FileSystem::writeSync($this->textFile, $encoded);
-Oxygen_FileSystem::writeSync($this->server->config->resources . "/text.js", "Websom.text = " . $encoded . ";");}
+Oxygen_FileSystem::writeSync($this->server->config->resources . "/text.js", "Websom.text = " . $encoded . ";");
+
+}
 
 function load() {
 if ($this->loaded == false) {

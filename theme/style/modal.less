@@ -33,6 +33,34 @@
 
 			pointer-events: all;
 		}
+
+		.col-loop(@name, @total, @i) when (@i > 0) {
+			&.@{name}@{i} {
+				float: left;
+				left: auto;
+				right: auto;
+				box-sizing: border-box;
+				left: (100% - (@i * 100% / @total)) / 2;
+				width: @i * 100% / @total;
+			}
+		
+			.col-loop(@name, @total, @i - 1);
+		}
+
+			
+		.col-loop(s, 12, 12);
+	
+		@media @mediumAndUp {
+			.col-loop(m, 12, 12);
+		}
+	
+		@media @largeAndUp {
+			.col-loop(l, 12, 12);
+		}
+
+		@media @extraLargeAndUp {
+			.col-loop(e, 12, 12);
+		}
 	}
 	
 	.modal-shade {

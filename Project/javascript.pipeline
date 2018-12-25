@@ -9,3 +9,5 @@ type = "package"
 javascript.module = "Websom"
 
 autoCache = true
+
+useOldTemplates = true

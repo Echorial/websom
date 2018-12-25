@@ -7,3 +7,5 @@ entry = "websom.carb"
 exports = "Websom"
 
 type = "header"
+
+useOldTemplates = true

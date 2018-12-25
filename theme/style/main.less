@@ -171,11 +171,13 @@
 @border-size: .4em;
 @round-small: .3em;
 @nav-height: 3.5em;
-@large: ~"only screen and (min-width: 901px)";
+@extraLarge: ~"only screen and and (min-width: 1200px)";
+@large: ~"only screen and and (max-width: 1200px) (min-width: 901px)";
 @medium: ~"only screen and (max-width: 900px) and (min-width: 480px)";
 @small: ~"only screen and (max-width: 479px)";
 
 @largeAndUp: ~"only screen and (min-width: 901px)";
+@extraLargeAndUp: ~"only screen and (min-width: 1200px)";
 @mediumAndUp: ~"only screen and (min-width: 480px)";
 
 @import "base";
@@ -204,6 +206,10 @@
 	.hide-medium-and-down {
 		display: none !important;
 	}
+
+	.hide-large-and-down {
+		display: none !important;
+	}
 }
 
 @media @medium {
@@ -218,10 +224,22 @@
 	.hide-medium-and-up {
 		display: none !important;
 	}
+
+	.hide-large-and-down {
+		display: none !important;
+	}
 }
 
 @media @large {
 	.hide-large {
+		display: none !important;
+	}
+
+	.hide-large-and-down {
+		display: none !important;
+	}
+
+	.hide-large-and-up {
 		display: none !important;
 	}
 	
@@ -229,6 +247,21 @@
 		display: none !important;
 	}
 }
+
+@media @extraLarge {
+	.hide-extra-large {
+		display: none !important;
+	}
+	
+	.hide-medium-and-up {
+		display: none !important;
+	}
+
+	.hide-large-and-up {
+		display: none !important;
+	}
+}
+
 
 html, body {
 	height: 100%;
@@ -245,6 +278,10 @@ body {
 
 h1, h2, h3, h4, h5, h6, p {
 	margin: 0;
+}
+
+.pointer {
+	cursor: pointer;
 }
 
 .right {
@@ -313,6 +350,14 @@ h1, h2, h3, h4, h5, h6, p {
 				display: inline-block;
 				vertical-align: middle;
 				font-size: 2rem;
+				transition: .3s;
+
+				text-shadow: rgb(48, 48, 48) 0px 0px 10px;
+
+				&:hover {
+					transform: scale(1.2);
+					color: rgb(104, 180, 255);
+				}
 			}
 		}
 	}
@@ -466,7 +511,7 @@ h1, h2, h3, h4, h5, h6, p {
 		padding: .45em;
 	}
 
-	.m1 {
+	.g1 {
 		margin: .45em;
 	}
 
@@ -474,8 +519,16 @@ h1, h2, h3, h4, h5, h6, p {
 		padding: 1em;
 	}
 
-	.m2 {
+	.g2 {
 		margin: 1em;
+	}
+
+	.p3 {
+		padding: 2em;
+	}
+
+	.g3 {
+		margin: 2em;
 	}
 
 	.expand {

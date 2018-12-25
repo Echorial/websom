@@ -9,7 +9,7 @@ template {
 		</div>
 		<div class="col s12" :class="{'m8': $slots.default, 'm12': !$slots.default}">
 			<slot name="static"/>
-			<h2 v-if="documents.length == 0 && !results">{{errorMessage}}</h2>
+			<h2 v-if="documents.length == 0 && !results" class="card center p1"><label style="font-size: 18px;">{{errorMessage}}</label></h2>
 			<template v-else-if="documents.length == 0 && results"><slot name="no-results"/></template>
 			<transition-group v-else name="list" tag="div" :class="containerClass">
 				<template v-if="!isSlot">
@@ -29,7 +29,7 @@ template {
 		</div>
 		<div>
 			<slot name="static"/>
-			<h2 v-if="documents.length == 0 && !results">{{errorMessage}}</h2>
+			<h2 v-if="documents.length == 0 && !results" class="card center p1"><label style="font-size: 18px;">{{errorMessage}}</label></h2>
 			<template v-else-if="documents.length == 0 && results"><slot name="no-results"/></template>
 			<transition-group v-else name="list" tag="div" :class="containerClass">
 				<template v-if="!isSlot">
