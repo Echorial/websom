@@ -1,0 +1,55 @@
+class Comment extends Entity {
+	
+	[Limit = 256]
+	field string text;
+
+	field UserSystem.User owner;
+	
+	field Timestamp created;
+	field Timestamp updated;
+
+}
+
+class MyModule extends Module {
+	public Container comments;
+
+	public Permission commentEdit;
+	public Permission commentCreate;
+	public Permission commentRead;
+
+	void permissions(PermissionInterface pi) {
+		this.commentEdit = pi.permission("Comment.Edit")
+			.description("Allows users to edit any comment");
+		
+		this.commentCreate = pi.permission("Comment.Create")
+			.description("Allows users to create a comment");
+
+		this.commentRead = pi.permission("Comment.Read")
+			.description("Read permissions on any comment anywhere")
+			.default();
+	}
+
+	void register(StorageInterface si) {
+		this.comments = new Container();
+
+		comments.schema(Comment.getSchema());
+
+		si.container(comments);
+	}
+
+	void expose(PublicInterface pi) {
+		pi.expose(this.comments)
+			.allow(this.commentEdit)
+				.to().write("text")
+			.allow(this.commentCreate)
+				.to()
+					.create()
+						.write("text");
+			.allow(this.commentRead)
+				.to()
+					.read("text")
+					.read("created")
+					.read("updated")
+					.readBase("owner")
+	}
+}
