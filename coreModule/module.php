@@ -7,6 +7,10 @@
 //Relative UserControl
 //Relative Group
 //Relative Admission
+//Relative Module
+//Relative Charge
+//Relative Item
+//Relative Payment
 //Relative RichText
 //Relative RichTextControl
 //Relative Likes
@@ -14,6 +18,9 @@
 //Relative Comment
 //Relative Image
 //Relative ImageControl
+//Relative Forum
+//Relative ForumThread
+//Relative ForumReply
 class CoreModule {
 
 function __construct(...$arguments) {
@@ -88,14 +95,15 @@ return $bridges;}
 //Relative Context
 //Relative Error
 //Relative FileSystem
+//Relative Buffer
 //Relative File
 //Relative Stat
-//Relative Buffer
 //Relative primitive
 //Relative object
 //Relative array
 //Relative bool
 //Relative byte
+//Relative char
 //Relative Console
 //Relative everything
 //Relative Exception
@@ -150,7 +158,7 @@ function write() {
 return $this->type . $this->content;}
 
 function callLoadFromMap(...$arguments) {
-if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
+if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
 $raw = $arguments[0];
 $callback = $arguments[1];
 
@@ -158,7 +166,7 @@ $callback = $arguments[1];
 			return $this->loadFromMap($raw, $callback);
 		
 }
-else if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
+else if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
 $raw = $arguments[0];
 $callback = $arguments[1];
 
@@ -224,7 +232,7 @@ function onInputInterface($input, $route, $data, $respond) {
 function getField($name) {
 
 
-			return $this->$name;
+			return property_exists($this, $name) ? $this->$name : null;
 		}
 
 function getPublicId() {
@@ -278,6 +286,15 @@ $checkSend->__invoke();});}}
 
 static function structureTable() {
 }
+
+function getFieldContainer($fieldName) {
+$dataInfo = $this->fetchFieldInfo();
+$fieldInfo = $dataInfo->getField($fieldName);
+$link = $fieldInfo->structure->getFlag("linked");
+if ($link == null) {
+return null;}
+$cast = $this->websomContainer;
+return new Websom_Containers_Table($this->websomServer, $cast->table . "_" . $fieldName, Websom_DataInfo::getDataInfoFromRoute($link->fieldType));}
 
 function nativeLoadFromMap($raw, $done) {
 
@@ -438,7 +455,7 @@ $this->name = $field;
 $this->field = $field;
 $this->logic = $logic;
 }
-else if (count($arguments) == 3 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (gettype($arguments[1]) == 'string' or gettype($arguments[1]) == 'NULL') and ((get_class($arguments[2]) == 'Websom_FieldInfo') or gettype($arguments[2]) == 'NULL')) {
+else if (count($arguments) == 3 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (gettype($arguments[1]) == 'string' or gettype($arguments[1]) == 'NULL') and ((_c_lib_run::getClass($arguments[2]) == 'Websom_FieldInfo') or gettype($arguments[2]) == 'NULL')) {
 $name = $arguments[0];
 $field = $arguments[1];
 $fieldInfo = $arguments[2];
@@ -449,12 +466,12 @@ $this->fieldInfo = $fieldInfo;
 
 }
 function fillField(...$arguments) {
-if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : get_class($arguments[1]) == '_carb_map') or gettype($arguments[1]) == 'NULL')) {
+if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : (gettype($arguments[1]) == 'object' ? get_class($arguments[1]) == '_carb_map' : false)) or gettype($arguments[1]) == 'NULL')) {
 $value = $arguments[0];
 $values = $arguments[1];
 $values[$this->field] = $value;
 }
-else if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : get_class($arguments[1]) == '_carb_map') or gettype($arguments[1]) == 'NULL')) {
+else if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : (gettype($arguments[1]) == 'object' ? get_class($arguments[1]) == '_carb_map' : false)) or gettype($arguments[1]) == 'NULL')) {
 $value = $arguments[0];
 $values = $arguments[1];
 
@@ -486,8 +503,17 @@ $done->__invoke(new Websom_InputValidation(false, ""));}
 function filterField($value, $select, $done) {
 }
 
+function insert($input, $data, $key) {
+}
+
+function update($input, $data) {
+}
+
 function message($input, $name, $data, $send) {
 $send->__invoke(null);}
+
+function _c__use($inputChain) {
+}
 
 
 }class Websom_Standard_Image {
@@ -552,7 +578,7 @@ $mp["url"] = $url;
 return $mp;}
 
 function callLoadFromMap(...$arguments) {
-if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
+if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
 $raw = $arguments[0];
 $callback = $arguments[1];
 
@@ -560,7 +586,7 @@ $callback = $arguments[1];
 			return $this->loadFromMap($raw, $callback);
 		
 }
-else if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
+else if (count($arguments) == 2 and ((gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'NULL') and (is_callable($arguments[1]) or gettype($arguments[1]) == 'NULL')) {
 $raw = $arguments[0];
 $callback = $arguments[1];
 
@@ -631,6 +657,7 @@ function onInputInterface($input, $route, $data, $respond) {
 
 function getField($name) {
 
+
 			return property_exists($this, $name) ? $this->$name : null;
 		}
 
@@ -685,6 +712,15 @@ $checkSend->__invoke();});}}
 
 static function structureTable() {
 }
+
+function getFieldContainer($fieldName) {
+$dataInfo = $this->fetchFieldInfo();
+$fieldInfo = $dataInfo->getField($fieldName);
+$link = $fieldInfo->structure->getFlag("linked");
+if ($link == null) {
+return null;}
+$cast = $this->websomContainer;
+return new Websom_Containers_Table($this->websomServer, $cast->table . "_" . $fieldName, Websom_DataInfo::getDataInfoFromRoute($link->fieldType));}
 
 function nativeLoadFromMap($raw, $done) {
 
@@ -844,7 +880,7 @@ $this->name = $field;
 $this->field = $field;
 $this->logic = $logic;
 }
-else if (count($arguments) == 3 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (gettype($arguments[1]) == 'string' or gettype($arguments[1]) == 'NULL') and ((get_class($arguments[2]) == 'Websom_FieldInfo') or gettype($arguments[2]) == 'NULL')) {
+else if (count($arguments) == 3 and (gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'NULL') and (gettype($arguments[1]) == 'string' or gettype($arguments[1]) == 'NULL') and ((_c_lib_run::getClass($arguments[2]) == 'Websom_FieldInfo') or gettype($arguments[2]) == 'NULL')) {
 $name = $arguments[0];
 $field = $arguments[1];
 $fieldInfo = $arguments[2];
@@ -855,12 +891,12 @@ $this->fieldInfo = $fieldInfo;
 
 }
 function fillField(...$arguments) {
-if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : get_class($arguments[1]) == '_carb_map') or gettype($arguments[1]) == 'NULL')) {
+if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : (gettype($arguments[1]) == 'object' ? get_class($arguments[1]) == '_carb_map' : false)) or gettype($arguments[1]) == 'NULL')) {
 $value = $arguments[0];
 $values = $arguments[1];
 $values[$this->field] = $value;
 }
-else if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : get_class($arguments[0]) == '_carb_map') or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : get_class($arguments[1]) == '_carb_map') or gettype($arguments[1]) == 'NULL')) {
+else if (count($arguments) == 2 and (((gettype($arguments[0]) == 'array') or gettype($arguments[0]) == 'boolean' or gettype($arguments[0]) == 'string' or gettype($arguments[0]) == 'double' or gettype($arguments[0]) == 'integer' or (gettype($arguments[0]) == 'array' ? _c_lib__mapUtils::isMap($arguments[0]) : (gettype($arguments[0]) == 'object' ? get_class($arguments[0]) == '_carb_map' : false)) or gettype($arguments[0]) == 'string') or gettype($arguments[0]) == 'NULL') and ((gettype($arguments[1]) == 'array' ? _c_lib__mapUtils::isMap($arguments[1]) : (gettype($arguments[1]) == 'object' ? get_class($arguments[1]) == '_carb_map' : false)) or gettype($arguments[1]) == 'NULL')) {
 $value = $arguments[0];
 $values = $arguments[1];
 
@@ -892,8 +928,17 @@ $done->__invoke(new Websom_InputValidation(false, ""));}
 function filterField($value, $select, $done) {
 }
 
+function insert($input, $data, $key) {
+}
+
+function update($input, $data) {
+}
+
 function message($input, $name, $data, $send) {
 $send->__invoke(null);}
+
+function _c__use($inputChain) {
+}
 
 
 }

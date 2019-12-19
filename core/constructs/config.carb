@@ -11,7 +11,7 @@ class Websom.Config {
 
 	string url = "localhost";
 
-	`Should Websom will tell the browser about the manifest file.`
+	`Should Websom tell the browser about the manifest file.`
 	bool hasManifest = true;
 
 	`By default websom expects the manifest to be in the resources folder.`

@@ -3424,10 +3424,10 @@ Websom.Services.Security.prototype.load = function () {
 				this.insertLimit = config["insertLimit"];
 				this.updateLimit = config["updateLimit"];
 				this.message = config["requestLimitMessage"];
-				}else{
-					Oxygen.FileSystem.writeSync(this.configPath, "{\n	\"captchaService\": \"none\",\n	\"publicKey\": \"\",\n	\"serviceKey\": \"\",\n	\"updateLimit\": 6,\n	\"insertLimit\": 3,\n	\"selectLimit\": 60,\n	\"requestLimitMessage\": \"Too many requests.\"\n}");
-				}
+			}else{
+				Oxygen.FileSystem.writeSync(this.configPath, "{\n	\"captchaService\": \"none\",\n	\"publicKey\": \"\",\n	\"serviceKey\": \"\",\n	\"updateLimit\": 6,\n	\"insertLimit\": 3,\n	\"selectLimit\": 60,\n	\"requestLimitMessage\": \"Too many requests.\"\n}");
 			}
+		}
 	}
 }
 

@@ -211,14 +211,15 @@ $this->handler = $handler;
 //Relative Context
 //Relative Error
 //Relative FileSystem
+//Relative Buffer
 //Relative File
 //Relative Stat
-//Relative Buffer
 //Relative primitive
 //Relative object
 //Relative array
 //Relative bool
 //Relative byte
+//Relative char
 //Relative Console
 //Relative everything
 //Relative Exception
