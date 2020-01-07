@@ -1,5 +1,6 @@
 info {
-	"name": "designer-page"
+	"name": "designer-page",
+	"type": "component"
 }
 
 template {

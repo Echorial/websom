@@ -24,28 +24,43 @@ class Websom.Services.Theme inherits Websom.Service {
 			if (this.server.config.dev) {
 				var fs = require("fs");
 				if (!fs.existsSync(this.server.config.resources + "/" + theme.prefix())) { // Rebuild theme if non existent
-					theme.buildAndSave((err) => {
-						if (err.length > 0) {
-							console.log("Error while building theme " + theme.name + " : " + err);
-						}else{
-							console.log("New theme built " + theme.name);
-						}
-					});
+					if (this.server.config.legacy)
+						theme.buildAndSave((err) => {
+							if (err.length > 0) {
+								console.log("Error while building theme " + theme.name + " : " + err);
+							}else{
+								console.log("New theme built " + theme.name);
+							}
+						});
 				}
 
 				console.log("Setup watch on theme " + config.name);
 				
 				fs.watch(themeDir, {recursive: true}, (type, file) => {
 					console.log("Saw change on " + file + ". Rebuilding theme");
-					var newConfig = JSON.parse(fs.readFileSync(themeDir + "/" + config.name + ".json", "utf8"))
+					var configFile = "";
+
+					if (this.server.config.legacy) {
+						configFile = themeDir + "/" + config.name + ".json";
+					}else{
+						configFile = themeDir + "/theme.json";
+					}
+
+					var newConfig = JSON.parse(fs.readFileSync(configFile, "utf8"))
 					theme.config = newConfig;
-					theme.buildAndSave((err) => {
-						if (err.length > 0) {
-							this.server.status.inherit(Websom.Status.singleError("Theme." + theme.name, err));
-							console.log(err);
-						}else
-							console.log("No errors");
-					});
+
+					if (type == "rename")
+						if (this.server.devBuildWatcher)
+							this.server.devBuildWatcher(file);
+					
+					if (this.server.config.legacy)
+						theme.buildAndSave((err) => {
+							if (err.length > 0) {
+								this.server.status.inherit(Websom.Status.singleError("Theme." + theme.name, err));
+								console.log(err);
+							}else
+								console.log("No errors");
+						});
 				});
 			}
 		}
@@ -58,10 +73,16 @@ class Websom.Services.Theme inherits Websom.Service {
 			if (FileSystem.isDir(themeDir)) {
 				var name = FileSystem.basename(themeDir);
 				if (name != "." and name != "..") {
-					var configFile = themeDir + "/" + name + ".json";
+					var configFile = "";
+
+					if (this.server.config.legacy) {
+						configFile = themeDir + "/" + name + ".json";
+					}else{
+						configFile = themeDir + "/theme.json";
+					}
 
 					if (FileSystem.exists(configFile) == false)
-						return Websom.Status.singleError("Servics.Theme", "Unable to find config for theme " + name);
+						return Websom.Status.singleError("Services.Theme", "Unable to find config for theme " + name);
 
 					var map config = Websom.Json.parse(FileSystem.readSync(configFile, "utf8"));
 					var status = this.load(themeDir, config);
@@ -95,7 +116,13 @@ class Websom.Services.Theme inherits Websom.Service {
 			//return Websom.Status.singleError("Services.Theme", "Unable to find themes directory within website root.");
 		}
 
-		var themeDir = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../theme/");
+		let usedTheme = "theme";
+
+		if (this.server.config.legacy == false) {
+			usedTheme = "base-theme";
+		}
+
+		var themeDir = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../" + usedTheme);
 		var map config = Websom.Json.parse(FileSystem.readSync(themeDir + "/theme.json", "utf8"));
 		var status = this.load(themeDir, config);
 

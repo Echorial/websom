@@ -1,5 +1,6 @@
 info {
-	"name": "input-image"
+	"name": "input-image",
+	"type": "component"
 }
 
 template {

@@ -1,0 +1,867 @@
+info {
+	"name": "debug",
+	"type": "component",
+	"force": true
+}
+
+template {
+	<div class="debug-rows">
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Color</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-8">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Type</th>
+										<th>typical</th>
+										<th>edge</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												simple
+											</td>
+											<td>
+												<button>simple button</button>
+											</td>
+											<td>
+												<a class="button">.button</a>
+											</td>
+										</tr>
+										<tr>
+											<td>{{'<' + 'input>'}}</td>
+											<td>
+												<input type="submit" value="input submit"></input>
+											</td>
+											<td>
+												<input type="button" value="input button"></input>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Color</th>
+										<th>primary</th>
+										<th>secondary</th>
+										<th>tertiary</th>
+									</thead>
+									<tbody>
+										<tr class="dark">
+											<td>
+												Dark
+											</td>
+											<td>
+												<button class="primary">Button</button>
+											</td>
+											<td>
+												<button class="secondary">Button</button>
+											</td>
+											<td>
+												<button class="tertiary">Button</button>
+											</td>
+										</tr>
+										<tr class="light">
+											<td>
+												Light
+											</td>
+											<td>
+												<button class="primary">Button</button>
+											</td>
+											<td>
+												<button class="secondary">Button</button>
+											</td>
+											<td>
+												<button class="tertiary">Button</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					<div class="debug-row">
+						<div class="debug-column debug-12">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Colors</th>
+										<th>Primary</th>
+										<th>Secondary</th>
+										<th>Tertiary</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												-1
+											</td>
+											<td class="websom-color-bubble-container primary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color-dark)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast-dark)">
+												</div>
+											</td>
+											<td class="websom-color-bubble-container secondary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast)">
+												</div>
+											</td>
+											<td class="websom-color-bubble-container tertiary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color-light)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast-light)">
+												</div>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												0
+											</td>
+											<td class="websom-color-bubble-container primary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast)">
+												</div>
+											</td>
+											<td class="websom-color-bubble-container secondary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast)">
+												</div>
+											</td>
+											<td class="websom-color-bubble-container tertiary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast)">
+												</div>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												+1
+											</td>
+											<td class="websom-color-bubble-container primary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color-light)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast-light)">
+												</div>
+											</td>
+											<td class="websom-color-bubble-container secondary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color-light)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast-light)">
+												</div>
+											</td>
+											<td class="websom-color-bubble-container tertiary">
+												<div
+													class="websom-color-bubble"
+													style="background: var(--color-light)">
+												</div>
+												<div
+													class="websom-mini-color-bubble"
+													style="background: var(--contrast-light)">
+												</div>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="debug-column debug-4">
+					<div class="debug-panel">
+						<table class="debug-fill">
+							<thead>
+								<th>Color Wheel</th>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="debug-fill">
+										<color-wheel v-model="wheelValues" :handles="colorSelectedHandles" />
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Buttons</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-8">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Type</th>
+										<th>typical</th>
+										<th>edge</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												simple
+											</td>
+											<td>
+												<button>simple button</button>
+											</td>
+											<td>
+												<a class="button">.button</a>
+											</td>
+										</tr>
+										<tr>
+											<td>{{'<' + 'input>'}}</td>
+											<td>
+												<input type="submit" value="input submit"></input>
+											</td>
+											<td>
+												<input type="button" value="input button"></input>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Color</th>
+										<th>primary</th>
+										<th>secondary</th>
+										<th>tertiary</th>
+									</thead>
+									<tbody>
+										<tr class="dark">
+											<td>
+												Dark
+											</td>
+											<td>
+												<button class="primary">Button</button>
+											</td>
+											<td>
+												<button class="secondary">Button</button>
+											</td>
+											<td>
+												<button class="tertiary">Button</button>
+											</td>
+										</tr>
+										<tr class="light">
+											<td>
+												Light
+											</td>
+											<td>
+												<button class="primary">Button</button>
+											</td>
+											<td>
+												<button class="secondary">Button</button>
+											</td>
+											<td>
+												<button class="tertiary">Button</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					<div class="debug-row">
+						<div class="debug-column debug-8">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Size</th>
+										<th>Large</th>
+										<th>Medium</th>
+										<th>Small</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												Plain
+											</td>
+											<td>
+												<button class="large">Button</button>
+											</td>
+											<td>
+												<button class="medium">Button</button>
+											</td>
+											<td>
+												<button class="small">Button</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												Icon
+											</td>
+											<td>
+												<button class="large"><icon left icon="star" /> Button</button>
+											</td>
+											<td>
+												<button class="medium"><icon left icon="star" />Button</button>
+											</td>
+											<td>
+												<button class="small"><icon left icon="star" /> Button</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Icons</th>
+										<th>button</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												Left
+											</td>
+											<td>
+												<button><icon left icon="close" :pack="pack"/> Icon</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												Right
+											</td>
+											<td>
+												<button>Icon <icon right icon="close" :pack="pack"/></button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												Alone
+											</td>
+											<td>
+												<button><icon icon="close" :pack="pack"/></button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="debug-column debug-4">
+					<div class="debug-panel">
+						<table>
+							<thead>
+								<th>Status</th>
+								<th>plain</th>
+								<th>icon</th>
+								<th>just icon</th>
+							</thead>
+							<tbody>
+								<tr>
+									<td>
+										success
+									</td>
+									<td>
+										<button class="success">button</button>
+									</td>
+									<td>
+										<button class="success"><icon left :pack="pack" icon="check" /> button</button>
+									</td>
+									<td>
+										<button class="success"><icon left :pack="pack" icon="check" /></button>
+									</td>
+								</tr>
+								<tr>
+									<td>
+										info
+									</td>
+									<td>
+										<button class="info">button</button>
+									</td>
+									<td>
+										<button class="info"><icon left :pack="pack" icon="info" /> button</button>
+									</td>
+									<td>
+										<button class="info"><icon left :pack="pack" icon="info" /></button>
+									</td>
+								</tr>
+								<tr>
+									<td>
+										warning
+									</td>
+									<td>
+										<button class="warning">button</button>
+									</td>
+									<td>
+										<button class="warning"><icon left :pack="pack" icon="warning" /> button</button>
+									</td>
+									<td>
+										<button class="warning"><icon left :pack="pack" icon="warning" /></button>
+									</td>
+								</tr>
+								<tr>
+									<td>
+										danger
+									</td>
+									<td>
+										<button class="danger">button</button>
+									</td>
+									<td>
+										<button class="danger"><icon left :pack="pack" icon="danger" /> button</button>
+									</td>
+									<td>
+										<button class="danger"><icon left :pack="pack" icon="danger" /></button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+
+
+
+		<div>
+			<h3>Headings</h3>
+
+			
+
+			<div>
+				<h1>Heading 1</h1>
+				<h2>Heading 2</h2>
+				<h3>Heading 3</h3>
+				<h4>Heading 4</h4>
+				<h5>Heading 5</h5>
+				<h6>Heading 6</h6>
+			</div>
+		</div>
+
+		<div>
+			<h3>Text</h3>
+
+			<div>
+				<p>Paragraph text. <strong>strong</strong> <i>italic</i> <time>{{new Date().toLocaleTimeString()}}</time> <span>span</span> <a href="#">anchor</a></p>
+			</div>
+			<div>
+				<label>Standalone label.</label>
+			</div>
+			<div>
+				<pre>Pre block     ...     ---
+Line 1
+Line 2
+Line 3
+	Tabs
+		1.
+		2.
+		3.</pre>
+			</div>
+			<div>
+				<code>print "This is a code block"</code>
+			</div>
+		</div>
+		<div>
+			<h3>Lists</h3>
+
+			<ul>
+				<li>Unordered list</h1>
+				<li>Item 1</li>
+				<li>
+					Item 2
+					<ul>
+						<li>Nested list</li>
+					</ul>
+				</li>
+				<li>Item 3</li>
+			</ul>
+
+			<ol>
+				<li>Ordered list</h1>
+				<li>Item 1</li>
+				<li>
+					Item 2
+					<ul>
+						<li>Nested list</li>
+					</ul>
+				</li>
+				<li>Item 3</li>
+			</ol>
+		</div>
+
+		<style v-html="customCSS">
+
+		</style>
+	</div>
+}
+
+script {
+
+import less from "less";
+import rootStylesheet from "raw-loader!../styles/root.view?extract-style=true";
+
+export default {
+	data() {
+		let fivePointBaseDistance = 15;
+
+		let genHandle = (label, amount) => {
+			return {
+				label: label,
+				relative: {
+					hue: 0,
+					saturation: 0
+				},
+				global: {
+					hue: Math.sign(amount) * ((Math.abs(amount) >= fivePointBaseDistance * 2) ? 2 : 1),
+					saturation: ((Math.abs(amount) >= fivePointBaseDistance * 2) ? 2 : 1)
+				},
+				control: Math.abs(amount) < fivePointBaseDistance * 2,
+				driver(basis) {
+					return {
+						hue: basis.hue + amount,
+						saturation: basis.saturation,
+						luminosity: basis.luminosity
+					};
+				}
+			};
+		};
+		
+		return {
+			pack: "material",
+			packs: ["material", "font-awesome", "remix"],
+			index: 0,
+			color: {
+				mode: "fivePoint",
+				modes: {
+					fivePoint: { // Five point
+						name: "Five Point",
+						handles: [
+							genHandle("side-r-1", fivePointBaseDistance),
+							genHandle("side-r-2", fivePointBaseDistance * 2),
+							genHandle("side-l-1", -fivePointBaseDistance),
+							genHandle("side-l-2", -fivePointBaseDistance * 2),
+							{
+								label: "basis",
+								value: [0, 95, 50]
+							}
+						]
+					}
+				}
+			},
+			wheelValues: {},
+			primary: "#FFFFFF",
+			secondary: "#FFFFFF",
+			tertiary: "#FFFFFF",
+			customCSS: ""
+		};
+	},
+	mounted() {
+		setInterval(() => {
+			this.index++;
+			if (this.index >= this.packs.length)
+				this.index = 0;
+
+			this.pack = this.packs[this.index];
+
+			//this.$set(this.colorSelectedHandles[0].value, 0, this.colorSelectedHandles[0].value[0] + 10);
+			
+		}, 2000);
+
+		this.generateColors();
+	},
+	computed: {
+		colorSelectedHandles() {
+			return this.color.modes[this.color.mode].handles;
+		}
+	},
+	methods: {
+		async generateColors() {
+			let time = Date.now();
+			this.customCSS = (await less.render(rootStylesheet, {modifyVars: {
+				primary: this.primary,
+				secondary: this.secondary,
+				tertiary: this.tertiary,
+				important: '~"html"'
+			}})).css;
+			console.log("Took ", Date.now() - time);
+		}
+	},
+	watch: {
+		wheelValues() {
+			this.primary = this.wheelValues.basis;
+			this.secondary = this.wheelValues["side-r-2"];
+			this.tertiary = this.wheelValues["side-l-2"];
+			
+			this.generateColors();
+		}
+	}
+}
+
+}
+
+style {
+
+	.websom-color-bubble-container {
+		position: relative;
+		height: 75px;
+
+		border: 2px solid transparent;
+
+		transition: .3s;
+
+		.websom-color-bubble {
+			position: absolute;
+			width: 50px;
+			height: 50px;
+
+			top: calc(50% - 25px);
+			left: calc(50% - 25px);
+			border-radius: 50%;
+
+			transition: .3s;
+		}
+
+		.websom-mini-color-bubble {
+			position: absolute;
+			width: 20px;
+			height: 20px;
+
+			top: calc(50% + 5px);
+			left: calc(50% + 5px);
+			border-radius: 50%;
+
+			transition: .3s;
+		}
+
+		&:hover {
+			z-index: 12;
+			border-radius: 10px;
+			transform: scale(2);
+			background: var(--color);
+
+			border: 2px solid var(--contrast);
+
+			.websom-color-bubble {
+				width: 30px;
+				height: 30px;
+
+				top: calc(50% - 15px);
+				left: calc(50% - 15px);
+				z-index: 10;
+			}
+
+			.websom-mini-color-bubble {
+				width: 60px;
+				height: 60px;
+				top: calc(50% - 30px);
+				left: calc(50% - 30px);
+			}
+		}
+	}
+
+	.debug-rows {
+		padding: 50px;
+
+		.debug-title {
+			background: var(--background-tint);
+			color: var(--background-contrast);
+
+			margin-bottom: 10px;
+
+			padding: 10px;
+			padding-left: 20px;
+			border-left: 10px solid var(--color-light);
+
+			& > h3 {
+				margin: 0;
+				font-size: 32px;
+			}
+		}
+
+		.debug-panel {
+			margin-right: 10px;
+			margin-bottom: 10px;
+			background: var(--background-overlay);
+
+			height: 100%;
+
+			& > .debug-sub-title, & > table > thead {
+				margin: 0px;
+
+				font-size: 24px;
+
+				background: var(--background-tint);
+				color: var(--background-contrast);
+				border-left: 10px solid var(--tertiary);
+				padding: 5px;
+
+				& > th:first-child {
+					border-left: 10px solid var(--tertiary);
+				}
+			}
+
+			.debug-vertical {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+
+				padding-top: 10px;
+				
+				& > * {
+					margin-bottom: 10px;
+				}
+			}
+
+			.debug-center {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 10px;
+			}
+		}
+
+		table {
+			//table-layout: fixed;
+			width: calc(100% + 4px);
+
+			margin: -2px;
+
+			&.debug-fill {
+				height: 100%;
+			}
+
+			th {
+				font-size: 20px;
+				padding: 10px;
+			}
+
+			td {
+				text-align: center;
+				padding: 5px;
+			}
+
+			tr {
+				background: var(--background-overlay);
+			}
+
+			td:first-child {
+				background: var(--background-tint);
+				color: var(--background-contrast);
+				max-width: 30px;
+
+				&.debug-fill {
+					background: var(--background-overlay);
+					height: 100%;
+				}
+			}
+		}
+
+		.debug-row {
+			display: flex;
+			flex-direction: row;
+
+			.debug-column {
+				flex-grow: 1;
+				flex-direction: column;
+				display: flex;
+			}
+
+			.debug-1 {
+				flex: 1 / 12;
+				min-width: calc((1 / 12) * 100%);
+			}
+
+			.debug-2 {
+				flex: 2 / 12;
+				min-width: calc((2 / 12) * 100%);
+			}
+
+			.debug-3 {
+				flex: 3 / 12;
+				min-width: calc((3 / 12) * 100%);
+			}
+
+			.debug-3-5 {
+				flex: 3.5 / 12;
+				min-width: calc((3.5 / 12) * 100%);
+			}
+
+			.debug-4 {
+				flex: 4 / 12;
+				min-width: calc((4 / 12) * 100%);
+			}
+
+			.debug-4-5 {
+				flex: 4.5 / 12;
+				min-width: calc((4.5 / 12) * 100%);
+			}
+
+			.debug-5 {
+				flex: 5 / 12;
+				min-width: calc((5 / 12) * 100%);
+			}
+
+			.debug-6 {
+				flex: 6 / 12;
+				min-width: calc((6 / 12) * 100%);
+			}
+
+			.debug-7 {
+				flex: 7 / 12;
+				min-width: calc((7 / 12) * 100%);
+			}
+
+			.debug-8 {
+				flex: 8 / 12;
+				min-width: calc((8 / 12) * 100%);
+			}
+		}
+	}
+}

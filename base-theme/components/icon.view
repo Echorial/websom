@@ -1,0 +1,289 @@
+info {
+	"name": "icon",
+	"type": "component"
+}
+
+template {
+	<span :class="'websom-icon ' + iconClass + ' ' + (right ? 'right' : '') + ' ' + (left ? 'left' : '')">{{ligature}}</span>
+}
+
+script {
+
+export default {
+	props: {
+		pack: {
+			type: String,
+			required: false,
+			validator(val) {
+				return [
+					"font-awesome",
+					"material",
+					"remix"
+				].indexOf(val) !== -1;
+			}
+		},
+		packStyle: {
+			type: String,
+			required: false,
+			validator(val) {
+				return [
+					"fill",
+					"line",
+					"duotone",
+					"sharp"
+				].indexOf(val) !== -1;
+			}
+		},
+		icon: {
+			type: String,
+			required: true
+		},
+		left: {
+			type: Boolean,
+			required: false,
+			default: false
+		},
+		right: {
+			type: Boolean,
+			required: false,
+			default: false
+		}
+	},
+	data() {
+		return {
+			iconClass: "",
+			ligature: ""
+		};
+	},
+	methods: {
+		recomputeIcon() {
+			let pack = this.config.fallbackIconPack;
+
+			if (this.pack)
+				pack = this.pack;
+
+			let iconName = this.icon;
+
+			let style = this.config.fallbackIconStyle;
+
+			if (this.packStyle)
+				style = this.packStyle;
+
+			const mappings = {
+				"font-awesome": {
+					icons: {
+						close: "times",
+						warning: "exclamation",
+						help: "question",
+						danger: "fire"
+					},
+					styles: {
+						free: {
+							fill: "fas",
+							line: "far",
+							duotone: "fas",
+							sharp: "fas"
+						},
+						pro: {
+							fill: "fas",
+							line: "far",
+							duotone: "fad",
+							sharp: "light"
+						}
+					}
+				},
+				"material": {
+					icons: {
+						trophy: "emoji_events",
+						user: "person",
+						question: "help",
+						danger: "not_interested"
+					},
+					styles: {
+						all: {
+							sharp: "material-icons-sharp",
+							duotone: "material-icons-two-tone",
+							fill: "material-icons",
+							line: "material-icons-outlined"
+						}
+					}
+				},
+				"remix": {
+					icons: {
+						warning: "error-warning",
+						info: "information",
+						help: "question",
+						danger: "fire"
+					},
+					styles: {
+						all: {
+							sharp: "-fill",
+							line: "-line",
+							fill: "-fill",
+							duotone: "-fill"
+						}
+					}
+				}
+			};
+
+			iconName = mappings[pack].icons[iconName] || iconName;
+			
+			if (pack == "font-awesome") {
+				this.ligature = "";
+				// TODO: Add support for pro icons
+				this.iconClass = `${mappings["font-awesome"].styles.free[style]} fa-${iconName}`;
+
+				import(/* webpackPrefetch: true */ "@fortawesome/fontawesome-free/css/all.css").then(() => {
+
+				});
+			}else if (pack == "material") {
+				this.ligature = iconName;
+				this.iconClass = mappings.material.styles.all[style];
+
+				if (style == "fill") {
+					import(/* webpackPrefetch: true */ "material-icons/iconfont/material-icons.css").then(() => {});
+				}else{
+					this.websom.linkStyle("https://fonts.googleapis.com/css?family=Material+Icons+Outlined|Material+Icons+Sharp|Material+Icons+Round|Material+Icons+Two+Tone");
+				}
+			}else if (pack == "remix") {
+				this.ligature = "";
+				this.iconClass = `remix-icons ri-${iconName}${mappings.remix.styles.all[style]}`;
+
+				import(/* webpackPrefetch: true */ "remixicon/fonts/remixicon.css").then(() => {
+
+				});
+			}
+		}
+	},
+	watch: {
+		icon() {
+			this.recomputeIcon();
+		},
+		pack() {
+			this.recomputeIcon();
+		}
+	},
+	mounted() {
+		this.recomputeIcon();
+	}
+}
+
+}
+
+style {
+	:root {
+		--icon-size: 16px;
+	}
+
+	body .large {
+		--icon-size: 32px;
+
+		&.websom-icon, .websom-icon {
+			//vertical-align: middle !important;
+		}
+	}
+
+	body .medium {
+		--icon-size: 24px;
+
+		&.websom-icon, .websom-icon {
+			//vertical-align: middle !important;
+		}
+	}
+
+	body .small {
+		--icon-size: 16px;
+
+		&.websom-icon, .websom-icon {
+			//vertical-align: text-top !important;
+		}
+	}
+
+	body span.websom-icon {
+		font-size: var(--icon-size);
+		margin: 0;
+		padding: 0;
+		width: var(--icon-size);
+		height: var(--icon-size);
+		line-height: 1;
+
+		vertical-align: middle;
+
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
+
+		&.material-icons {
+			font-size: calc(var(--icon-size) + 4px);
+		}
+
+		&.remix-icons {
+			font-size: calc(var(--icon-size) + 4px);
+		}
+
+		&.right {
+			margin-left: calc(var(--icon-size) / 4);
+			//vertical-align: text-top;
+		}
+
+		&.left {
+			margin-right: calc(var(--icon-size) / 4);
+			//vertical-align: text-top;
+		}
+	}
+}
+
+config {
+	"options": {
+		"useCDN": {
+			"type": "boolean",
+			"name": "Use CDN",
+			"description": "Tell websom to load font-icon packs using their respective CDN sources.",
+			"default": false,
+			"group": "cdn"
+		},
+		"fallbackIconPack": {
+			"type": "string",
+			"name": "Fallback icon pack",
+			"description": "The default icon pack to use when no theme specifies one.",
+			"default": "material",
+			"options": {
+				"font-awesome": {
+					"name": "Font Awesome (Free)"
+				},
+				"material": {
+					"name": "Google Material Design Icons"
+				}
+			}
+		},
+		"fallbackIconStyle": {
+			"type": "string",
+			"name": "Fallback icon style",
+			"description": "Websom will use this style (if available) to display icons.",
+			"default": "fill",
+			"options": {
+				"fill": {
+					"name": "Fill"
+				},
+				"line": {
+					"name": "Line"
+				},
+				"duotone": {
+					"name": "Duotone"
+				},
+				"sharp": {
+					"name": "Sharp"
+				}
+			}
+		},
+		"CDNOverride": {
+			"type": "string",
+			"name": "CDN Override",
+			"placeholder": "Leave empty to ignore this property",
+			"description": "Override the CDN URL used to load font packs. e.g. https://example.com/font-pack.css",
+			"default": "",
+			"group": "cdn",
+			"activate": "useCDN"
+		}
+	}
+}

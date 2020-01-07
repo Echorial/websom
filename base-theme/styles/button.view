@@ -1,0 +1,61 @@
+info {
+	"name": "button",
+	"type": "style",
+	"force": true
+}
+
+style {
+
+	@{component} {
+		button, input[type="submit"], input[type="button"], .button {
+			/* Resets */
+
+			background: none;
+			border: none;
+			padding: 0;
+			cursor: default;
+
+			outline: 0;
+
+			/* Base utility */
+
+			user-select: none;
+
+			/* Base styling */
+
+			// Structure
+
+			display: inline-flex;
+
+			flex-direction: row;
+
+			align-items: center;
+
+			justify-content: center;
+
+			vertical-align: middle;
+
+			text-align: center;
+			
+			cursor: pointer;
+
+			background: var(--color);
+			color: var(--contrast);
+			height: calc(var(--base-size) * 3);
+			padding: 0px calc(var(--base-size) * 2);
+
+			min-width: calc(var(--base-size) * 6);
+
+			&:hover {
+				background: var(--color-light);
+				color: var(--contrast-light);
+			}
+
+			&:active {
+				background: var(--color-dark);
+				color: var(--contrast-dark);
+			}
+		}
+	}
+
+}

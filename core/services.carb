@@ -32,9 +32,20 @@ class Websom.Service {
 namespace Websom.Services {}
 
 #script Carbon
+	let num = 0;
 
 	Carbon.on("inherits.Websom.Service", bool (Carbon.Class base, Carbon.Class cls) => {
-		print("Building " + cls.route + " service");
+		num += 1;
 	});
 
+	Carbon.on("classes.end", void () => {
+		print("");
+		print("--------------- WEBSOM ---------------");
+		print("");
+		print("    " + num.toString() + " services included in build");
+		print("");
+		print("--------------------------------------");
+		print("");
+	});
+	
 #end script

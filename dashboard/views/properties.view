@@ -1,5 +1,6 @@
 info {
-	"name": "view-properties"
+	"name": "view-properties",
+	"type": "component"
 }
 
 template {

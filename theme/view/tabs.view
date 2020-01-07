@@ -1,5 +1,6 @@
 info {
-	"name": "tabs"
+	"name": "tabs",
+	"type": "component"
 }
 
 template {}

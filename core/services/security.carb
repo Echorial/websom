@@ -16,8 +16,10 @@ class Websom.Services.Security inherits Websom.Service {
 	Websom.Status start() {
 		this.configPath = this.server.config.root + "/security.json";
 
-		this.load();
-		this.server.injectExpression("Websom.Captcha = {publicKey: " + Websom.Json.encode(this.publicKey) + "};");
+		if (this.server.config.legacy) {
+			this.load();
+			this.server.injectExpression("Websom.Captcha = {publicKey: " + Websom.Json.encode(this.publicKey) + "};");
+		}
 	}
 
 	void load() {

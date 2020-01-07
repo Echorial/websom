@@ -63,9 +63,21 @@ class Websom.Config {
 	`Location of the database config file`
 	string databaseFile = "";
 
+	`Directory for storing buckets while developing`
+	string devBuckets = "";
+
+	`This directory is used when searching for configuration overrides. e.g. dir/database.json`
+	string configOverrides = "";
+
+	`Webpack bundle file name`
+	string jsBundle = "websom-bundle.js";
+
 	bool gzip = false;
 
 	bool refreshViews = false;
+
+	`A compatibility mode for use with older websom servers`
+	bool legacy = false;
 
 	void @construct() {
 		

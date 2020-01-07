@@ -1,5 +1,6 @@
 info {
-	"name": "dtext"
+	"name": "dtext",
+	"type": "component"
 }
 
 template {

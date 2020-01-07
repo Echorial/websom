@@ -1,5 +1,6 @@
 info {
-	"name": "rich-text"
+	"name": "rich-text",
+	"type": "component"
 }
 
 template {

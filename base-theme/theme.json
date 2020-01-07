@@ -1,0 +1,22 @@
+{
+	"name": "theme",
+	"description": "Base theme used in all of websom",
+	"key": "",
+	"resources": [
+		{
+			"path": "./components"
+		},
+		{
+			"path": "./components/input"
+		},
+		{
+			"path": "./effects"
+		},
+		{
+			"path": "./styles"
+		}
+	],
+	"npm": {
+		"color": "^1.0.0"
+	}
+}

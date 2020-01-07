@@ -1,5 +1,6 @@
 info {
-	"name": "gallery"
+	"name": "gallery",
+	"type": "component"
 }
 
 template {

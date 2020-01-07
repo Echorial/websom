@@ -1,5 +1,6 @@
 info {
-	"name": "accordion"
+	"name": "accordion",
+	"type": "component"
 }
 
 template {}

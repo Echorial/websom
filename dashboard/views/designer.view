@@ -1,5 +1,6 @@
 info {
-	"name": "dashboard-designer"
+	"name": "dashboard-designer",
+	"type": "component"
 }
 
 template {

@@ -1,5 +1,6 @@
 info {
-	"name": "input-sort"
+	"name": "input-sort",
+	"type": "component"
 }
 
 template {

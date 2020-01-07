@@ -1,5 +1,6 @@
 info {
-	"name": "btn"
+	"name": "btn",
+	"type": "component"
 }
 
 template {

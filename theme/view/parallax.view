@@ -1,5 +1,6 @@
 info {
-	"name": "parallax"
+	"name": "parallax",
+	"type": "component"
 }
 
 template {

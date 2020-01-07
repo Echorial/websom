@@ -1,5 +1,6 @@
 info {
-	"name": "view-editor"
+	"name": "view-editor",
+	"type": "component"
 }
 
 template {

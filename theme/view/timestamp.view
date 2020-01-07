@@ -1,5 +1,6 @@
 info {
-	"name": "timestamp"
+	"name": "timestamp",
+	"type": "component"
 }
 
 template {

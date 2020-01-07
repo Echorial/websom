@@ -1,0 +1,253 @@
+info {
+	"name": "root-style",
+	"type": "style"
+}
+
+style {
+	@important: ~"";
+
+	@color-movement: 10%;
+	
+	* {
+		box-sizing: content-box;
+	}
+
+	@primary: rgba(#186ccb, 100%);
+		@dark-mode-primary: @primary;
+	
+	@tertiary: rgba(#5456ff, 100%);
+		@dark-mode-tertiary: @tertiary;
+
+	@secondary: rgba(#dddddd, 100%);
+		@dark-mode-secondary: #2f2f2f;
+
+	@{important}:root {
+
+		
+
+		@contrast: rgba(white, 100%);
+
+		@set-contrast-dark: #262626;
+		@set-contrast-light: #e1e1e1;
+		
+		.define-color(light-mode-primary, @primary);
+		.define-color(light-mode-secondary, @secondary);
+		.define-color(light-mode-tertiary, @tertiary);
+
+		.define-color(dark-mode-primary, @dark-mode-primary);
+		.define-color(dark-mode-secondary, @dark-mode-secondary);
+		.define-color(dark-mode-tertiary, @dark-mode-tertiary);
+
+		/*--secondary: @secondary;
+			--contrast-secondary: contrast(@secondary);
+			--secondary-light: lighten(@secondary, @color-movement);
+				--contrast-secondary-light: contrast($--secondary-light);
+			--secondary-dark: darken(@secondary, @color-movement);
+				--contrast-secondary-dark: contrast($--secondary-light);
+
+		--dark-mode-secondary: @dark-mode-secondary;
+			--dark-mode-contrast-secondary: contrast(@dark-mode-secondary);
+			--dark-mode-secondary-light: lighten(@dark-mode-secondary, @color-movement);
+				--dark-mode-contrast-secondary-light: contrast($--dark-mode-secondary-light);
+			--dark-mode-secondary-dark: darken(@dark-mode-secondary, @color-movement);
+				--dark-mode-contrast-secondary-dark: contrast($--dark-mode-secondary-light);
+		
+		--tertiary: @tertiary;
+			--contrast-tertiary: contrast(@tertiary);
+			--tertiary-light: lighten(@tertiary, @color-movement);
+				--contrast-tertiary-light: contrast($--tertiary-light);
+			--tertiary-dark: darken(@tertiary, @color-movement);
+				--contrast-tertiary-dark: contrast($--tertiary-light);
+		
+		--dark-mode-tertiary: @dark-mode-tertiary;
+			--dark-mode-contrast-tertiary: contrast(@dark-mode-tertiary);
+			--dark-mode-tertiary-light: lighten(@dark-mode-tertiary, @color-movement);
+				--dark-mode-contrast-tertiary-light: contrast($--dark-mode-tertiary-light);
+			--dark-mode-tertiary-dark: darken(@dark-mode-tertiary, @color-movement);
+				--dark-mode-contrast-tertiary-dark: contrast($--dark-mode-tertiary-light);*/
+
+		/*--color: var(--primary);
+		--color-light: var(--primary-light);
+		--color-dark: var(--primary-dark);
+
+		--contrast: var(--contrast-primary);
+		--contrast-light: var(--contrast-primary-light);
+		--contrast-dark: var(--contrast-primary-dark);*/
+
+		--transition: 0.333333s;
+		--transition-color: var(--transition);
+		--transition-movement: var(--transition);
+
+		--transition-easing: ease-in-out;
+
+		--light-background: #fdfdfd;
+			--light-background-contrast: #1a1a1a;
+			--light-background-overlay: #f5f5f5;
+			--light-background-tint: #eeeeee;
+		
+		--dark-background: #1a1a1a;
+			--dark-background-contrast: #fdfdfd;
+			--dark-background-overlay: #232323;
+			--dark-background-tint: #2b2b2b;
+
+		--background: var(--light-background);
+		--background-contrast: var(--light-background-contrast);
+		--background-overlay: var(--light-background-overlay);
+		--background-tint: var(--light-background-tint);
+
+		--base-size: 12px;
+
+		.define-color(light-mode-success, #62d662);
+		.define-color(light-mode-danger, red);
+		.define-color(light-mode-warning, orange);
+		.define-color(light-mode-info, dodgerblue);
+
+		.define-color(dark-mode-success, #62d662);
+		.define-color(dark-mode-danger, red);
+		.define-color(dark-mode-warning, orange);
+		.define-color(dark-mode-info, dodgerblue);
+	}
+
+	.define-color(@name, @value) {
+		--@{name}: @value;
+		--@{name}-dark: darken(@value, @color-movement);
+		--@{name}-light: lighten(@value, @color-movement);
+
+		@contrasted: contrast(@value, @set-contrast-dark, @set-contrast-light);
+		--@{name}-contrast: @contrasted;
+
+		--@{name}-contrast-light: lighten(@contrasted, @color-movement);
+		--@{name}-contrast-dark: darken(@contrasted, @color-movement);
+
+		.@{name} {
+			--color: var(~"--@{name}");
+			--color-light: var(~"--@{name}-light");
+			--color-dark: var(~"--@{name}-dark");
+			--contrast: var(~"--@{name}-contrast");
+			--contrast-light: var(~"--@{name}-contrast-light");
+			--contrast-dark: var(~"--@{name}-contrast-dark");
+		}
+	}
+
+	.set-vars(@name, @toName) {
+		--color: var(~"--@{toName}");
+		--color-light: var(~"--@{toName}-light");
+		--color-dark: var(~"--@{toName}-dark");
+		--contrast: var(~"--@{toName}-contrast");
+		--contrast-light: var(~"--@{toName}-contrast-light");
+		--contrast-dark: var(~"--@{toName}-contrast-dark");
+	}
+
+	.set-color(@name, @toName) {
+		--@{name}: var(~"--@{toName}");
+		--@{name}-light: var(~"--@{toName}-light");
+		--@{name}-dark: var(~"--@{toName}-dark");
+
+		--@{name}-contrast-light: var(~"--@{toName}-contrast-light");
+		--@{name}-contrast-dark: var(~"--@{toName}-contrast-dark");
+
+		.@{name} {
+			.set-vars(@name, @toName);
+		}
+	}
+
+	.large {
+		--base-size: 20px;
+	}
+
+	.medium {
+		--base-size: 16px;
+	}
+
+	.small {
+		--base-size: 12px;
+	}
+
+	/*.primary {
+		--color: var(--primary);
+		--color-light: var(--primary-light);
+		--color-dark: var(--primary-dark);
+
+		--contrast: var(--contrast-primary);
+		--contrast-light: var(--contrast-primary-light);
+		--contrast-dark: var(--contrast-primary-dark);
+	}
+
+	.secondary {
+		--color: var(--secondary);
+		--color-light: var(--secondary-light);
+		--color-dark: var(--secondary-dark);
+
+		--contrast: var(--contrast-secondary);
+		--contrast-light: var(--contrast-secondary-light);
+		--contrast-dark: var(--contrast-secondary-dark);
+	}
+
+	.tertiary {
+		--color: var(--tertiary);
+		--color-light: var(--tertiary-light);
+		--color-dark: var(--tertiary-dark);
+
+		--contrast: var(--contrast-tertiary);
+		--contrast-light: var(--contrast-tertiary-light);
+		--contrast-dark: var(--contrast-tertiary-dark);
+	}*/
+
+	body {
+		background-color: var(--background);
+		color: var(--background-contrast);
+	}
+
+	.dark {
+		--background: var(--dark-background);
+		--background-contrast: var(--dark-background-contrast);
+		--background-overlay: var(--dark-background-overlay);
+		--background-tint: var(--dark-background-tint);
+
+		.set-vars(primary, dark-mode-primary);
+
+		.set-color(primary, dark-mode-primary);
+		.set-color(secondary, dark-mode-secondary);
+		.set-color(tertiary, dark-mode-tertiary);
+		.set-color(success, dark-mode-success);
+		.set-color(danger, dark-mode-danger);
+		.set-color(warning, dark-mode-warning);
+		.set-color(info, dark-mode-info);
+
+		/*--secondary: var(--dark-mode-secondary);
+			--contrast-secondary: var(--dark-mode-contrast-secondary);
+			--secondary-light: var(--dark-mode-secondary-light);
+				--contrast-secondary-light: var(--dark-mode-contrast-secondary-light);
+			--secondary-dark: var(--dark-mode-secondary-dark);
+				--contrast-secondary-dark: var(--dark-mode-contrast-secondary-dark);*/
+	}
+
+	.light {
+		--background: var(--light-background);
+		--background-contrast: var(--light-background-contrast);
+		--background-overlay: var(--light-background-overlay);
+		--background-tint: var(--light-background-tint);
+
+		.set-vars(primary, light-mode-primary);
+
+		.set-color(primary, light-mode-primary);
+		.set-color(secondary, light-mode-secondary);
+		.set-color(tertiary, light-mode-tertiary);
+		.set-color(success, light-mode-success);
+		.set-color(danger, light-mode-danger);
+		.set-color(warning, light-mode-warning);
+		.set-color(info, light-mode-info);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		body {
+			.dark();
+		}
+	}
+
+	@media (prefers-color-scheme: light) {
+		body {
+			.light();
+		}
+	}
+}

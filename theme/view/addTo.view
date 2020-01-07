@@ -1,5 +1,6 @@
 info {
-	"name": "add-to"
+	"name": "add-to",
+	"type": "component"
 }
 
 template {

@@ -1,5 +1,6 @@
 info {
-	"name": "nav-view"
+	"name": "nav-view",
+	"type": "component"
 }
 
 template {

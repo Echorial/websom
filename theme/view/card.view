@@ -1,5 +1,6 @@
 info {
-	"name": "card"
+	"name": "card",
+	"type": "component"
 }
 
 template {

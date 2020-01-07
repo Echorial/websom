@@ -44,12 +44,12 @@ class MyModule extends Module {
 			.allow(this.commentCreate)
 				.to()
 					.create()
-						.write("text");
+						.write("text")
 			.allow(this.commentRead)
 				.to()
 					.read("text")
 					.read("created")
 					.read("updated")
-					.readBase("owner")
+					.readBase("owner");
 	}
 }

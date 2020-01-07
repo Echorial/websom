@@ -1,7 +1,7 @@
 `
 Base class for all Websom modules including standard interfaces.
-A module is like a plugin providing generic tools for users to install and use seamlessly with other modules.
-TODO: Add examples and mor docs
+A module is like a plugin, providing generic tools for users to install, and use seamlessly with other modules.
+TODO: Add examples and more docs
 `
 header class Websom.Module {
 	Websom.Server server = null;

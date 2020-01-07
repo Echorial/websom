@@ -1,5 +1,6 @@
 info {
-	"name": "chip"
+	"name": "chip",
+	"type": "component"
 }
 
 template {

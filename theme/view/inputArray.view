@@ -1,6 +1,6 @@
 info {
 	"name": "input-array",
-	"type": "control"
+	"type": "component"
 }
 
 template {

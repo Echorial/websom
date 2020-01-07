@@ -36,6 +36,7 @@ class Websom.Server {
 
 	Websom.Status status = new Websom.Status();
 
+	`This is the legacy constructor, use the construct(map config) overload instead.`
 	void @construct(Websom.Config config) {
 		native php {
 			$this->scriptPath = __FILE__;
@@ -48,6 +49,86 @@ class Websom.Server {
 		this.websomRoot = FileSystem.resolve(FileSystem.dirName(this.scriptPath) + "/../../");
 
 		this.config = config;
+		this.config.legacy = true;
+		this.startServices();
+
+		if (this.config.bucket)
+			if ("reference" in this.config.bucket)
+				this.bucketReference = this.config.bucket["reference"];
+	}
+
+	void @construct(map config) {
+		native php {
+			$this->scriptPath = __FILE__;
+		}
+
+		native javascript {
+			this.scriptPath = __filename;
+		}
+
+		this.websomRoot = FileSystem.resolve(FileSystem.dirName(this.scriptPath) + "/../../");
+
+		this.config = new Websom.Config();
+
+		native javascript {
+			const $path = require("path");
+
+			this.config.absolute = $path.resolve("./");
+			this.config.root = $path.resolve(config.assets);
+		}
+
+		native php {
+			$this->config->absolute = dirname(__FILE__);
+			$this->config->root = realpath($config->assets);
+		}
+
+		if ("dist" in config) {
+			this.config.javascriptOutput = FileSystem.resolve(config["dist"]);
+			this.config.cssOutput = FileSystem.resolve(config["dist"]);
+		}
+
+		if ("buckets" in config) {
+			this.config.devBuckets = FileSystem.resolve(config["buckets"]);
+		}
+
+		if ("dev" in config) {
+			this.config.dev = config["dev"] == true;
+		}
+
+		if ("config" in config) {
+			this.config.configOverrides = FileSystem.resolve(config["config"]);
+		}
+
+		if ("name" in config) {
+			this.config.name = config["name"];
+		}else{
+			this.config.name = "Unnamed dev server";
+		}
+
+		// Check if the config dirs exist, and create them if not.
+		if (this.config.dev) {
+			if (FileSystem.exists(this.config.devBuckets) == false) {
+				FileSystem.makeDir(this.config.devBuckets);
+			}
+
+			if (FileSystem.exists(this.config.root) == false) {
+				FileSystem.makeDir(this.config.root);
+			}
+
+			if (this.config.configOverrides.length > 0 and FileSystem.exists(this.config.configOverrides) == false) {
+				FileSystem.makeDir(this.config.configOverrides);
+			}
+
+			if (FileSystem.exists(this.config.javascriptOutput) == false) {
+				FileSystem.makeDir(this.config.javascriptOutput);
+			}
+		}
+
+
+		this.startServices();
+	}
+
+	void startServices() {
 		this.security = new Websom.Services.Security(this);
 		this.database = new Websom.Services.Database(this);
 		this.module = new Websom.Services.Module(this);
@@ -75,10 +156,6 @@ class Websom.Server {
 		this.status.inherit(this.email.start());
 		this.status.inherit(this.micro.start());
 		this.status.inherit(this.render.start());
-
-		if (this.config.bucket)
-			if ("reference" in this.config.bucket)
-				this.bucketReference = this.config.bucket["reference"];
 	}
 
 	Websom.Command command(string name) {
@@ -121,6 +198,26 @@ class Websom.Server {
 		var bucket = Websom.Bucket.make(this, name, type, raw);
 		this.buckets.push(bucket);
 		return bucket;
+	}
+
+	void start() {
+		this.start(8970);
+	}
+
+	void start(int port) {
+		if (this.config.dev) {
+			native javascript {
+				const nodeDevPlatform = require(this.websomRoot + "/platform/node/index.js");
+
+				nodeDevPlatform.startWebsomDevelopmentServer(this, port);
+			}
+
+			native php {
+				die("WEBSOM: Error, please use \$server->run(\$route) in php environments. Note: dev mode only works while running a node server.");
+			}
+		}else{
+			// TODO: new production model.
+		}
 	}
 
 	void listen(int port) {

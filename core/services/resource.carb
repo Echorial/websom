@@ -432,7 +432,7 @@ class Websom.Services.Resource inherits Websom.Service {
 						for (var int f in files) {
 							var file = files[f];
 							output.push(Websom.Resource.make(this.server, raw["type"], owner, realPath + "/" + file)); //TODO: Rewrite resource system
-							output[output.length].raw = raw;
+							output[output.length - 1].raw = raw;
 						}
 					}else
 						output.push(Websom.Resource.make(this.server, raw["type"], owner, realPath));

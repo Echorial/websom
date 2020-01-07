@@ -1,5 +1,6 @@
 info {
-	"name": "websom-console"
+	"name": "websom-console",
+	"type": "component"
 }
 
 template {

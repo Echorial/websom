@@ -1,5 +1,6 @@
 info {
-	"name": "designer-list-object"
+	"name": "designer-list-object",
+	"type": "component"
 }
 
 template {

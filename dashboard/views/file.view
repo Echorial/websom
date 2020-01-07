@@ -1,5 +1,6 @@
 info {
-	"name": "dashboard-studio-file"
+	"name": "dashboard-studio-file",
+	"type": "component"
 }
 
 template {

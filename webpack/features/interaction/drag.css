@@ -1,0 +1,6 @@
+.websom-draggable {
+  cursor: grab;
+}
+.websom-draggable.websom-dragging {
+  cursor: grabbing;
+}

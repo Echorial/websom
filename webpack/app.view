@@ -1,0 +1,40 @@
+info {
+	"name": "app",
+	"type": "component"
+}
+
+template {
+	<div id="app">
+		<h1>Websom <em>app.view</em></h1>
+		<router-view></router-view>
+	</div>
+}
+
+script {
+	export default {
+		mounted() { // I spent way too long making this.
+			console.log(
+`%c
+        ryu####r       :_             -,       
+        KB@@@##M       x#z_           ^#3:     
+        KQQB@@@Z       x###3!         *###3!   
+        KQQQQQ#9       x#####b!       *#####M~ 
+        KQQQQQQI       x######O       *#######-
+        KQQQQQQX       x######O       r#######-
+        KQQQQQQX       i######O       r#######-
+        x8QQQQQX       Y@#####O       r######O\`
+         -\\$QQQX       vB@@@##O       r####M~  
+           \`x$QgPPPPPPPDQ8yc#@#OdddddOQ##M!    
+             \`v$QQQQQQQQV-  \`x#@#######3:      
+               \`rdQQQ$Y.       vQ@###h"        
+                  <wv\`           rMX_          
+                                               
+%c        WEBSOM DEVELEPOMENT MODE    `
+			, "color: lime; background: linear-gradient(90deg, rgba(69, 120, 69, 1) 7%, rgba(69, 120, 94, .5) 7%, rgba(69, 120, 94, .5) 14%, rgba(69, 131, 94, 0) 14%);", "background: linear-gradient(90deg, rgba(69, 120, 94, 0.8) 7%, rgba(69, 120, 94, .4) 7%, rgba(69, 120, 94, .4) 100%, rgba(69, 131, 94, 0) 100%); color: white; font-size: 16px; line-height: 48px;");
+		}
+	}
+}
+
+style {
+	
+}

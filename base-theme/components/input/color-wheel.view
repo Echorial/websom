@@ -1,0 +1,265 @@
+info {
+	"name": "color-wheel",
+	"type": "component"
+}
+
+template {
+	<div class="color-wheel" :style="'width:' + size + 'px;  height: ' + size + 'px;'">
+		<canvas
+			class="color-wheel-canvas"
+			:width="size"
+			:height="size"
+			ref="canvas"
+		></canvas>
+		<svg class="color-wheel-svg" :width="size" :height="size">
+			<g v-for="handle in handles" :key="handle.label">
+				<line :x1="size / 2" :y1="size / 2" :x2="positions[handle.label].x" :y2="positions[handle.label].y" style="stroke: white; stroke-width: 2" />
+				<circle v-draggable="{update: dragHandle(handle)}" r="12" :class="{'color-wheel-basis': handle.label == 'basis'}" :style="'stroke: white; stroke-width: 4; fill: ' + colors[handle.label] + ';'" :cx="positions[handle.label].x" :cy="positions[handle.label].y" />
+			</g>
+		</svg>
+	</div>
+}
+
+script {
+
+import Color from "color";
+
+export default {
+	props: {
+		value: {
+			required: false,
+			default: () => { return {r: 0, g: 0, b: 0}; }
+		},
+		output: {
+			type: String,
+			default: "hex",
+			validator(v) {
+				return [
+					"hex",
+					"rgb",
+					"cmyk",
+					"object",
+					"hsl",
+					"red",
+					"blue",
+					"green",
+					"hue",
+					"saturation",
+					"luminosity",
+					"hsv"
+				].indexOf(v) !== -1;
+			}
+		},
+		size: {
+			type: Number,
+			default: 250
+		},
+		handles: {
+			type: Array,
+			default: []
+		}
+	},
+	data() {
+		return {
+			values: {},
+			relatives: {},
+			globalMovement: {hue: 0, saturation: 0}
+		};
+	},
+	methods: {
+		/**
+		* Copies the value prop into the colorValue data member
+		*/
+		updateColorFromValue() {
+			//this.colorValue = Color(this.value);
+		},
+		/**
+		* Renders a color wheel onto a canvas
+		*/
+		renderWheel(canvas, ctx, luminosity) {
+			let imageData = ctx.createImageData(this.size, this.size);
+
+			for (let i = 0; i < imageData.data.length; i += 4) {
+				let pixelIndex = i / 4;
+				let x = pixelIndex % this.size;
+				let y = Math.round(pixelIndex / this.size);
+
+				let color = this.calculateHSL(x, y, luminosity);
+
+				imageData.data[i] = color.red();
+				imageData.data[i + 1] = color.green();
+				imageData.data[i + 2] = color.blue();
+				imageData.data[i + 3] = 255;
+			}
+
+			ctx.putImageData(imageData, 0, 0);
+		},
+		/**
+		* Returns the hsl based on the x and y coordinates.
+		*/
+		calculateHSL(x, y, luminosity) {
+			let centerX = this.size / 2;
+			let centerY = this.size / 2;
+
+			let dx = x - centerX;
+			let dy = y - centerY;
+
+			let angle = Math.atan2(dy, dx);
+
+			let dist = Math.sqrt(dx * dx + dy * dy);
+
+			let saturation = dist / this.size;
+
+			let hue = (angle) / (Math.PI * 2);
+
+			return Color.hsl(hue * 360, 100, Math.max(50, (100 - (saturation * 100))));
+		},
+		/**
+		* Returns {x, y} based on the hsl passed in.
+		*/
+		calculateXY(hsl) {
+			let angle = this.degToRad(hsl.hue());
+			let dist = (hsl.saturationv() / 100) * this.size;
+
+			return {
+				x: this.size / 2 + Math.cos(angle) * dist / 2,
+				y: this.size / 2 + Math.sin(angle) * dist / 2
+			};
+		},
+		degToRad(deg) {
+			return deg * (Math.PI / 180);
+		},
+		getColorOfHandle(handle, withoutRelatives) {
+			if (handle.label == "basis") {
+				if (!this.values[handle.label])
+					return Color.hsl(handle.value);
+				
+				return this.values[handle.label];
+			}else{
+				let driven = handle.value || Color();
+
+				if (handle.driver) {
+					let basis = this.handles.find((a) => a.label == "basis");
+					let basisColor = this.getColorOfHandle(basis);
+					
+					let hue = basisColor.hue();
+					let saturation = basisColor.saturationl();
+					let luminosity = basisColor.lightness();
+
+					if (!withoutRelatives) {
+						if (this.relatives[handle.label]) {
+							let relative = this.relatives[handle.label];
+
+							hue += relative.hue * (handle.relative ? handle.relative.hue : 1);
+							saturation += relative.saturation * (handle.relative ? handle.relative.saturation : 1);
+						}
+
+						hue += this.globalMovement.hue * (handle.global ? handle.global.hue : 0);
+						saturation += this.globalMovement.saturation * (handle.global ? handle.global.saturation : 0);	
+					}
+
+					driven = handle.driver({
+						hue,
+						saturation,
+						luminosity
+					});
+				}
+
+				let output = Color.hsl([driven.hue, driven.saturation, driven.luminosity]);
+				return output;
+			}
+		},
+		dragHandle(handle) {
+			return (drag) => {
+				let currentPosition = this.positions[handle.label];
+				let boundRect = this.$el.getBoundingClientRect();
+
+				let newPosition = {
+					x: drag.x - boundRect.x,
+					y: drag.y - boundRect.y
+				};
+
+				let newHSL = this.calculateHSL(newPosition.x, newPosition.y, 50);
+				
+				if (handle.label == "basis") {
+					this.$set(this.values, handle.label, newHSL);
+				}else if (handle.control) {
+					let baseHSL = this.getColorOfHandle(handle, true);
+
+					let hueDiff = newHSL.hue() - baseHSL.hue();
+					let scaledLightnessBase = (baseHSL.lightness() - 50) / 50;
+					let scaledLightnessNew = (newHSL.lightness() - 50) / 50;
+					let saturationDiff = (scaledLightnessBase - scaledLightnessNew) * 100;
+
+					this.globalMovement.hue = hueDiff * (handle.global ? handle.global.hue : 0);
+					this.globalMovement.saturation = saturationDiff;
+
+					this.$set(this.relatives, handle.label, {
+						hue: hueDiff,
+						saturation: saturationDiff
+					});
+				}
+			};
+		}
+	},
+	computed: {
+		colors() {
+			let colors = {};
+
+			for (let handle of this.handles) {
+				colors[handle.label] = this.getColorOfHandle(handle).string();
+			}
+
+			this.$emit("input", colors);
+
+			return colors;
+		},
+		positions() {
+			let positions = {};
+
+			for (let handle of this.handles) {
+				positions[handle.label] = this.calculateXY(this.getColorOfHandle(handle));
+			}
+
+			return positions;
+		}
+	},
+	mounted() {
+		let canvas = this.$refs.canvas;
+		let ctx = canvas.getContext("2d");
+
+		this.renderWheel(canvas, ctx, 0, 1, 0.5);
+	}
+}
+
+}
+
+style {
+	.color-wheel {
+		position: relative;
+		margin: auto;
+
+		user-select: none;
+
+		.color-wheel-canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+
+			border: none;
+			border-radius: 50%;
+		}
+
+		.color-wheel-svg {
+			position: absolute;
+			top: 0;
+			left: 0;
+
+			overflow: visible;
+		}
+
+		.color-wheel-basis {
+			stroke: #2b2b2b !important;
+		}
+	}
+}

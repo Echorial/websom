@@ -1,5 +1,6 @@
 info {
-	"name": "small-loader"
+	"name": "small-loader",
+	"type": "component"
 }
 
 template {

@@ -1,5 +1,6 @@
 info {
-	"name": "dashboard-notifications"
+	"name": "dashboard-notifications",
+	"type": "component"
 }
 
 template {

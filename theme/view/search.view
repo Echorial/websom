@@ -1,6 +1,6 @@
 info {
 	"name": "search",
-	"type": "control"
+	"type": "component"
 }
 
 template {

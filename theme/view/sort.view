@@ -1,5 +1,6 @@
 info {
-	"name": "sort"
+	"name": "sort",
+	"type": "component"
 }
 
 template {

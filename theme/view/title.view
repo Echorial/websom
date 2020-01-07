@@ -1,5 +1,6 @@
 info {
-	"name": "item-title"
+	"name": "item-title",
+	"type": "component"
 }
 
 template {

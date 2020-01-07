@@ -45,7 +45,10 @@ class Websom.Services.Module inherits Websom.Service {
 				this.buildModule(module.root, JSON.parse(require("fs").readFileSync(require("path").resolve(module.root, module.name) + ".json")));
 			}
 		}
-		this.server.resource.build(true);
+
+		if (this.server.config.legacy) {
+			this.server.resource.build(true);
+		}
 
 		return null;
 	}
@@ -98,8 +101,14 @@ class Websom.Services.Module inherits Websom.Service {
 							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + config["name"] + ".json")));
 							that.server.resource.build(true);
 						}else{
-							console.log("Saw change on " + file + ". Rebuilding resources");
-							that.server.resource.build(true);
+							if (that.server.config.legacy) {
+								console.log("Saw change on " + file + ". Rebuilding resources");
+								that.server.resource.build(true);
+							}
+
+							if (type == "rename")
+								if (this.server.devBuildWatcher)
+									this.server.devBuildWatcher(file);
 						}
 						if (!single) {
 							for (var i = that.watchers.length - 1; i >= 0; i--) {
@@ -202,8 +211,10 @@ class Websom.Services.Module inherits Websom.Service {
 		var dash = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../dashboard");
 		var core = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../coreModule");
 
-		this.load(dash, Websom.Json.parse(FileSystem.readSync(dash + "/dashboard.json", "utf8")), true);
-		this.load(core, Websom.Json.parse(FileSystem.readSync(core + "/coreModule.json", "utf8")), true);
+		if (this.server.config.legacy) {
+			this.load(dash, Websom.Json.parse(FileSystem.readSync(dash + "/dashboard.json", "utf8")), true);
+			this.load(core, Websom.Json.parse(FileSystem.readSync(core + "/coreModule.json", "utf8")), true);
+		}
 
 		for (var int i in this.modules)
 			if (this.modules[i].name == "dashboard")
@@ -217,10 +228,16 @@ class Websom.Services.Module inherits Websom.Service {
 			if (FileSystem.isDir(modDir)) {
 				var name = FileSystem.basename(modDir);
 				if (name != "." and name != "..") {
-					var configFile = modDir + "/" + name + ".json";
+					var configFile = "";
+
+					if (this.server.config.legacy) {
+						configFile = modDir + "/" + name + ".json";
+					}else{
+						configFile = modDir + "/module.json";
+					}
 
 					if (FileSystem.exists(configFile) == false)
-						return Websom.Status.singleError("Servics.Module", "Unable to find config for module " + name);
+						return Websom.Status.singleError("Services.Module", "Unable to find config for module " + name);
 
 					var map config = Websom.Json.parse(FileSystem.readSync(configFile, "utf8"));
 					var status = this.load(modDir, config, false);

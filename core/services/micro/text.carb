@@ -6,15 +6,17 @@ class Websom.Micro.Text inherits Websom.MicroService {
 	Websom.Status start() {
 		var that = this;
 
-		var textFile = this.server.config.root + "/text.json";
-		this.textFile = textFile;
-		if (this.server.config.dev) {
-			if (FileSystem.exists(textFile) == false) {
-				FileSystem.writeSync(textFile, "{}");
-			}
+		if (this.server.config.legacy) {
+			var textFile = this.server.config.root + "/text.json";
+			this.textFile = textFile;
+			if (this.server.config.dev) {
+				if (FileSystem.exists(textFile) == false) {
+					FileSystem.writeSync(textFile, "{}");
+				}
 
-			if (FileSystem.exists(this.server.config.resources + "/text.js") == false) {
-				FileSystem.writeSync(this.server.config.resources + "/text.js", "Websom.text = {\"*\": {}};");
+				if (FileSystem.exists(this.server.config.resources + "/text.js") == false) {
+					FileSystem.writeSync(this.server.config.resources + "/text.js", "Websom.text = {\"*\": {}};");
+				}
 			}
 		}
 

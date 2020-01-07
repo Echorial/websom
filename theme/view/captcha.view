@@ -1,5 +1,6 @@
 info {
-	"name": "captcha"
+	"name": "captcha",
+	"type": "component"
 }
 
 template {
