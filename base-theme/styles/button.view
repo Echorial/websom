@@ -42,9 +42,17 @@ style {
 			background: var(--color);
 			color: var(--contrast);
 			height: calc(var(--base-size) * 3);
-			padding: 0px calc(var(--base-size) * 2);
+			padding: var(--padding-v) var(--padding-h);
 
 			min-width: calc(var(--base-size) * 6);
+			
+			white-space: nowrap;
+
+			&.full {
+				width: 100%;
+				display: flex;
+				box-sizing: border-box;
+			}
 
 			&:hover {
 				background: var(--color-light);
@@ -54,6 +62,17 @@ style {
 			&:active {
 				background: var(--color-dark);
 				color: var(--contrast-dark);
+			}
+
+			& > .start {
+				justify-self: flex-start;
+				margin-left: calc(var(--padding-h) * -0.5);
+			}
+
+			& > .end {
+				justify-self: flex-end;
+				margin-left: auto;
+				margin-right: calc(var(--padding-h) * -0.5);
 			}
 		}
 	}
