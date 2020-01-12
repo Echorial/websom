@@ -5,8 +5,8 @@ info {
 
 template {
 	<div id="app">
-		<h1>Websom <em>app.view</em></h1>
-		<router-view></router-view>
+    <div class="websom-portal"><portal-target :multiple="true" name="app-root" /></div>
+		<router-view :class="classes"></router-view>
 	</div>
 }
 
@@ -31,6 +31,20 @@ script {
                                                
 %c        WEBSOM DEVELEPOMENT MODE    `
 			, "color: lime; background: linear-gradient(90deg, rgba(69, 120, 69, 1) 7%, rgba(69, 120, 94, .5) 7%, rgba(69, 120, 94, .5) 14%, rgba(69, 131, 94, 0) 14%);", "background: linear-gradient(90deg, rgba(69, 120, 94, 0.8) 7%, rgba(69, 120, 94, .4) 7%, rgba(69, 120, 94, .4) 100%, rgba(69, 131, 94, 0) 100%); color: white; font-size: 16px; line-height: 48px;");
+		},
+		computed: {
+			classes() {
+				let names = [];
+				let splits = this.$route.path.split("/");
+				names.push("exact-page" + splits.join("-"));
+
+				for (let i = 1; i < splits.length + 1; i++) {
+					console.log(splits.slice(0, i));
+					names.push("page" + splits.slice(0, i).join("-"));
+				}
+
+				return names.join(" ");
+			}
 		}
 	}
 }
