@@ -145,6 +145,11 @@ module.exports = (websomServer) => {
 		plugins: [
 			new VueLoaderPlugin()
 		],
-		context: path.resolve(__dirname)
+		context: path.resolve(__dirname),
+		resolve: {
+			modules: [
+				path.resolve(__dirname, "../node_modules")
+			]
+		}
 	};
 };
