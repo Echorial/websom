@@ -233,17 +233,31 @@ ${blocks.script ? blocks.script.block : "export default {}"}
 			defaults[key] = configOptions.options[key].default || "";
 	}
 
+	const view = {
+		info: {${blocks.info.block}},
+		package: ${JSON.stringify(incomingQuery.package) || "\"unknown\""},
+		vue: vvv,
+		config: configOptions,
+		defaultConfigOptions: defaults
+	};
+
 	vvv.props.config = {
 		type: Object,
 		required: false,
-		default: function () { return defaults; }
+		default: () => { return {}; }
 	};
 
-	export default {
-		info: {${blocks.info.block}},
-		package: ${JSON.stringify(incomingQuery.package) || "\"unknown\""},
-		vue: vvv
-	};`;
+	vvv.props.websomView = {
+		type: Object,
+		required: false,
+		default() {
+			return view;
+		}
+	};
+
+	vvv.$view = view;
+
+	export default view;`;
 
 	let stylesCode = "";
 

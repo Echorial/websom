@@ -10,7 +10,7 @@ template {
 		</select>
 		<button @click="toggle" class="full" :style="{'min-width': minWidth + 'px'}">
 			<span class="start">{{text}}</span>
-			<icon :icon="config.dropIcon" pack="font-awesome" class="end" />
+			<icon :icon="$config.dropIcon" pack="font-awesome" class="end" />
 		</button>
 
 		<portal to="app-root">
@@ -182,7 +182,7 @@ script {
 					}
 					
 					if (selected.length > 0)
-						return selected.join(this.config.multipleSeperator);
+						return selected.join(this.$config.multipleSeperator);
 
 					return this.placeholder;
 				}else{

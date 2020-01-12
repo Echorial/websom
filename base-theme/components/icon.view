@@ -57,14 +57,14 @@ export default {
 	},
 	methods: {
 		recomputeIcon() {
-			let pack = this.config.fallbackIconPack;
+			let pack = this.$config.fallbackIconPack;
 
 			if (this.pack)
 				pack = this.pack;
 
 			let iconName = this.icon;
 
-			let style = this.config.fallbackIconStyle;
+			let style = this.$config.fallbackIconStyle;
 
 			if (this.packStyle)
 				style = this.packStyle;
