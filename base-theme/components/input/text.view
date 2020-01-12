@@ -1,0 +1,188 @@
+info {
+	"name": "input-text",
+	"type": "component"
+}
+
+template {
+	<div class="input-text" :style="'--line-count: ' + lines" :class="{['text-' + type]: true, focus: focus, placeholder: myValue.length == 0, icon, 'icon-left': side != 'right', 'icon-right': side == 'right'}">
+		<div class="input-text-wrap">
+			<div class="input-text-before"></div>
+			<label class="input-text-placeholder">{{placeholder}}</label>
+			<icon v-if="icon && side != 'right'" :icon="icon" class="input-text-icon start" />
+			<input v-if="type != 'area'" type="text" class="input-text-input" @input="input" v-model="myValue" :type="type"></input>
+			<textarea v-else class="input-text-input" @input="input" v-model="myValue"></textarea>
+			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
+			<div class="input-text-after"></div>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: [Number, String],
+				default: ""
+			},
+			placeholder: {
+				type: String,
+				default: "Input your text"
+			},
+			icon: {
+				type: String,
+				default: ""
+			},
+			side: {
+				type: String,
+				default: "left"
+			},
+			type: {
+				type: String,
+				default: "text"
+			}
+		},
+		data() {
+			return {
+				focus: false,
+				myValue: this.value || ""
+			};
+		},
+		methods: {
+			input() {
+				if (this.type == "number")
+					this.$emit("input", parseFloat(this.myValue));
+				else
+					this.$emit("input", this.myValue);
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		},
+		computed: {
+			lines() {
+				return this.myValue.split("\n").length;
+			}
+		}
+	}
+}
+
+style {
+	.input-text {
+		display: flex;
+
+		height: var(--base-height);
+
+		position: relative;
+
+		&.placeholder {
+			.input-text-placeholder {
+				opacity: 1;
+			}
+		}
+
+		&.icon .input-text-icon {
+			position: absolute;
+			width: calc(var(--base-size) * 3);
+			height: var(--base-height);
+			background: var(--mute-light);
+			top: 0px;
+
+			padding: 0px;
+		}
+
+		&.icon.icon-left .input-text-icon {
+			left: 0px;
+		}
+
+		&.icon.icon-right .input-text-icon {
+			right: 0px;
+			left: unset;
+		}
+
+		&.icon.icon-left .input-text-placeholder {
+			left: calc(var(--base-size) * 4);
+		}
+
+		.input-text-placeholder {
+			transition: .3s;
+			opacity: 0;
+
+			position: absolute;
+			top: 0px;
+			left: var(--base-size);
+			line-height: var(--base-height);
+
+			white-space: nowrap;
+
+			color: var(--mute-contrast-blend);
+		}
+
+		&.icon.icon-left {
+			.input-text-wrap {
+				.input-text-input {
+					padding-left: calc(var(--base-size) * 4);
+				}
+			}
+		}
+
+		&.icon.icon-right {
+			.input-text-wrap {
+				.input-text-input {
+					padding-right: calc(var(--base-size) * 3);
+				}
+			}
+		}
+
+		&.text-area {
+			min-height: calc(var(--base-height) * 3);
+			height: calc(var(--line-count) * var(--base-height));
+			transition: height .3s;
+
+			.input-text-input {
+				min-height: 100%;
+				max-height: 100%;
+
+				min-width: 100%;
+				max-width: 100%;
+
+				overflow: hidden;
+			}
+		}
+
+		.input-text-wrap {
+			width: 100%;
+			height: 100%;
+			top: 0;
+			left: 0;
+			position: absolute;
+
+			.input-text-input {
+				box-sizing: border-box;
+
+				width: 100%;
+				height: 100%;
+
+				position: absolute;
+				left: 0px;
+				top: 0px;
+
+				border: none;
+				background: var(--mute);
+				color: var(--mute-contrast);
+				outline: none;
+
+				height: var(--base-height);
+				padding: var(--padding-small-v) var(--base-size);
+
+				line-height: var(--base-height);
+
+				&:focus {
+					background: var(--mute-light);
+					color: var(--mute-light-contrast);
+				}
+			}
+		}
+	}
+}
