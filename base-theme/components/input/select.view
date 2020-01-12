@@ -1,0 +1,285 @@
+info {
+	"name": "input-select",
+	"type": "component"
+}
+
+template {
+	<div class="input-select">
+		<select v-model="myValue">
+			<option v-for="option in options" :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :value="getValueOfOption(option)">{{option}}</option>
+		</select>
+		<button @click="toggle" class="full" :style="{'min-width': minWidth + 'px'}">
+			<span class="start">{{text}}</span>
+			<icon :icon="config.dropIcon" pack="font-awesome" class="end" />
+		</button>
+
+		<portal to="app-root">
+			<ul class="input-select-list" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': minWidth + 'px'}">
+				<template v-for="(option, i) in options">
+					<li :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :class="'input-select-option ' + (option === myValue ? 'selected' : '') + (typeof option == 'object' ? (option.class || '') : '')" :data-value="option" @click="select(i)">
+						<input-checkbox v-if="multiple" class="start" :value="myValue[getValueOfOption(option)]" text="" />
+						<slot :option="option">
+							<template v-if="typeof option == 'string'">
+								{{option}}
+							</template>
+							<template v-else>
+								<icon v-if="option.icon && typeof option.side === 'undefined'" :icon="option.icon" />
+								<icon v-if="option.icon && option.side == 'left'" :icon="option.icon" class="start" />
+								{{option.name || option.value || ""}}
+								<icon v-if="option.icon && option.side == 'right'" :icon="option.icon" class="end" />
+							</template>
+						</slot>
+					</li>
+				</template>
+			</ul>
+		</portal>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: [String, Object],
+				default: ""
+			},
+			placeholder: {
+				type: String,
+				default: "Choose an option"
+			},
+			options: {
+				type: Array,
+				default: []
+			},
+			multiple: {
+				type: Boolean,
+				default: false
+			}
+		},
+		data() {
+			let value = this.value || "";
+
+			if (this.multiple && !this.value) {
+				value = {};
+				for (let option of this.options) value[this.getValueOfOption(option)] = false;
+			}
+
+			return {
+				left: 0,
+				top: 0,
+				width: 0,
+				active: false,
+				myValue: value
+			};
+		},
+		methods: {
+			getValueOfOption(option) {
+				if (typeof option == "string") {
+					return option;
+				}else{
+					return (option.value || option.name || option.icon);
+				}
+			},
+			select(index) {
+				let option = this.options[index];
+
+				let value = this.getValueOfOption(option);
+
+				if (this.multiple) {
+					let currentValue = this.myValue[value];
+					this.myValue[value] = !this.myValue[value];
+				}else{
+					this.myValue = value;
+					this.$emit("input", this.myValue);
+					this.active = false;
+				}
+			},
+			toggle() {
+				if (this.active)
+					this.close();
+				else
+					this.open();
+			},
+			open() {
+				this.active = true;
+
+				this.startUpdating();
+			},
+			close() {
+				this.active = false;
+			},
+			startUpdating() {
+				let frame = () => { if (this.active) requestAnimationFrame(frame); this.updatePosition(); };
+
+				frame();
+			},
+			updatePosition() {
+				let rect = this.$el.getBoundingClientRect();
+
+				this.left = rect.left;
+				this.top = rect.top;
+
+				this.width = rect.width;
+
+				let listRect = this.$refs.list.getBoundingClientRect();
+
+				let styleMap = this.$refs.list.computedStyleMap();
+				let height = listRect.height
+					+ styleMap.get("margin-top").value
+					+ styleMap.get("margin-bottom").value
+					+ styleMap.get("padding-top").value
+					+ styleMap.get("padding-bottom").value;
+				
+				if (this.top + height > window.innerHeight) {
+					this.top -= height;
+				}
+			}
+		},
+		mounted() {
+			this.onGlobal("mouseup", (e) => {
+				let clickedOnParent = false;
+
+				let closestSelect = e.target.closest(".input-select");
+				if (this.$el == closestSelect)
+					clickedOnParent = true;
+
+				let closestList = e.target.closest(".input-select-list");
+				if (this.$refs.list == closestList)
+					clickedOnParent = true;
+
+				if (!clickedOnParent)
+					this.active = false;
+			});
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		},
+		computed: {
+			minWidth() {
+				this.options;
+				this.placeholder;
+
+				if (this.$el && this.$refs.list) {
+					let listRect = this.$refs.list.getBoundingClientRect();
+					let buttonRect = this.$el.getBoundingClientRect();
+
+					return Math.max(listRect.width, buttonRect.width);
+				}else{
+					return 100;
+				}
+			},
+			text() {
+				if (this.multiple) {
+					let selected = [];
+					
+					for (let option of this.options) {
+						let value = this.getValueOfOption(option);
+
+						if (this.myValue[value])
+							selected.push(value);
+					}
+					
+					if (selected.length > 0)
+						return selected.join(this.config.multipleSeperator);
+
+					return this.placeholder;
+				}else{
+					return this.myValue || this.placeholder;
+				}
+			}
+		}
+	}
+}
+
+style {
+	.input-select {
+		& > select {
+			display: none;
+		}
+
+		.input-checkbox {
+			pointer-events: none;
+		}
+	}
+
+	.input-select-list {
+		position: fixed;
+		
+		list-style: none;
+		margin: 0px;
+		padding: 0px;
+
+		display: flex;
+		opacity: 0;
+		pointer-events: none;
+
+		flex-direction: column;
+
+		margin-top: var(--base-height);
+
+		&.open {
+			opacity: 1;
+			pointer-events: all;
+		}
+
+		.input-select-option {
+			padding: var(--padding-v) var(--padding-h);
+
+			white-space: nowrap;
+			
+			background: var(--color-light);
+			color: var(--contrast-light);
+
+			height: var(--base-height);
+
+			cursor: var(--cursor-action);
+
+			display: flex;
+
+			align-items: center;
+
+			user-select: none;
+
+			&:hover {
+				background: var(--color);
+				color: var(--contrast);
+			}
+
+			&:active, &.selected {
+				background: var(--color-dark);
+				color: var(--contrast-dark);
+			}
+
+			& > .start {
+				justify-self: flex-start;
+				margin-left: calc(var(--padding-h) * -0.5);
+			}
+
+			& > .end {
+				justify-self: flex-end;
+				margin-left: auto;
+				margin-right: calc(var(--padding-h) * -0.5);
+			}
+		}
+	}
+}
+
+config {
+	"options": {
+		"multipleSeperator": {
+			"type": "string",
+			"name": "Multiple selection seperator",
+			"description": "The deliminator between selection items. (Note the space after the comma)",
+			"default": ", "
+		},
+		"dropIcon": {
+			"type": "string",
+			"name": "Dropdown icon",
+			"description": "The icon that is placed to the right of every select input",
+			"default": "chevron-down",
+			"helper": "icons"
+		}
+	}
+}
