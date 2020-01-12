@@ -19,7 +19,7 @@ style {
 		@dark-mode-tertiary: @tertiary;
 
 	@secondary: rgba(#dddddd, 100%);
-		@dark-mode-secondary: #2f2f2f;
+		@dark-mode-secondary: @secondary;
 
 	@{important}:root {
 
@@ -95,7 +95,20 @@ style {
 		--background-overlay: var(--light-background-overlay);
 		--background-tint: var(--light-background-tint);
 
+		.define-color(light-mode-mute, rgba(0, 0, 0, 0.1), @set-contrast-dark);
+		.define-color(dark-mode-mute, rgba(255, 255, 255, 0.1), @set-contrast-light);
+
 		--base-size: 12px;
+
+		--base-height: calc(var(--base-size) * 3);
+
+		--padding-h: calc(var(--base-size) * 2);
+		--padding-v: 0px;
+
+		--padding-small-h: calc(var(--base-size) * 1.5);
+		--padding-small-v: 0px;
+
+		--cursor-action: pointer;
 
 		.define-color(light-mode-success, #62d662);
 		.define-color(light-mode-danger, red);
@@ -109,12 +122,17 @@ style {
 	}
 
 	.define-color(@name, @value) {
+		.define-color(@name, @value, contrast(@value, @set-contrast-dark, @set-contrast-light));
+	}
+
+	.define-color(@name, @value, @contrast) {
 		--@{name}: @value;
 		--@{name}-dark: darken(@value, @color-movement);
 		--@{name}-light: lighten(@value, @color-movement);
 
-		@contrasted: contrast(@value, @set-contrast-dark, @set-contrast-light);
+		@contrasted: @contrast;
 		--@{name}-contrast: @contrasted;
+		--@{name}-contrast-blend: mix(@value, @contrasted);
 
 		--@{name}-contrast-light: lighten(@contrasted, @color-movement);
 		--@{name}-contrast-dark: darken(@contrasted, @color-movement);
@@ -140,6 +158,8 @@ style {
 
 	.set-color(@name, @toName) {
 		--@{name}: var(~"--@{toName}");
+		--@{name}-contrast: var(~"--@{toName}-contrast");
+		--@{name}-contrast-blend: var(~"--@{toName}-contrast-blend");
 		--@{name}-light: var(~"--@{toName}-light");
 		--@{name}-dark: var(~"--@{toName}-dark");
 
@@ -214,6 +234,8 @@ style {
 		.set-color(warning, dark-mode-warning);
 		.set-color(info, dark-mode-info);
 
+		.set-color(mute, dark-mode-mute);
+
 		/*--secondary: var(--dark-mode-secondary);
 			--contrast-secondary: var(--dark-mode-contrast-secondary);
 			--secondary-light: var(--dark-mode-secondary-light);
@@ -237,6 +259,8 @@ style {
 		.set-color(danger, light-mode-danger);
 		.set-color(warning, light-mode-warning);
 		.set-color(info, light-mode-info);
+
+		.set-color(mute, light-mode-mute);
 	}
 
 	@media (prefers-color-scheme: dark) {
