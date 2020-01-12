@@ -1,5 +1,9 @@
 import DragPlugin from "./features/interaction/drag";
 
+import websom from "./websom-client";
+
+import events from "./websom-client/events";
+
 const WebsomVue = {
 	install(Vue, options) {
 		Vue.mixin({
@@ -7,15 +11,11 @@ const WebsomVue = {
 				
 			},
 			created() {
-				this.websom = {
-					linkStyle(href) {
-						let link = document.createElement("link");
-						link.type = "text/css";
-						link.rel = "stylesheet";
-						link.href = href;
-						document.head.appendChild(link);
-					}
-				}
+				this.websom = websom;
+				this.onGlobal = events.bind(this);
+			},
+			unmount() {
+				events.unbind(this);
 			}
 		});
 
