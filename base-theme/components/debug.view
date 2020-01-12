@@ -6,6 +6,8 @@ info {
 
 template {
 	<div class="debug-rows">
+		<!-- COLOR -->
+
 		<div class="debug-group">
 			<div class="debug-title">
 				<h3>Color</h3>
@@ -230,6 +232,9 @@ template {
 				</div>
 			</div>
 		</div>
+
+		<!-- BUTTONS -->
+
 		<div class="debug-group">
 			<div class="debug-title">
 				<h3>Buttons</h3>
@@ -402,7 +407,7 @@ template {
 								<th>Status</th>
 								<th>plain</th>
 								<th>icon</th>
-								<th>just icon</th>
+								<th>icon only</th>
 							</thead>
 							<tbody>
 								<tr>
@@ -468,6 +473,250 @@ template {
 			</div>
 		</div>
 
+		<!-- INPUT SELECT -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Select</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Content</th>
+										<th>Simple</th>
+										<th>Icon</th>
+										<th>Multiple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												primary
+											</td>
+											<td>
+												<input-select :options="['a', 'b', 'c']">
+												</input-select>
+											</td>
+											<td>
+												<input-select :options="[{value: 'side: left', icon: 'user', side: 'left'}, {value: 'side: right', icon: 'user', side: 'right'}, {value: 'side: undefined', icon: 'user'}]">
+												</input-select>
+											</td>
+											<td>
+												<input-select :options="[{value: 'Item 1', icon: 'user', side: 'right'}, {value: 'Item 2', icon: 'user', side: 'right'}, {value: 'Item 3', side: 'right', icon: 'user'}]" :multiple="true">
+												</input-select>
+											</td>
+										</tr>
+										<tr>
+											<td>secondary</td>
+											<td>
+												<input-select class="secondary" :options="['a', 'b', 'c']">
+												</input-select>
+											</td>
+											<td>
+												<input-select class="secondary" :options="[{value: 'side: left', icon: 'user', side: 'left'}, {value: 'side: right', icon: 'user', side: 'right'}, {value: 'side: undefined', icon: 'user'}]">
+												</input-select>
+											</td>
+											<td>
+												<input-select class="secondary" :options="[{value: 'Item 1', icon: 'user', side: 'right'}, {value: 'Item 2', icon: 'user', side: 'right'}, {value: 'Item 3', side: 'right', icon: 'user'}]" :multiple="true">
+												</input-select>
+											</td>
+										</tr>
+										<tr>
+											<td>tertiary</td>
+											<td>
+												<input-select class="tertiary" :options="['a', 'b', 'c']">
+												</input-select>
+											</td>
+											<td>
+												<input-select class="tertiary" :options="[{value: 'side: left', icon: 'user', side: 'left'}, {value: 'side: right', icon: 'user', side: 'right'}, {value: 'side: undefined', icon: 'user'}]">
+												</input-select>
+											</td>
+											<td>
+												<input-select class="tertiary" :options="[{value: 'Item 1', icon: 'user', side: 'right'}, {value: 'Item 2', icon: 'user', side: 'right'}, {value: 'Item 3', side: 'right', icon: 'user'}]" :multiple="true">
+												</input-select>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Appearance</th>
+										<th>Status</th>
+										<th>Mute</th>
+										<th>Custom Icon</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												
+											</td>
+											<td>
+												<input-select :options="[{class: 'success', value: 'Success', icon: 'success', side: 'right'}, {class: 'info', value: 'Info', icon: 'info', side: 'right'}, {class: 'warning', value: 'Warning', icon: 'warning', side: 'right'}, {class: 'danger', value: 'Danger', icon: 'danger', side: 'right'}]">
+												</input-select>
+											</td>
+											<td>
+												<input-select class="mute" :options="['Item 1', 'Item 2', 'Item 3']">
+												</input-select>
+											</td>
+											<td>
+												<input-select :config="{dropIcon: 'book'}" :options="[{value: 'Item 1', icon: 'user', side: 'right'}, {value: 'Item 2', icon: 'user', side: 'right'}, {value: 'Item 3', side: 'right', icon: 'user'}]" :multiple="true">
+												</input-select>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- INPUT CHECKBOX -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Checkbox</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-8">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Content</th>
+										<th>Simple</th>
+										<th>Icon</th>
+										<th>Image</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												primary
+											</td>
+											<td>
+												<input-checkbox />
+											</td>
+											<td>
+												
+											</td>
+										</tr>
+										<tr>
+											<td>secondary</td>
+											<td>
+												<input-checkbox :value="true" />
+											</td>
+											<td>
+												
+											</td>
+										</tr>
+										<tr>
+											<td>tertiary</td>
+											<td>
+												
+											</td>
+											<td>
+												
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- INPUT TEXT -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Text</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-8">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Type</th>
+										<th>Simple</th>
+										<th>Icon Left</th>
+										<th>Icon Right</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												text
+											</td>
+											<td>
+												<input-text />
+											</td>
+											<td>
+												<input-text icon="user"/>
+											</td>
+											<td>
+												<input-text icon="user" side="right"/>
+											</td>
+										</tr>
+										<tr>
+											<td>password</td>
+											<td>
+												<input-text type="password" />
+											</td>
+											<td>
+												<input-text type="password" icon="lock"/>
+											</td>
+											<td>
+												<input-text type="password" icon="lock" side="right"/>
+											</td>
+										</tr>
+										<tr>
+											<td>number</td>
+											<td>
+												<input-text type="number" />
+											</td>
+											<td>
+												<input-text type="number" icon="phone"/>
+											</td>
+											<td>
+												<input-text type="number" icon="phone" side="right"/>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-8">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Area</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												<input-text type="area" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
 
 		<div>
@@ -589,7 +838,7 @@ export default {
 							genHandle("side-l-2", -fivePointBaseDistance * 2),
 							{
 								label: "basis",
-								value: [0, 95, 50]
+								value: [210, 95, 50]
 							}
 						]
 					}
@@ -706,6 +955,12 @@ style {
 		}
 	}
 
+	.debug-group > .debug-row {
+		margin: -5px;
+
+		margin-bottom: 5px;
+	}
+
 	.debug-rows {
 		padding: 50px;
 
@@ -726,8 +981,7 @@ style {
 		}
 
 		.debug-panel {
-			margin-right: 10px;
-			margin-bottom: 10px;
+			margin: 5px;
 			background: var(--background-overlay);
 
 			height: 100%;
@@ -815,52 +1069,52 @@ style {
 
 			.debug-1 {
 				flex: 1 / 12;
-				min-width: calc((1 / 12) * 100%);
+				//min-width: calc((1 / 12) * 100%);
 			}
 
 			.debug-2 {
 				flex: 2 / 12;
-				min-width: calc((2 / 12) * 100%);
+				//min-width: calc((2 / 12) * 100%);
 			}
 
 			.debug-3 {
 				flex: 3 / 12;
-				min-width: calc((3 / 12) * 100%);
+				//min-width: calc((3 / 12) * 100%);
 			}
 
 			.debug-3-5 {
 				flex: 3.5 / 12;
-				min-width: calc((3.5 / 12) * 100%);
+				//min-width: calc((3.5 / 12) * 100%);
 			}
 
 			.debug-4 {
 				flex: 4 / 12;
-				min-width: calc((4 / 12) * 100%);
+				//min-width: calc((4 / 12) * 100%);
 			}
 
 			.debug-4-5 {
 				flex: 4.5 / 12;
-				min-width: calc((4.5 / 12) * 100%);
+				//min-width: calc((4.5 / 12) * 100%);
 			}
 
 			.debug-5 {
 				flex: 5 / 12;
-				min-width: calc((5 / 12) * 100%);
+				//min-width: calc((5 / 12) * 100%);
 			}
 
 			.debug-6 {
 				flex: 6 / 12;
-				min-width: calc((6 / 12) * 100%);
+				//min-width: calc((6 / 12) * 100%);
 			}
 
 			.debug-7 {
 				flex: 7 / 12;
-				min-width: calc((7 / 12) * 100%);
+				//min-width: calc((7 / 12) * 100%);
 			}
 
 			.debug-8 {
 				flex: 8 / 12;
-				min-width: calc((8 / 12) * 100%);
+				//min-width: calc((8 / 12) * 100%);
 			}
 		}
 	}
