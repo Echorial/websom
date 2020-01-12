@@ -1,0 +1,120 @@
+info {
+	"name": "input-checkbox",
+	"type": "component"
+}
+
+template {
+	<div class="input-checkbox" :class="{checked: myValue}">
+		<input type="checkbox" v-model="myValue"></input>
+		<div class="input-checkbox-wrap" @click="toggle">
+			<div class="input-checkbox-before">
+			</div>
+			<div class="input-checkbox-main">
+				<icon class="input-checkbox-icon" icon="check" />
+			</div>
+			<div class="input-checkbox-after">
+			</div>
+		</div>
+		<div class="input-checkbox-text" @click="toggle">
+			{{text}}
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: Boolean,
+				default: false
+			},
+			text: {
+				type: String,
+				default: "Checkbox"
+			}
+		},
+		data() {
+			return {
+				myValue: this.value || ""
+			};
+		},
+		methods: {
+			toggle() {
+				if (this.myValue)
+					this.off();
+				else
+					this.on();
+			},
+			on() {
+				this.myValue = true;
+			},
+			off() {
+				this.myValue = false;
+			}
+		},
+		mounted() {
+			this.onGlobal("mouseup", (e) => {
+				this.active = false;
+				
+			});
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		}
+	}
+}
+
+style {
+	.input-checkbox {
+		display: flex;
+
+		justify-content: center;
+		align-items: center;
+
+		& > input {
+			display: none;
+		}
+
+		&.checked {
+			.input-checkbox-wrap {
+				background: var(--color);
+				color: var(--contrast);
+			}
+			.input-checkbox-icon {
+				opacity: 1;
+			}
+		}
+	}
+
+	.input-checkbox-text {
+		margin-left: var(--base-size);
+
+		user-select: none;
+		cursor: normal;
+	}
+
+	.input-checkbox-wrap {
+		width: calc(var(--base-size) * 2);
+		height: calc(var(--base-size) * 2);
+		background: var(--mute);
+		color: var(--mute-contrast);
+
+		cursor: var(--cursor-action);
+	}
+
+	.input-checkbox-main {
+
+		width: inherit;
+		height: inherit;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		.input-checkbox-icon {
+			opacity: 0;
+		}
+	}
+}
