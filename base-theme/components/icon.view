@@ -75,7 +75,8 @@ export default {
 						close: "times",
 						warning: "exclamation",
 						help: "question",
-						danger: "fire"
+						danger: "fire",
+						success: "check"
 					},
 					styles: {
 						free: {
@@ -97,7 +98,8 @@ export default {
 						trophy: "emoji_events",
 						user: "person",
 						question: "help",
-						danger: "not_interested"
+						danger: "not_interested",
+						success: "check"
 					},
 					styles: {
 						all: {
@@ -113,7 +115,8 @@ export default {
 						warning: "error-warning",
 						info: "information",
 						help: "question",
-						danger: "fire"
+						danger: "fire",
+						success: "check"
 					},
 					styles: {
 						all: {
@@ -229,6 +232,14 @@ style {
 		&.left {
 			margin-right: calc(var(--icon-size) / 4);
 			//vertical-align: text-top;
+		}
+
+		&.end {
+			padding-left: calc(var(--padding-h) / 2);
+		}
+
+		&.start {
+			padding-right: calc(var(--padding-h) / 2);
 		}
 	}
 }
