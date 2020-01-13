@@ -76,7 +76,11 @@ export default {
 						warning: "exclamation",
 						help: "question",
 						danger: "fire",
-						success: "check"
+						success: "check",
+						down: "chevron-down",
+						up: "chevron-up",
+						right: "chevron-right",
+						left: "chevron-left"
 					},
 					styles: {
 						free: {
@@ -99,7 +103,11 @@ export default {
 						user: "person",
 						question: "help",
 						danger: "not_interested",
-						success: "check"
+						success: "check",
+						down: "chevron_down",
+						up: "chevron_up",
+						right: "chevron_right",
+						left: "chevron_left",
 					},
 					styles: {
 						all: {
@@ -116,7 +124,11 @@ export default {
 						info: "information",
 						help: "question",
 						danger: "fire",
-						success: "check"
+						success: "check",
+						down: "arrow-down-s",
+						right: "arrow-right-s",
+						left: "arrow-left-s",
+						up: "arrow-up-s"
 					},
 					styles: {
 						all: {
