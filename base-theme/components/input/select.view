@@ -278,7 +278,7 @@ config {
 			"type": "string",
 			"name": "Dropdown icon",
 			"description": "The icon that is placed to the right of every select input",
-			"default": "chevron-down",
+			"default": "down",
 			"helper": "icons"
 		}
 	}
