@@ -1,5 +1,33 @@
 import "./drag.less";
 
+const limits = {
+	parent(selector, e) {
+		let el = e.el.closest(selector);
+		let boundingRect = el.getBoundingClientRect();
+		let x = Math.max(boundingRect.left + e.start.ox, Math.min(boundingRect.right - (e.start.rect.width -  e.start.ox), e.x));
+		let y = Math.max(boundingRect.top + e.start.oy, Math.min(boundingRect.bottom - e.start.oy, e.y));
+
+		return {
+			x,
+			y,
+			percentageX: (x - boundingRect.x)/boundingRect.width,
+			percentageY: (y - boundingRect.y)/boundingRect.height
+		};
+	}
+};
+
+const movers = {
+	"relative-absolute"(e) {
+		let { left, top } = e.start.style;
+		
+		left = parseFloat(left);
+		top = parseFloat(top);
+
+		e.el.style.top = top + e.dy + 'px';
+		e.el.style.left = left + e.dx + 'px';
+	}
+};
+
 export default (Vue, options) => {
 	if (typeof window === 'undefined')
 		return;
@@ -9,57 +37,152 @@ export default (Vue, options) => {
 
 	let listeners = {};
 
-	document.addEventListener("mouseup", (e) => {
-		for (let key in listeners)
-			if (listeners.hasOwnProperty(key))
-				listeners[key]("mouseup", e);
-	});
+	let addDocumentListener = (event) => {
+		document.addEventListener(event, (e) => {
+			for (let key in listeners)
+				if (listeners.hasOwnProperty(key))
+					listeners[key](event, e);
+		});
+	};
 
-	document.addEventListener("mousemove", (e) => {
-		for (let key in listeners)
-			if (listeners.hasOwnProperty(key))
-				listeners[key]("mousemove", e);
-	});
+	addDocumentListener("mousemove");
+	addDocumentListener("touchmove");
+	addDocumentListener("mouseup");
+	addDocumentListener("touchend");
+	addDocumentListener("touchcancel");
 
 	Vue.directive("draggable", {
 		inserted(el, binding) {
 			let config = binding.value;
-			console.log(config);
+
+			if (!config.axis)
+				config.axis = {
+					x: 1,
+					y: 1
+				};
+			
 			let myUid = getUid();
 
 			el.classList.add("websom-draggable");
 
 			let state = {
 				dragging: false,
+				moved: false,
 				start: {
 					x: 0,
 					y: 0,
+					ox: 0,
+					oy: 0,
+					rect: {},
+					style: {
+						top: 0,
+						left: 0,
+						right: 0,
+						bottom: 0
+					}
 				}
 			};
 
-			el.addEventListener("mousedown", (e) => {
+			let downListener = (e) => {
+				e.preventDefault();
 				el.classList.add("websom-dragging");
 				state.dragging = true;
 
 				state.start.x = e.clientX;
 				state.start.y = e.clientY;
-			});
+				if (e.type == "touchstart") {
+					state.start.x = e.touches[0].clientX;
+					state.start.y = e.touches[0].clientY;
+				}
+				state.start.rect = el.getBoundingClientRect();
+
+				state.start.ox = state.start.x - state.start.rect.x;
+				state.start.oy = state.start.y - state.start.rect.y;
+
+				let computedStyle = getComputedStyle(el);
+				state.start.style.top = computedStyle.top;
+				state.start.style.bottom = computedStyle.bottom;
+				state.start.style.left = computedStyle.left;
+				state.start.style.right = computedStyle.right;
+
+				state.moved = false;
+
+				if (config.start)
+					config.start({
+						event: e,
+						el,
+						...state,
+						dx: 0,
+						dy: 0,
+						x: e.clientX,
+						y: e.clientY
+					});
+			};
+
+			el.addEventListener("mousedown", downListener);
+			el.addEventListener("touchstart", downListener);
 
 			listeners[myUid] = (type, e) => {
-				if (type == "mouseup") {
+				if (type == "mouseup" || type == "touchend" || type == "touchcancel") {
+					e.preventDefault();
+
 					el.classList.remove("websom-dragging");
+					
+					if (config.end && state.dragging) {
+						let { clientX, clientY } = e;
+
+						config.end({
+							event: e,
+							el,
+							...state,
+							dx: (clientX - state.start.x) * config.axis.x,
+							dy: (clientY - state.start.y) * config.axis.y,
+							x: clientX,
+							y: clientY
+						});
+					}
+					
 					state.dragging = false;
-				}else if (type == "mousemove") {
-					if (state.dragging)
-						config.update(
-							{
-								...state,
-								dx: e.clientX - state.start.x,
-								dy: e.clientY - state.start.y,
-								x: e.clientX,
-								y: e.clientY
-							}
-						);
+				}else if (type == "mousemove" || type == "touchmove") {
+
+					state.moved = true;
+
+					let { clientX, clientY } = e;
+					if (e.type == "touchmove") {
+						clientX = e.touches[0].clientX;
+						clientY = e.touches[0].clientY;
+					}else e.preventDefault();
+					
+					let percentageX = 0;
+					let percentageY = 0;
+
+					if (typeof config.limit === "string") {
+						let result = limits.parent(config.limit, {el, event: e, x: clientX, y: clientY, ...state});
+						clientX = result.x;
+						clientY = result.y;
+						percentageX = result.percentageX;
+						percentageY = result.percentageY;
+					}
+
+					let eventData = {
+						...state,
+						el,
+						dx: (clientX - state.start.x) * config.axis.x,
+						dy: (clientY - state.start.y) * config.axis.y,
+						x: clientX,
+						y: clientY,
+						percentageX,
+						percentageY
+					};
+
+					if (state.dragging && config.move)
+						config.move(eventData);
+
+					if (state.dragging && config.position)
+						if (movers[config.position])
+							movers[config.position](eventData);
+						else
+							throw new Error("Invalid position mover for v-draggable: " + config.position);
 				}
 			};
 

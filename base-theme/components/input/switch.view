@@ -1,0 +1,203 @@
+info {
+	"name": "input-switch",
+	"type": "component"
+}
+
+template {
+	<div class="input-switch" :class="switchClass">
+		<div class="input-switch-wrap">
+			<div class="input-switch-before">
+			</div>
+			<div class="input-switch-main">
+				<span class="input-switch-handle" v-draggable="draggable()"></span>
+			</div>
+			<div class="input-switch-after">
+			</div>
+		</div>
+		<div class="input-switch-text" @mousedown="mouse(true)" @mouseup="mouse(false)" @touchstart="mouse(true)" @touchend="mouse(false)">
+			{{text}}
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: Boolean,
+				default: false
+			},
+			text: {
+				type: String,
+				default: "Switch"
+			}
+		},
+		data() {
+			return {
+				myValue: this.value || "",
+				down: false,
+				downText: false
+			};
+		},
+		methods: {
+			toggle() {
+				if (this.myValue)
+					this.off();
+				else
+					this.on();
+			},
+			on() {
+				this.myValue = true;
+			},
+			off() {
+				this.myValue = false;
+			},
+			mouse(isDown) {
+				if (this.downText && !isDown)
+					this.toggle();
+				
+				this.down = isDown;
+				this.downText = isDown;
+			},
+			draggable() {
+				return {
+					axis: {
+						x: 1,
+						y: 0
+					},
+					limit: ".input-switch-wrap",
+					position: "relative-absolute",
+					move: (e) => {
+						if (e.percentageX > 0.5) {
+							this.myValue = true;
+						}else{
+							this.myValue = false;
+						}
+					},
+					end: (e) => {
+						e.el.removeAttribute("style");
+						this.down = false;
+						
+						if (!e.moved)
+							this.toggle();
+						
+					},
+					start: (e) => {
+						this.down = true;
+						return;
+					}
+				};
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		},
+		computed: {
+			switchClass() {
+				return this.myValue ? "switched-on" : "switched-off";
+			}
+		}
+	}
+}
+
+style {
+	.input-switch {
+		display: flex;
+		align-items: center;
+		
+		.input-switch-wrap {
+			position: relative;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+
+			height: calc(var(--base-size) * 2);
+			width: calc(var(--base-size) * 4);
+
+			background: var(--mute);
+			border-radius: 1000px;
+
+			transition: .3s;
+
+			.input-switch-main {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+
+				.input-switch-handle {
+					display: flex;
+					position: absolute;
+					transition: .3s;
+					
+					&.websom-dragging {
+						transition: background .3s;
+						width: calc(var(--base-size) * 2);
+					}
+
+					background: var(--mute);
+					border-radius: 1000px;
+					top: 0;
+					left: calc(50% - var(--base-size) * 1.0);
+					
+					width: calc(var(--base-size) * 2.0);
+					height: calc(var(--base-size) * 2);
+				}
+			}
+		}
+
+		&.switched-on {
+			.input-switch-wrap {
+				background: var(--color);
+
+				.input-switch-main {
+					.input-switch-handle {
+						left: calc(100% - var(--base-size) * 2);
+						background: var(--secondary);
+						width: calc(var(--base-size) * 2);
+					}
+				}
+			}
+		}
+
+		&.switched-off {
+			.input-switch-wrap {
+				background: var(--mute);
+
+				.input-switch-main {
+					.input-switch-handle {
+						left: 0;
+						width: calc(var(--base-size) * 2);
+					}
+				}
+			}
+		}
+
+		/*&:active.switched-off {
+			.input-switch-wrap {
+				background: var(--color);
+
+				.input-switch-main .input-switch-handle {
+					background: var(--secondary);
+				}
+			}
+		}
+
+		&:active.switched-on {
+			.input-switch-wrap {
+				background: var(--mute);
+			}
+		}*/
+
+		.input-switch-text {
+			margin-left: var(--base-size);
+
+			user-select: none;
+			cursor: normal;
+		}
+	}
+}

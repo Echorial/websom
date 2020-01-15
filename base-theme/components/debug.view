@@ -466,6 +466,20 @@ template {
 										<button class="danger"><icon left :pack="pack" icon="danger" /></button>
 									</td>
 								</tr>
+								<tr>
+									<td>
+										mute
+									</td>
+									<td>
+										<button class="mute">button</button>
+									</td>
+									<td>
+										<button class="mute"><icon left :pack="pack" icon="sound" /> button</button>
+									</td>
+									<td>
+										<button class="mute"><icon left :pack="pack" icon="sound" /></button>
+									</td>
+								</tr>
 							</tbody>
 						</table>
 					</div>
@@ -566,7 +580,7 @@ template {
 												</input-select>
 											</td>
 											<td>
-												<input-select :config="{dropIcon: 'book'}" :options="[{value: 'Item 1', icon: 'user', side: 'right'}, {value: 'Item 2', icon: 'user', side: 'right'}, {value: 'Item 3', side: 'right', icon: 'user'}]" :multiple="true">
+												<input-select :config="{dropIcon: 'right'}" :options="[{value: 'Item 1', icon: 'user', side: 'right'}, {value: 'Item 2', icon: 'user', side: 'right'}, {value: 'Item 3', side: 'right', icon: 'user'}]" :multiple="true">
 												</input-select>
 											</td>
 										</tr>
@@ -583,16 +597,16 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Checkbox</h3>
+				<h3>Checkbox & Switch</h3>
 			</div>
 			<div class="debug-row">
-				<div class="debug-column debug-8">
+				<div class="debug-column debug-12">
 					<div class="debug-row">
 						<div class="debug-column debug-6">
 							<div class="debug-panel">
 								<table>
 									<thead>
-										<th>Content</th>
+										<th>Checkbox</th>
 										<th>Simple</th>
 										<th>Icon</th>
 										<th>Image</th>
@@ -613,6 +627,49 @@ template {
 											<td>secondary</td>
 											<td>
 												<input-checkbox :value="true" />
+											</td>
+											<td>
+												
+											</td>
+										</tr>
+										<tr>
+											<td>tertiary</td>
+											<td>
+												
+											</td>
+											<td>
+												
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Switch</th>
+										<th>Simple</th>
+										<th>Icon</th>
+										<th>Image</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												primary
+											</td>
+											<td>
+												<input-switch />
+											</td>
+											<td>
+												
+											</td>
+										</tr>
+										<tr>
+											<td>secondary</td>
+											<td>
+												<input-switch :value="true" />
 											</td>
 											<td>
 												
@@ -798,7 +855,7 @@ import rootStylesheet from "raw-loader!../styles/root.view?extract-style=true";
 
 export default {
 	data() {
-		let fivePointBaseDistance = 15;
+		let fivePointBaseDistance = 5;
 
 		let genHandle = (label, amount) => {
 			return {

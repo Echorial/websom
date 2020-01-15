@@ -14,7 +14,7 @@ template {
 		<svg class="color-wheel-svg" :width="size" :height="size">
 			<g v-for="handle in handles" :key="handle.label">
 				<line :x1="size / 2" :y1="size / 2" :x2="positions[handle.label].x" :y2="positions[handle.label].y" style="stroke: white; stroke-width: 2" />
-				<circle v-draggable="{update: dragHandle(handle)}" r="12" :class="{'color-wheel-basis': handle.label == 'basis'}" :style="'stroke: white; stroke-width: 4; fill: ' + colors[handle.label] + ';'" :cx="positions[handle.label].x" :cy="positions[handle.label].y" />
+				<circle v-draggable="{move: dragHandle(handle)}" r="12" :class="{'color-wheel-basis': handle.label == 'basis'}" :style="'stroke: white; stroke-width: 4; fill: ' + colors[handle.label] + ';'" :cx="positions[handle.label].x" :cy="positions[handle.label].y" />
 			</g>
 		</svg>
 	</div>
