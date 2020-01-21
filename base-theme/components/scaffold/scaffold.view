@@ -1,0 +1,98 @@
+info {
+	"name": "scaffold",
+	"type": "component"
+}
+
+template {
+	<div :class="{scaffold: true, 'sticky-nav': $config.stickyNavigationBar, scrolled, scrollStart, scrollEnd, 'scroll-start': scrollStart, 'scroll-end': scrollEnd}" :style="'--scroll-distance: ' + scrollDistance + 'px;'">
+		<component :is="navigation" />
+
+		<div class="scaffold-main">
+			<slot class="scaffold-content" />
+
+			<component :is="footer" />
+		</div>
+	</div>	
+}
+
+script {
+	export default {
+		props: {
+			navigation: {
+				type: String,
+				default: "navbar"
+			},
+			footer: {
+				type: String,
+				default: "footbar"
+			}
+		},
+		data() {
+			return {
+				scrolled: false,
+				scrollDistance: 0,
+				scrollStart: true,
+				scrollEnd: false
+			};
+		},
+		methods: {
+			checkScroll() {
+				if (this.$el.scrollTop <= 0) {
+					this.scrollStart = true;
+				}else{
+					this.scrollStart = false;
+				}
+
+				if (this.$el.offsetHeight + this.$el.scrollTop >= this.$el.scrollHeight) {
+					this.scrollEnd = true;
+				}else{
+					this.scrollEnd = false;
+				}
+
+				this.scrollDistance = this.$el.scrollTop;
+			}
+		},
+		mounted() {
+			this.checkScroll();
+
+			this.$el.addEventListener("scroll", () => {
+				this.scrolled = true;
+				
+				this.checkScroll();
+			});
+		}
+	}
+}
+
+style {
+	.scaffold {
+		display: flex;
+
+		flex-direction: column;
+
+		height: 100%;
+
+		.scaffold-main {
+			flex: 1;
+		}
+
+		&.sticky-nav {
+			.navbar {
+				position: sticky;
+				top: 0;
+			}
+		}
+	}
+}
+
+config {
+	"options": {
+		"stickyNavigationBar": {
+			"type": "boolean",
+			"name": "Sitcky Navigation Bar",
+			"description": "Should the nav bar follow along while scrolling.",
+			"default": true,
+			"group": "nav"
+		}
+	}
+}

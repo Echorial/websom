@@ -10,6 +10,12 @@
 			"path": "./components/input"
 		},
 		{
+			"path": "./components/grid"
+		},
+		{
+			"path": "./components/scaffold"
+		},
+		{
 			"path": "./effects"
 		},
 		{

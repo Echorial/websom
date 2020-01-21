@@ -5,13 +5,41 @@ info {
 
 template {
 	<div id="app">
-    <div class="websom-portal"><portal-target :multiple="true" name="app-root" /></div>
-		<router-view :class="classes"></router-view>
+    	<div class="websom-portal"><portal-target :multiple="true" name="app-root" /></div>
+		<div class="websom-app-wrap">
+			<div class="websom-top-portal">
+				<portal-target :multiple="true" name="top" />
+			</div>
+			<div class="websom-view-wrap">
+				<div class="websom-left-portal">
+					<portal-target :multiple="true" name="left" />
+				</div>
+
+				<router-view @set-css-var="setCSSVar" @open-shade="openShade" @close-shade="closeShade" :class="classes" :style="vars"></router-view>
+
+				<div @click="clickShade" :class="{'websom-shade': true, 'websom-shaded': shade}"></div>
+
+				<div class="websom-right-portal">
+					<portal-target :multiple="true" name="right" />
+				</div>
+			</div>
+			<div class="websom-bottom-portal">
+				<portal-target :multiple="true" name="bottom" />
+			</div>
+		</div>
 	</div>
 }
 
 script {
 	export default {
+		data() {
+			return {
+				shade: false,
+				shadeListeners: [],
+				closing: false,
+				vars: {}
+			};
+		},
 		mounted() { // I spent way too long making this.
 			console.log(
 `%c
@@ -34,21 +62,49 @@ script {
 		},
 		computed: {
 			classes() {
-				let names = [];
+				let names = ["websom-main-wrap"];
+
+				if (this.shade)
+					names.push("websom-shaded");
+
 				let splits = this.$route.path.split("/");
 				names.push("exact-page" + splits.join("-"));
 
 				for (let i = 1; i < splits.length + 1; i++) {
-					console.log(splits.slice(0, i));
 					names.push("page" + splits.slice(0, i).join("-"));
 				}
 
 				return names.join(" ");
 			}
+		},
+		methods: {
+			openShade(e) {
+				this.shade = true;
+
+				if (e)
+					this.shadeListeners.push(e);
+			},
+			closeShade(e) {
+				if (this.closing)
+					return;
+
+				this.shade = false;
+
+				this.shadeListeners.splice(0, this.shadeListeners.length);
+			},
+			clickShade(e) {
+				this.closing = true;
+
+				for (let listener of this.shadeListeners)
+					listener(e);
+				
+				this.closing = false;
+
+				this.closeShade();
+			},
+			setCSSVar(name, val) {
+				this.vars[name] = val;
+			}
 		}
 	}
-}
-
-style {
-	
 }

@@ -1,0 +1,30 @@
+info {
+	"name": "footbar",
+	"type": "component"
+}
+
+template {
+	<footer class="footer">
+		
+	</footer>
+}
+
+script {
+	export default {
+		
+	}
+}
+
+style {
+	.footer {
+		min-height: calc(var(--base-size) * 12);
+		
+		background: var(--color-dark);
+	}
+}
+
+config {
+	"options": {
+		
+	}
+}

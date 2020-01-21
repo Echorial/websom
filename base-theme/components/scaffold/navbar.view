@@ -1,0 +1,30 @@
+info {
+	"name": "navbar",
+	"type": "component"
+}
+
+template {
+	<nav class="navbar">
+		
+	</nav>
+}
+
+script {
+	export default {
+		
+	}
+}
+
+style {
+	.navbar {
+		min-height: calc(var(--base-size) * 6);
+		
+		background: var(--color);
+	}
+}
+
+config {
+	"options": {
+		
+	}
+}

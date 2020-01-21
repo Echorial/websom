@@ -95,8 +95,11 @@ style {
 		--background-overlay: var(--light-background-overlay);
 		--background-tint: var(--light-background-tint);
 
-		.define-color(light-mode-mute, rgba(0, 0, 0, 0.1), @set-contrast-dark);
-		.define-color(dark-mode-mute, rgba(255, 255, 255, 0.1), @set-contrast-light);
+		.define-color(light-mode-mute, rgba(0, 0, 0, 0.1), @set-contrast-dark, $--light-background);
+		.define-color(dark-mode-mute, rgba(255, 255, 255, 0.1), @set-contrast-light, $--dark-background);
+
+		.define-color(light-mode-disabled, darken($--light-background, 10%), darken($--light-background, 25%), $--light-background);
+		.define-color(dark-mode-disabled, lighten($--dark-background, 10%), lighten($--dark-background, 25%), $--dark-background);
 
 		--base-size: 12px;
 
@@ -110,6 +113,18 @@ style {
 
 		--cursor-action: pointer;
 
+		--z-above-modal: 1002;
+		--z-modal: 1001;
+		--z-below-modal: 1000;
+
+		--z-above-absolute-top: 10002;
+		--z-absolute-top: 10001;
+		--z-below-absolute-top: 10000;
+
+		--z-above-overlay: 102;
+		--z-overlay: 101;
+		--z-below-overlay: 100;
+
 		.define-color(light-mode-success, #62d662);
 		.define-color(light-mode-danger, red);
 		.define-color(light-mode-warning, orange);
@@ -122,10 +137,10 @@ style {
 	}
 
 	.define-color(@name, @value) {
-		.define-color(@name, @value, contrast(@value, @set-contrast-dark, @set-contrast-light));
+		.define-color(@name, @value, contrast(@value, @set-contrast-dark, @set-contrast-light), rgb(127, 127, 127));
 	}
 
-	.define-color(@name, @value, @contrast) {
+	.define-color(@name, @value, @contrast, @background-color) {
 		--@{name}: @value;
 		--@{name}-dark: darken(@value, @color-movement);
 		--@{name}-light: lighten(@value, @color-movement);
@@ -136,6 +151,8 @@ style {
 
 		--@{name}-contrast-light: lighten(@contrasted, @color-movement);
 		--@{name}-contrast-dark: darken(@contrasted, @color-movement);
+
+		--@{name}-overlay: overlay(@value, @background-color);
 
 		.@{name} {
 			--color: var(~"--@{name}");
@@ -162,6 +179,8 @@ style {
 		--@{name}-contrast-blend: var(~"--@{toName}-contrast-blend");
 		--@{name}-light: var(~"--@{toName}-light");
 		--@{name}-dark: var(~"--@{toName}-dark");
+
+		--@{name}-overlay: var(~"--@{toName}-overlay");
 
 		--@{name}-contrast-light: var(~"--@{toName}-contrast-light");
 		--@{name}-contrast-dark: var(~"--@{toName}-contrast-dark");
@@ -235,6 +254,7 @@ style {
 		.set-color(info, dark-mode-info);
 
 		.set-color(mute, dark-mode-mute);
+		.set-color(disabled, dark-mode-disabled);
 
 		/*--secondary: var(--dark-mode-secondary);
 			--contrast-secondary: var(--dark-mode-contrast-secondary);
@@ -261,6 +281,7 @@ style {
 		.set-color(info, light-mode-info);
 
 		.set-color(mute, light-mode-mute);
+		.set-color(disabled, light-mode-disabled);
 	}
 
 	@media (prefers-color-scheme: dark) {
@@ -273,5 +294,45 @@ style {
 		body {
 			.light();
 		}
+	}
+
+	.websom-main-wrap {
+		transition: var(--transition) var(--transition-easing);
+		transform: var(--slide-out-shift);
+	}
+
+	.websom-shade {
+		position: absolute;
+		left: 0px;
+		right: 0px;
+		top: 0px;
+		bottom: 0px;
+
+		z-index: var(--z-below-modal);
+
+		background: rgba(0, 0, 0, 0.6);
+
+		transition: var(--transition) var(--transition-easing);
+
+		opacity: 0;
+
+		pointer-events: none;
+
+		&.websom-shaded {
+			opacity: 1;
+
+			pointer-events: all;
+		}
+	}
+
+	.websom-main-wrap.websom-shaded {
+		transition: var(--transition) var(--transition-easing);
+
+		filter: blur(16px);
+	}
+
+	.disabled {
+		pointer-events: none;
+		cursor: normal;
 	}
 }

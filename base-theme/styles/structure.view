@@ -1,0 +1,41 @@
+info {
+	"name": "root-structure",
+	"type": "style"
+}
+
+style {
+	html, body, #app {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+	}
+
+	.websom-view-wrap {
+		display: flex;
+		flex-direction: row;
+		flex: 1;
+
+		max-height: 100%;
+	}
+
+	.websom-app-wrap {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+	}
+
+	.websom-main-wrap {
+		flex: 1;
+
+		overflow: auto;
+	}
+
+	#app.websom-dashboard-slides {
+		.websom-right-portal, .websom-left-portal, .websom-top-portal, .websom-bottom-portal {
+			flex: 0.2;
+			background: var(--color);
+		}
+	}
+}
