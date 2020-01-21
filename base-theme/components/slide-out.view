@@ -1,0 +1,213 @@
+info {
+	"name": "slide-out",
+	"type": "component"
+}
+
+template {
+	<portal :to="realEdge">
+		<div :class="'slide-out slide-out-size-' + size + ' slide-out-edge-' + edge + (isOpen ? ' slide-out-open' : '')">
+			<slot />
+			<button class="floating"><icon icon="close" /></button>
+		</div>
+	</portal>
+}
+
+script {
+	export default {
+		props: {
+			edge: {
+				type: String,
+				default: "left",
+				validator(v) {
+					return [
+						"top",
+						"bottom",
+						"right",
+						"left",
+						"bottom-left",
+						"bottom-right",
+						"top-left",
+						"top-right"
+					].indexOf(v) !== -1;
+				}
+			},
+			size: {
+				type: String,
+				default: "normal",
+				validator(v) {
+					return [
+						"normal",
+						"half",
+						"full",
+						"max"
+					].indexOf(v) !== -1;
+				}
+			},
+			showClose: {
+				type: Boolean,
+				default: false
+			}
+		},
+		data() {
+			return {
+				isOpen: false,
+				sizes: {
+					normal: "300px",
+					half: "50%",
+					full: "(100% - 100px)",
+					max: "100%"
+				}
+			};
+		},
+		computed: {
+			realEdge() {
+				return this.edge.split("-")[0];
+			}
+		},
+		methods: {
+			open() {
+				this.isOpen = true;
+				this.$send("open-shade", () => this.close());
+				
+				let sizes = ["0%", "0%"];
+
+				let size = this.sizes[this.size];
+
+				let shift = parseFloat(this.$config.shift) / 100;
+
+				if (this.edge == "left")
+					sizes[0] = `calc(${size} * ${shift})`;
+				
+				if (this.edge == "right")
+					sizes[0] = `calc(${size} * ${shift} * -1)`;
+				
+				if (this.edge == "bottom")
+					sizes[1] = `calc(${size} * ${shift} * -1)`;
+				
+				if (this.edge == "top")
+					sizes[1] = `calc(${size} * ${shift})`;
+				
+				this.$send("set-css-var", '--slide-out-shift', `translate(${sizes.join(", ")})`);
+			},
+			close() {
+				this.isOpen = false;
+				this.$send("close-shade");
+
+				this.$send("set-css-var", '--slide-out-shift', "translate(0%, 0%)");
+			},
+			toggle() {
+				if (this.isOpen)
+					this.close();
+				else
+					this.open();
+			}
+		}
+	}
+}
+
+style {
+	.slide-out {
+		position: absolute;
+
+		background: var(--background-tint);
+
+		transition: var(--transition) var(--transition-easing);
+
+		z-index: var(--z-modal);
+
+		&.slide-out-size-normal {
+			--slide-out-size: 300px;
+		}
+
+		&.slide-out-size-half {
+			--slide-out-size: 50%;
+		}
+
+		&.slide-out-size-full {
+			--slide-out-size: (100% - 100px);
+		}
+
+		&.slide-out-size-max {
+			--slide-out-size: 100%;
+		}
+
+		&.slide-out-edge-left, &.slide-out-edge-bottom-left, &.slide-out-edge-top-left {
+			left: 0;
+
+			&.slide-out-edge-left {
+				top: 0;
+				bottom: 0;
+
+				width: calc(var(--slide-out-size));
+
+				left: calc(var(--slide-out-size) * -1);
+
+				&.slide-out-open {
+					left: 0;
+				}
+			}
+		}
+
+		&.slide-out-edge-right, &.slide-out-edge-bottom-right, &.slide-out-edge-top-right {
+			right: 0;
+
+			&.slide-out-edge-right {
+				top: 0;
+				bottom: 0;
+
+				width: calc(var(--slide-out-size));
+
+				right: calc(var(--slide-out-size) * -1);
+
+				&.slide-out-open {
+					right: 0;
+				}
+			}
+		}
+
+		&.slide-out-edge-bottom, &.slide-out-edge-bottom-right, &.slide-out-edge-bottom-left {
+			bottom: 0;
+
+			&.slide-out-edge-bottom {
+				left: 0;
+				right: 0;
+
+				height: calc(var(--slide-out-size));
+
+				bottom: calc(var(--slide-out-size) * -1);
+
+				&.slide-out-open {
+					bottom: 0;
+				}
+			}
+		}
+
+		&.slide-out-edge-top, &.slide-out-edge-top-right, &.slide-out-edge-top-left {
+			top: 0;
+
+			&.slide-out-edge-top {
+				left: 0;
+				right: 0;
+
+				height: calc(var(--slide-out-size));
+
+				top: calc(var(--slide-out-size) * -1);
+
+				&.slide-out-open {
+					top: 0;
+
+					margin-bottom: var(--slide-out-shift);
+				}
+			}
+		}
+	}
+}
+
+config {
+	"options": {
+		"shift": {
+			"name": "Page shift",
+			"default": "50%"
+		}
+	}
+}
