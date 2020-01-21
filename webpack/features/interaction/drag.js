@@ -1,11 +1,15 @@
 import "./drag.less";
 
 const limits = {
-	parent(selector, e) {
+	parent(selector, e, config) {
 		let el = e.el.closest(selector);
 		let boundingRect = el.getBoundingClientRect();
-		let x = Math.max(boundingRect.left + e.start.ox, Math.min(boundingRect.right - (e.start.rect.width -  e.start.ox), e.x));
-		let y = Math.max(boundingRect.top + e.start.oy, Math.min(boundingRect.bottom - e.start.oy, e.y));
+		let marginLeft = (config.limitMargin && config.limitMargin.x) ? config.limitMargin.x * e.start.rect.width : 0;
+		let marginRight = marginLeft;
+		let marginTop = (config.limitMargin && config.limitMargin.y) ? config.limitMargin.y * e.start.rect.height : 0;
+		let marginBottom = marginTop;
+		let x = Math.max(boundingRect.left - marginLeft + e.start.ox, Math.min(boundingRect.right + marginRight - (e.start.rect.width -  e.start.ox), e.x));
+		let y = Math.max(boundingRect.top - marginTop + e.start.oy, Math.min(boundingRect.bottom + marginBottom - e.start.oy, e.y));
 
 		return {
 			x,
@@ -99,6 +103,18 @@ export default (Vue, options) => {
 				state.start.ox = state.start.x - state.start.rect.x;
 				state.start.oy = state.start.y - state.start.rect.y;
 
+				if (config.overrideOffset) {
+					if (config.overrideOffset.x === "center")
+						state.start.ox = state.start.rect.width / 2;
+					else
+						state.start.ox = config.overrideOffset.x;
+
+					if (config.overrideOffset.y === "center")
+						state.start.oy = state.start.rect.height / 2;
+					else
+						state.start.oy = config.overrideOffset.y;
+				}
+
 				let computedStyle = getComputedStyle(el);
 				state.start.style.top = computedStyle.top;
 				state.start.style.bottom = computedStyle.bottom;
@@ -157,7 +173,7 @@ export default (Vue, options) => {
 					let percentageY = 0;
 
 					if (typeof config.limit === "string") {
-						let result = limits.parent(config.limit, {el, event: e, x: clientX, y: clientY, ...state});
+						let result = limits.parent(config.limit, {el, event: e, x: clientX, y: clientY, ...state}, config);
 						clientX = result.x;
 						clientY = result.y;
 						percentageX = result.percentageX;
