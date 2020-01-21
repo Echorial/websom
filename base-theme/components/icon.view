@@ -83,7 +83,8 @@ export default {
 						left: "chevron-left",
 						mute: "volume-mute",
 						sound: "volume-up",
-						power: "power-off"
+						power: "power-off",
+						menu: "bars"
 					},
 					styles: {
 						free: {
