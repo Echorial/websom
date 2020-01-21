@@ -242,7 +242,7 @@ template {
 			<div class="debug-row">
 				<div class="debug-column debug-8">
 					<div class="debug-row">
-						<div class="debug-column debug-6">
+						<div class="debug-column debug-4">
 							<div class="debug-panel">
 								<table>
 									<thead>
@@ -312,6 +312,22 @@ template {
 											</td>
 											<td>
 												<button class="tertiary">Button</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-1">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Floating</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<button class="primary floating">Button</button>
 											</td>
 										</tr>
 									</tbody>
@@ -474,10 +490,24 @@ template {
 										<button class="mute">button</button>
 									</td>
 									<td>
-										<button class="mute"><icon left :pack="pack" icon="sound" /> button</button>
+										<button class="mute"><icon left :pack="pack" icon="mute" /> button</button>
 									</td>
 									<td>
-										<button class="mute"><icon left :pack="pack" icon="sound" /></button>
+										<button class="mute"><icon left :pack="pack" icon="mute" /></button>
+									</td>
+								</tr>
+								<tr>
+									<td>
+										disabled
+									</td>
+									<td>
+										<button class="disabled">button</button>
+									</td>
+									<td>
+										<button class="disabled"><icon left :pack="pack" icon="power" /> button</button>
+									</td>
+									<td>
+										<button class="disabled"><icon left :pack="pack" icon="power" /></button>
 									</td>
 								</tr>
 							</tbody>
@@ -702,7 +732,7 @@ template {
 			<div class="debug-row">
 				<div class="debug-column debug-12">
 					<div class="debug-row">
-						<div class="debug-column debug-8">
+						<div class="debug-column debug-6">
 							<div class="debug-panel">
 								<table>
 									<thead>
@@ -754,7 +784,7 @@ template {
 								</table>
 							</div>
 						</div>
-						<div class="debug-column debug-8">
+						<div class="debug-column debug-6">
 							<div class="debug-panel">
 								<table>
 									<thead>
@@ -775,6 +805,277 @@ template {
 			</div>
 		</div>
 
+		<!-- INPUT RANGE -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Range</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Value</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												Single
+											</td>
+											<td>
+												<input-range v-model="rangeValueSingle" :min="0" :max="100" />
+											</td>
+										</tr>
+										<tr>
+											<td>Double</td>
+											<td>
+												<input-range :min="0" :max="100" v-model="rangeValueDouble" />
+											</td>
+										</tr>
+										<tr>
+											<td>Triple</td>
+											<td>
+												<input-range v-model="rangeValueTriple" :min="0" :max="100" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Snapping</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												Rounding
+											</td>
+											<td>
+												<input-range :rounding="5" :min="100" :max="200" />
+											</td>
+										</tr>
+										<tr>
+											<td>
+												Step
+											</td>
+											<td>
+												<input-range v-model="rangeValueCenter" :step="0.1" :rounding="0.1" :min="0" :max="1" />
+											</td>
+										</tr>
+										<tr>
+											<td>
+												Snap points
+											</td>
+											<td>
+												<input-range v-model="rangeValueMax" :snaps="[0, 25, 50, 75, 100]" :min="0" :max="100" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Vertical</th>
+										<th>Snapping</th>
+										<th>Negative</th>
+										<th>Reverse</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<input-range orientation="vertical" :min="0" :max="100" />
+											</td>
+											<td>
+												<input-range orientation="vertical" v-model="rangeValueMax" :snaps="[0, 25, 50, 75, 100]" :min="0" :max="100" />
+											</td>
+											<td>
+												<input-range orientation="vertical" v-model="rangeValueNegative" :min="-100" :max="0" />
+											</td>
+											<td>
+												<input-range v-model="reverse" orientation="vertical" :reverse="true" :min="0" :max="100" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- INPUT DIAL -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Dial</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Type</th>
+										<th>Dial</th>
+										<th>Radial</th>
+										<th>Icon Right</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												text
+											</td>
+											<td>
+												<input-dial :min="0" :max="100" />
+											</td>
+											<td>
+												<input-dial mode="radial" :min="0" :max="100" />
+											</td>
+											<td>
+												<input-text icon="user" side="right"/>
+											</td>
+										</tr>
+										<tr>
+											<td>password</td>
+											<td>
+												<input-text type="password" />
+											</td>
+											<td>
+												<input-text type="password" icon="lock"/>
+											</td>
+											<td>
+												<input-text type="password" icon="lock" side="right"/>
+											</td>
+										</tr>
+										<tr>
+											<td>number</td>
+											<td>
+												<input-text type="number" />
+											</td>
+											<td>
+												<input-text type="number" icon="phone"/>
+											</td>
+											<td>
+												<input-text type="number" icon="phone" side="right"/>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Area</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												<input-text type="area" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- INPUT RADIO -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Radio</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Type</th>
+										<th>Simple</th>
+										<th>Icon Left</th>
+										<th>Icon Right</th>
+									</thead>
+									<tbody>
+										<tr class="primary">
+											<td>
+												primary
+											</td>
+											<td>
+												<input-radio :options="['Item 1', 'Item 2', 'Item 3']"/>
+											</td>
+											<td>
+												<input-radio :options="[{name: 'Item 1', icon: 'star', side: 'left'}, {name: 'Item 2', icon: 'star', side: 'left'}, {name: 'Item 3', icon: 'star', side: 'left'}]"/>
+											</td>
+											<td>
+												<input-radio :options="[{name: 'Item 1', icon: 'left', side: 'right'}, {name: 'Item 2', icon: 'left', side: 'right'}, {name: 'Item 3', icon: 'left', side: 'right'}]"/>
+											</td>
+										</tr>
+										<tr class="secondary">
+											<td>secondary</td>
+											<td>
+												<input-radio :options="['Item 1', 'Item 2', 'Item 3']"/>
+											</td>
+											<td>
+												<input-radio :options="[{name: 'Item 1', icon: 'star', side: 'left'}, {name: 'Item 2', icon: 'star', side: 'left'}, {name: 'Item 3', icon: 'star', side: 'left'}]"/>
+											</td>
+											<td>
+												<input-radio :options="[{name: 'Item 1', icon: 'left', side: 'right'}, {name: 'Item 2', icon: 'left', side: 'right'}, {name: 'Item 3', icon: 'left', side: 'right'}]"/>
+											</td>
+										</tr>
+										<tr class="tertiary">
+											<td>tertiary</td>
+											<td>
+												<input-radio :options="['Item 1', 'Item 2', 'Item 3']"/>
+											</td>
+											<td>
+												<input-radio :options="[{name: 'Item 1', icon: 'star', side: 'left'}, {name: 'Item 2', icon: 'star', side: 'left'}, {name: 'Item 3', icon: 'star', side: 'left'}]"/>
+											</td>
+											<td>
+												<input-radio :options="[{name: 'Item 1', icon: 'left', side: 'right'}, {name: 'Item 2', icon: 'left', side: 'right'}, {name: 'Item 3', icon: 'left', side: 'right'}]"/>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Area</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												<input-text type="area" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<div>
 			<h3>Headings</h3>
@@ -850,7 +1151,6 @@ Line 3
 
 script {
 
-import less from "less";
 import rootStylesheet from "raw-loader!../styles/root.view?extract-style=true";
 
 export default {
@@ -878,11 +1178,25 @@ export default {
 				}
 			};
 		};
+
+		let colors = [
+			[210, 95, 50],
+			[39.790824167816993, 97.2276204429955, 50]
+		];
+
+		let randomColor = colors[Math.floor(colors.length * Math.random())];
 		
 		return {
 			pack: "material",
 			packs: ["material", "font-awesome", "remix"],
 			index: 0,
+			rangeValueSingle: [50],
+			rangeValueDouble: [25, 75],
+			rangeValueTriple: [0, 50, 100],
+			rangeValueCenter: [0.5],
+			rangeValueNegative: [-100, 0],
+			rangeValueMax: [100],
+			reverse: [0],
 			color: {
 				mode: "fivePoint",
 				modes: {
@@ -895,7 +1209,7 @@ export default {
 							genHandle("side-l-2", -fivePointBaseDistance * 2),
 							{
 								label: "basis",
-								value: [210, 95, 50]
+								value: randomColor
 							}
 						]
 					}
@@ -927,8 +1241,16 @@ export default {
 			return this.color.modes[this.color.mode].handles;
 		}
 	},
+	created() {
+		import("less");
+	},
 	methods: {
 		async generateColors() {
+			if (typeof less === "undefined") { // Wait until less is loaded
+				setTimeout(() => {this.generateColors()}, 100);
+				return;
+			}
+
 			let time = Date.now();
 			this.customCSS = (await less.render(rootStylesheet, {modifyVars: {
 				primary: this.primary,
@@ -936,7 +1258,7 @@ export default {
 				tertiary: this.tertiary,
 				important: '~"html"'
 			}})).css;
-			console.log("Took ", Date.now() - time);
+			console.log("Color compilation took ", Date.now() - time);
 		}
 	},
 	watch: {
@@ -1084,6 +1406,8 @@ style {
 
 			margin: -2px;
 
+			height: 100%;
+
 			&.debug-fill {
 				height: 100%;
 			}
@@ -1100,12 +1424,13 @@ style {
 
 			tr {
 				background: var(--background-overlay);
+				height: 100%;
 			}
 
 			td:first-child {
 				background: var(--background-tint);
 				color: var(--background-contrast);
-				max-width: 30px;
+				width: 40px;
 
 				&.debug-fill {
 					background: var(--background-overlay);
@@ -1118,59 +1443,62 @@ style {
 			display: flex;
 			flex-direction: row;
 
+			flex-wrap: wrap;
+
 			.debug-column {
-				flex-grow: 1;
 				flex-direction: column;
 				display: flex;
+				flex-basis: 100%;
+				flex: 1;
 			}
 
 			.debug-1 {
-				flex: 1 / 12;
+				flex-basis: (1 / 12) * 100%;
 				//min-width: calc((1 / 12) * 100%);
 			}
 
 			.debug-2 {
-				flex: 2 / 12;
+				flex-basis: (2 / 12) * 100%;
 				//min-width: calc((2 / 12) * 100%);
 			}
 
 			.debug-3 {
-				flex: 3 / 12;
+				flex-basis: (3 / 12) * 100%;
 				//min-width: calc((3 / 12) * 100%);
 			}
 
 			.debug-3-5 {
-				flex: 3.5 / 12;
+				flex-basis: (3.5 / 12) * 100%;
 				//min-width: calc((3.5 / 12) * 100%);
 			}
 
 			.debug-4 {
-				flex: 4 / 12;
+				flex-basis: (4 / 12) * 100%;
 				//min-width: calc((4 / 12) * 100%);
 			}
 
 			.debug-4-5 {
-				flex: 4.5 / 12;
+				flex-basis: (4.5 / 12) * 100%;
 				//min-width: calc((4.5 / 12) * 100%);
 			}
 
 			.debug-5 {
-				flex: 5 / 12;
+				flex-basis: (5 / 12) * 100%;
 				//min-width: calc((5 / 12) * 100%);
 			}
 
 			.debug-6 {
-				flex: 6 / 12;
+				flex-basis: (6 / 12) * 100%;
 				//min-width: calc((6 / 12) * 100%);
 			}
 
 			.debug-7 {
-				flex: 7 / 12;
+				flex-basis: (7 / 12) * 100%;
 				//min-width: calc((7 / 12) * 100%);
 			}
 
 			.debug-8 {
-				flex: 8 / 12;
+				flex-basis: (8 / 12) * 100%;
 				//min-width: calc((8 / 12) * 100%);
 			}
 		}
