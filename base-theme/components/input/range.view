@@ -1,0 +1,393 @@
+info {
+	"name": "input-range",
+	"type": "component"
+}
+
+template {
+	<div :class="'input-range input-range-orientation-' + orientation">
+		<div class="input-range-rail" ref="rail">
+			<div v-for="(val, i) in snaps" class="input-range-snap" :style="getStyleForSnap(i, val)"></diV>
+			<div class="input-range-gap" v-if="myValue.length == 2" :style="getStyleForGap()"></div>
+			<div v-for="(val, i) in myValue" :ref="`handle-${i}`" v-draggable="getDraggableForHandle(i)" :style="getStyleForHandle(i, val)" :data-value="val" :key="i" class="input-range-handle">
+				<div class="input-range-value">{{format(rounding >= 1 ? parseInt(transformOutput(val)).toString() : transformOutput(val))}}</div>
+			</div>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: Array
+			},
+			reverse: {
+				type: Boolean,
+				default: false
+			},
+			orientation: {
+				type: String,
+				default: "horizontal",
+				validator(v) {
+					return (v != "horizontal" || v != "vertical");
+				}
+			},
+			rounding: {
+				type: Number,
+				default: 1
+			},
+			snapDistance: {
+				type: Number,
+				default: 10 // In pixels
+			},
+			max: {
+				type: Number,
+				required: true
+			},
+			min: {
+				type: Number,
+				required: true
+			},
+			format: {
+				type: Function,
+				default: (v) => `${parseFloat(v).toString()}`
+			},
+			snaps: {
+				type: Array,
+				default: () => []
+			}
+		},
+		data() {
+			return {
+				myValue: this.value || [this.min]
+			};
+		},
+		created() {
+			this.setValue(this.value || [this.min]);
+		},
+		watch: {
+			value() {
+				this.setValue(this.value);
+			}
+		},
+		methods: {
+			setValue(to) {
+				if (this.reverse)
+					this.myValue = to ? to.map(v => this.lerp(this.max, this.min, this.relerp(this.min, this.max, v))) : [this.min];
+				else
+					this.myValue = to || [this.min];
+			},
+			lerp(a, b, t) {
+				return a + (b - a) * t;
+			},
+			relerp(a, b, t) {
+				return ((t - a) / (b - a))
+			},
+			transformOutput(val) {
+				if (typeof val == "number")
+					if (this.reverse)
+						return this.lerp(this.max, this.min, this.relerp(this.min, this.max, val));
+					else
+						return val;
+
+				let arr = [];
+				
+				for (let num of val) {
+					if (this.reverse)
+						arr.push(this.lerp(this.max, this.min, this.relerp(this.min, this.max, num)));
+					else
+						arr.push(num);
+				}
+				
+				return arr;
+			},
+			getDraggableForHandle(i) {
+				return {
+					axis: {
+						x: this.orientation == "horizontal" ? 1 : 0,
+						y: this.orientation == "vertical" ? 1 : 0
+					},
+					limit: ".input-range-rail",
+					limitMargin: this.orientation == "horizontal" ? {x: 0.5} : {y: 0.5},
+					overrideOffset: {
+						x: "center",
+						y: "center"
+					},
+					move: (e) => {
+						let position = this.orientation == "horizontal" ? e.percentageX : e.percentageY;
+
+						let railSize = this.$refs.rail.getBoundingClientRect();
+						let totalSize = this.orientation == "horizontal" ? railSize.width : railSize.height;
+						let positionInPixels = position * totalSize;
+
+						for (let snap of this.snaps) {
+							let snapPercentage = ((snap - this.min) / (this.max - this.min));
+							let snapPositionInPixels = snapPercentage * totalSize;
+
+							if (Math.abs(snapPositionInPixels - positionInPixels) <= this.snapDistance)
+								position = snapPercentage;
+						}
+
+						let val = this.min + (this.max - this.min) * position;
+
+						val = Math.round(val / this.rounding) * this.rounding;
+
+						this.$set(this.myValue, i, val);
+
+						if (this.myValue.length == 2) {
+							if (i == 0) {
+								if (val > this.myValue[1])
+									this.$set(this.myValue, 1, val);
+							}else{
+								if (val < this.myValue[0])
+									this.$set(this.myValue, 0, val);
+							}
+						}
+
+						this.$emit("input", this.transformOutput(this.myValue));
+					}
+				};
+			},
+			getStyleForHandle(i, val) {
+
+				let getCenterOfElement = (index) => {
+					let computed = this.$refs["handle-" + index];
+
+					let rect;
+					if (!computed || typeof window === "undefined")
+						rect = {x: index * 24, width: 24, y: index * 24, height: 24};
+					else {
+						rect = computed[0].getBoundingClientRect();
+						let computedStyle = getComputedStyle(computed[0]);
+
+						rect.x -= parseFloat(computedStyle.marginLeft);
+						rect.width += parseFloat(computedStyle.marginLeft) + parseFloat(computedStyle.marginRight);
+
+						rect.y -= parseFloat(computedStyle.marginTop);
+						rect.height += parseFloat(computedStyle.marginTop) + parseFloat(computedStyle.marginBottom);
+					}
+					
+					return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+				};
+
+				let highDist = this.max; //Math.abs(this.max - val);
+				let lowDist = this.min; //Math.abs(this.min - val);
+
+				let highRound = 24;
+				let lowRound = 24;
+				let highMargin = 0;
+				let lowMargin = 0;
+				let highMultiply = 2;
+				let lowMultiply = 2;
+
+				let iCenter = getCenterOfElement(i);
+
+				if (this.myValue.length == 2) {
+					if (i < this.myValue.length - 1) {
+						if (this.orientation == "horizontal")
+							highDist = Math.abs(getCenterOfElement(i + 1).x - iCenter.x);
+						else
+							highDist = Math.abs(getCenterOfElement(i + 1).y - iCenter.y);
+
+						if (highDist < 24) {
+							highRound = highDist;
+							highMultiply = Math.max(1, highDist / 12);
+							highMargin = Math.max(0, 12 - highDist);
+						}
+					}
+
+					if (i > 0) {
+						if (this.orientation == "horizontal")
+							lowDist = Math.abs(getCenterOfElement(i - 1).x - iCenter.x);
+						else
+							lowDist = Math.abs(getCenterOfElement(i - 1).y - iCenter.y);
+
+						if (lowDist < 24) {
+							lowRound = lowDist;
+							lowMultiply = Math.max(1, lowDist / 12);
+							lowMargin = Math.max(0, 12 - lowDist);
+						}
+					}
+				}
+
+
+				return `
+					--input-range-value: ${val};
+					--input-range-value-percentage: ${((val - this.min) / (this.max - this.min)) * 100}%;
+					--input-range-value-high-distance: ${highDist};
+					--input-range-value-high-round: ${highRound}px;
+					--input-range-value-high-margin: ${highMargin}px;
+					--input-range-value-low-distance: ${lowDist};
+					--input-range-value-low-round: ${lowRound}px;
+					--input-range-value-low-margin: ${lowMargin}px;
+					--input-range-value-multiply: ${Math.min(lowMultiply, highMultiply)};
+				`;
+			},
+			getStyleForGap() {
+				let low = this.myValue[0];
+				let high = this.myValue[1];
+
+				return `
+					--input-range-gap-start-percentage: ${((low - this.min) / (this.max - this.min)) * 100}%;
+					--input-range-gap-end-percentage: ${((high - this.min) / (this.max - this.min)) * 100}%;
+					--input-range-gap-size-percentage: ${(((high - this.min) - (low - this.min)) / Math.abs(this.max - this.min)) * 100}%;
+				`;
+			},
+			getStyleForSnap(i, val) {
+				return `
+					--input-range-snap-percentage: ${((val - this.min) / (this.max - this.min)) * 100}%;
+				`;
+			}
+		}
+	}
+}
+
+style {
+	.input-range.input-range-orientation-horizontal {
+		flex-direction: row;
+
+		.input-range-rail {
+			height: calc(var(--base-size) * 0.5);
+
+			.input-range-gap {
+				left: var(--input-range-gap-start-percentage);
+				width: var(--input-range-gap-size-percentage);
+				height: 100%;
+			}
+
+			.input-range-snap {
+				left: calc(var(--input-range-snap-percentage) - (var(--base-size) / 8));
+				width: calc(var(--base-size) / 4);
+				height: 200%;
+				top: -50%;
+			}
+
+			.input-range-handle {
+				width: calc(var(--base-size) * var(--input-range-value-multiply));
+				height: calc(var(--base-size) * 2);
+
+				--x: calc(12 - var(--input-range-value-low-distance));
+				--input-range-left-radius: calc(var(--x) * -100px);
+
+				margin-left: var(--input-range-value-low-margin);
+				margin-right: var(--input-range-value-high-margin);
+				
+				border-bottom-left-radius: var(--input-range-value-low-round);
+				border-top-left-radius: var(--input-range-value-low-round);
+
+				border-bottom-right-radius: var(--input-range-value-high-round);
+				border-top-right-radius: var(--input-range-value-high-round);
+
+				left: calc(var(--input-range-value-percentage) - var(--base-size));
+				top: calc(var(--base-size) * -0.75);
+			}
+		}
+	}
+
+	.input-range.input-range-orientation-vertical {
+		flex-direction: column;
+		height: 100%;
+
+		.input-range-rail {
+			width: calc(var(--base-size) * 0.5);
+			height: 100%;
+			min-height: 50px;
+
+			.input-range-gap {
+				top: var(--input-range-gap-start-percentage);
+				width: 100%;
+				height: var(--input-range-gap-size-percentage);
+			}
+
+			.input-range-snap {
+				top: calc(var(--input-range-snap-percentage) - (var(--base-size) / 8));
+				width: 200%;
+				height: calc(var(--base-size) / 4);
+				left: -50%;
+			}
+
+			.input-range-handle {
+				width: calc(var(--base-size) * 2);
+				height: calc(var(--base-size) * var(--input-range-value-multiply));
+
+				margin-top: var(--input-range-value-low-margin);
+				margin-bottom: var(--input-range-value-high-margin);
+				
+				.input-range-value {
+					top: calc(var(--input-range-value-low-margin) * -1);
+				}
+				
+				border-top-left-radius: var(--input-range-value-low-round);
+				border-top-right-radius: var(--input-range-value-low-round);
+
+				border-bottom-left-radius: var(--input-range-value-high-round);
+				border-bottom-right-radius: var(--input-range-value-high-round);
+
+				top: calc(var(--input-range-value-percentage) - var(--base-size));
+				left: calc(var(--base-size) * -0.75);
+			}
+		}
+	}
+
+	.input-range {
+		display: flex;
+
+		align-items: center;
+
+		.input-range-rail {
+			flex: 1;
+
+			position: relative;
+
+			height: calc(var(--base-size) * 0.5);
+			background: var(--mute-overlay);
+
+			.input-range-gap {
+				position: absolute;
+				background: var(--color);
+			}
+
+			.input-range-snap {
+				position: absolute;
+				background: var(--mute);
+			}
+
+			.input-range-handle {
+				position: absolute;
+
+				border-radius: 1000px;
+
+				background: var(--color);
+				color: var(--contrast);
+
+				.input-range-value {
+					opacity: 0;
+					transition: opacity var(--transition) var(--transition-easing);
+
+					position: absolute;
+
+					top: 0;
+					left: 0;
+
+					width: 100%;
+					height: 100%;
+
+					font-size: var(--base-size);
+					text-align: center;
+
+					line-height: calc(var(--base-size) * 2);
+				}
+
+				&:hover, &.websom-dragging {
+					background: var(--color-dark);
+
+					z-index: 10;
+
+					.input-range-value {
+						opacity: 1;
+					}
+				}
+			}
+		}
+	}
+}
