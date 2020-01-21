@@ -99,6 +99,7 @@ style {
 		&.icon.icon-right .input-text-icon {
 			right: 0px;
 			left: unset;
+			pointer-events: none;
 		}
 
 		&.icon.icon-left .input-text-placeholder {
@@ -106,7 +107,7 @@ style {
 		}
 
 		.input-text-placeholder {
-			transition: .3s;
+			transition: var(--transition) var(--transition-easing);
 			opacity: 0;
 
 			position: absolute;
@@ -138,7 +139,7 @@ style {
 		&.text-area {
 			min-height: calc(var(--base-height) * 3);
 			height: calc(var(--line-count) * var(--base-height));
-			transition: height .3s;
+			transition: height var(--transition) var(--transition-easing);
 
 			.input-text-input {
 				min-height: 100%;
