@@ -26,6 +26,15 @@ const WebsomVue = {
 			}
 		});
 
+		Vue.prototype.$send = function $send(eventName, ...args) {
+			let component = this;
+			
+			do {
+				component.$emit(eventName, ...args);
+				component = component.$parent;
+			} while (component);
+		};
+
 		DragPlugin(Vue, options);
 	}
 };
