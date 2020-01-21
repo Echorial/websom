@@ -1,0 +1,193 @@
+info {
+	"name": "input-dial",
+	"type": "component"
+}
+
+template {
+	<div :class="'input-dial input-dial-' + mode" :style="getStyle(myValue)">
+		<div class="input-dial-wrap">
+			<div class="input-dial-value">{{format(myValue)}}</div>
+			<svg v-draggable="getDraggable()" class="input-dial-svg" viewport="0 0 100 100">
+				<g v-if="mode == 'dial'">
+					<rect class="input-dial-line"></rect>
+				</g>
+				<g v-else-if="mode == 'radial'">
+					<circle class="input-dial-circle"></circle>
+					<path class="input-dial-path" d="M 0 24 A 24 24 0 0 1 48 24"></path>
+					<path class="input-dial-under-path" d="M 0 24 A 24 24 0 0 0 48 24"></path>
+				</g>
+			</svg>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: Array
+			},
+			rounding: {
+				type: Number,
+				default: 1
+			},
+			step: {
+				type: Number,
+				default: 1
+			},
+			max: {
+				type: Number,
+				required: true
+			},
+			min: {
+				type: Number,
+				required: true
+			},
+			format: {
+				type: Function,
+				default: (v) => `${v}`
+			},
+			mode: {
+				type: String,
+				default: "dial"
+			}
+		},
+		data() {
+			return {
+				myValue: this.value || 0
+			};
+		},
+		watch: {
+			value() {
+				this.myValue = this.value || 0;
+			}
+		},
+		methods: {
+			getDraggable() {
+				let startValue;
+
+				return {
+					start: () => {
+						startValue = this.myValue;
+					},
+					move: (e) => {
+						let delta = e.dx;
+
+						if (Math.abs(e.dy) > Math.abs(delta))
+							delta = e.dy * -1; // Reverse the vertical axis
+
+						this.myValue = Math.round((startValue + delta * this.step) / this.rounding) * this.rounding;
+
+						this.myValue = Math.min(this.max, Math.max(this.min, this.myValue));
+
+						this.$emit("input", this.myValue);
+					}
+				};
+			},
+			getStyle(val) {
+				return `
+					--input-dial-value: ${val};
+					--input-dial-value-percentage: ${((val - this.min) / (this.max - this.min)) * 100}%;
+					--input-dial-value-decimal: ${((val - this.min) / (this.max - this.min))};
+				`;
+			}
+		}
+	}
+}
+
+style {
+	.input-dial {
+		display: flex;
+
+		align-items: center;
+		justify-content: center;
+
+		&.input-dial-radial {
+			.input-dial-wrap {
+				background: transparent;
+
+				.input-dial-value {
+					opacity: 1;
+					width: calc(var(--base-size) * 2);
+					height: calc(var(--base-size) * 2);
+					line-height: calc(var(--base-size) * 2);
+					text-align: center;
+					left: calc(50% - var(--base-size));
+					top: calc(50% - var(--base-size));
+
+					font-size: calc(var(--base-size) * 1);
+				}
+			}
+		}
+
+		.input-dial-wrap {
+			background: var(--color);
+
+			border-radius: 50%;
+
+			position: relative;
+
+			width: calc(var(--base-size) * 4);
+			height: calc(var(--base-size) * 4);
+
+			.input-dial-value {
+				position: absolute;
+				opacity: 0;
+				pointer-events: none;
+			}
+
+			.input-dial-svg {
+				width: calc(var(--base-size) * 4);
+				height: calc(var(--base-size) * 4);
+
+				.input-dial-circle {
+					fill: transparent;
+					stroke: var(--mute);
+					stroke-width: calc(var(--base-size) / 1.4);
+
+					cx: calc(var(--base-size) * 2);
+					cy: calc(var(--base-size) * 2);
+
+					r: calc(var(--base-size) * 1.6);
+				}
+
+				.input-dial-path {
+					stroke-width: var(--base-size);
+					stroke: var(--color);
+					fill: transparent;
+					transform: scale(0.8);
+					transform-origin: center center;
+					stroke-dasharray: 76px;
+					stroke-dashoffset: calc((1 - var(--input-dial-value-decimal)) * 76);
+				}
+
+				.input-dial-under-path {
+					stroke: var(--color);
+					fill: transparent;
+					stroke-width: var(--base-size);
+					transform: scale(0.8);
+					transform-origin: center center;
+				}
+				
+				.input-dial-line {
+					fill: var(--color-dark);
+
+					x: calc(var(--base-size) * 0.5);
+					y: calc(var(--base-size) * 1.75);
+
+					width: calc(var(--base-size) * 1);
+					height: calc(var(--base-size) * 0.5);
+
+					transform-origin: center center;
+					transform: rotate(calc(var(--input-dial-value-decimal) * 180deg));
+				}
+
+				&:hover, &.websom-dragging {
+					.input-dial-path {
+						stroke: var(--color-dark);
+					}
+				}
+			}
+		}
+	}
+}
