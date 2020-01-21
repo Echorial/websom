@@ -1,0 +1,20 @@
+info {
+	"name": "g-l",
+	"type": "component"
+}
+
+template {
+	<div class="grid-layout">
+		<slot />
+	</div>	
+}
+
+style {
+	.grid-layout {
+		display: flex;
+
+		flex-direction: row;
+
+		height: 100%;
+	}
+}

@@ -1,0 +1,33 @@
+info {
+	"name": "g-h",
+	"type": "component"
+}
+
+template {
+	<div :class="'grid-row purpose-' + purpose">
+		<slot />
+	</div>	
+}
+
+script {
+	export default {
+		props: {
+			purpose: {
+				type: String,
+				default: "general"
+			}
+		}
+	}
+}
+
+style {
+	.grid-row {
+		flex: 1;
+
+		display: flex;
+
+		flex-direction: row;
+
+		height: 100%;
+	}
+}

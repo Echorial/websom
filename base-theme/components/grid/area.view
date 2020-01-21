@@ -1,0 +1,31 @@
+info {
+	"name": "g-a",
+	"type": "component"
+}
+
+template {
+	<div :class="'grid-area purpose-' + purpose">
+		<slot />
+	</div>	
+}
+
+script {
+	export default {
+		props: {
+			purpose: {
+				type: String,
+				default: "general"
+			}
+		}
+	}
+}
+
+style {
+	.grid-area {
+		flex: 1;
+
+		display: flex;
+
+		flex-direction: column;
+	}
+}

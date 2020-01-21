@@ -1,0 +1,31 @@
+info {
+	"name": "g-v",
+	"type": "component"
+}
+
+template {
+	<div :class="'grid-column purpose-' + purpose">
+		<slot />
+	</div>	
+}
+
+script {
+	export default {
+		props: {
+			purpose: {
+				type: String,
+				default: "general"
+			}
+		}
+	}
+}
+
+style {
+	.grid-column {
+		flex: 1;
+
+		display: flex;
+
+		flex-direction: column;
+	}
+}
