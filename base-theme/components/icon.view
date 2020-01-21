@@ -80,7 +80,10 @@ export default {
 						down: "chevron-down",
 						up: "chevron-up",
 						right: "chevron-right",
-						left: "chevron-left"
+						left: "chevron-left",
+						mute: "volume-mute",
+						sound: "volume-up",
+						power: "power-off"
 					},
 					styles: {
 						free: {
@@ -108,6 +111,9 @@ export default {
 						up: "chevron_up",
 						right: "chevron_right",
 						left: "chevron_left",
+						mute: "volume_mute",
+						sound: "volume_up",
+						power: "power_settings_new"
 					},
 					styles: {
 						all: {
@@ -128,7 +134,10 @@ export default {
 						down: "arrow-down-s",
 						right: "arrow-right-s",
 						left: "arrow-left-s",
-						up: "arrow-up-s"
+						up: "arrow-up-s",
+						mute: "volume-mute",
+						sound: "volume-up",
+						power: "shut-down"
 					},
 					styles: {
 						all: {
