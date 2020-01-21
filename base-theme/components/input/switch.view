@@ -120,7 +120,7 @@ style {
 			background: var(--mute);
 			border-radius: 1000px;
 
-			transition: .3s;
+			transition: var(--transition) var(--transition-easing);
 
 			.input-switch-main {
 				position: absolute;
@@ -132,10 +132,10 @@ style {
 				.input-switch-handle {
 					display: flex;
 					position: absolute;
-					transition: .3s;
+					transition: var(--transition) var(--transition-easing);
 					
 					&.websom-dragging {
-						transition: background .3s;
+						transition: background var(--transition-color) var(--transition-easing);
 						width: calc(var(--base-size) * 2);
 					}
 
