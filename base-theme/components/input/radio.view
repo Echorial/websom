@@ -1,0 +1,143 @@
+info {
+	"name": "input-radio",
+	"type": "component"
+}
+
+template {
+	<div class="input-radio">
+		<div class="input-radio-option" v-for="option in options" :class="{checked: getValueOfOption(option) == myValue}" @click="select(getValueOfOption(option))">
+			<div class="input-radio-option-left">
+				<div class="input-radio-option-switch">
+					<div class="input-radio-option-switch-inner">
+					</div>
+				</div>
+			</div>
+			<div class="input-radio-option-text">
+				<template v-if="typeof option == 'string'">
+					{{option}}
+				</template>
+				<template v-else>
+					<icon v-if="option.icon && typeof option.side === 'undefined'" :icon="option.icon" />
+					<icon v-if="option.icon && option.side == 'left'" :icon="option.icon" class="start" />
+					{{option.name || option.value || ""}}
+					<icon v-if="option.icon && option.side == 'right'" :icon="option.icon" class="end" />
+				</template>
+			</div>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: Boolean,
+				default: false
+			},
+			options: {
+				type: Array,
+				default: () => []
+			}
+		},
+		data() {
+			return {
+				myValue: this.value || ""
+			};
+		},
+		methods: {
+			select(val) {
+				this.myValue = val;
+				
+				this.$emit("input", this.myValue);
+			},
+			getValueOfOption(option) {
+				if (typeof option == "string")
+					return option;
+				else
+					return option.value || option.name;
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		}
+	}
+}
+
+style {
+	.input-radio {
+		display: flex;
+
+		justify-content: center;
+		align-items: center;
+
+		flex-direction: column;
+
+		.input-radio-option {
+			display: flex;
+
+			min-height: calc(var(--base-size) * 3);
+
+			justify-content: center;
+
+			cursor: var(--cursor-action);
+
+			.input-radio-option-left {
+				flex: 1;
+
+				min-width: calc(var(--base-size) * 3);
+
+				display: flex;
+
+				align-items: center;
+				justify-content: center;
+
+				border-radius: 50%;
+
+				.input-radio-option-switch {
+					width: calc(var(--base-size) * 1.5);
+					height: calc(var(--base-size) * 1.5);
+
+					border-radius: 50%;
+					border: calc(var(--base-size) * 0.2) solid var(--color);
+
+					box-sizing: border-box;
+
+					position: relative;
+
+					.input-radio-option-switch-inner {
+						position: absolute;
+
+						top: calc(50% - (var(--base-size) * 0.75));
+						left: calc(50% - (var(--base-size) * 0.75));
+
+						width: calc(var(--base-size) * 1.5);
+						height: calc(var(--base-size) * 1.5);
+						transform-origin: center;
+						transform: scale(0);
+
+						transition: var(--transition) var(--transition-easing);
+
+						background: var(--color);
+
+						border-radius: 50%;
+					}
+				}
+			}
+
+			&.checked .input-radio-option-left .input-radio-option-switch .input-radio-option-switch-inner {
+				transform: scale(1);
+			}
+
+			.input-radio-option-text {
+				display: flex;
+
+				align-items: center;
+				
+				white-space: nowrap;
+				flex: 10;
+			}
+		}
+	}
+}
