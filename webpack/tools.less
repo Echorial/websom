@@ -1,0 +1,33 @@
+@mobile: ~"(max-width: 790px)";
+@tablet: ~"(min-width: 791px) and (max-width: 990px)";
+@desktop: ~"(min-width: 991px)";
+
+@small: @mobile;
+@medium: @tablet;
+@large: @desktop;
+
+@small-and-under: @small;
+@medium-and-under: ~"(max-width: 990px)";
+@large-and-under: ~"(min-width: 1px)";
+
+@small-and-over: ~"(min-width: 1px)";
+@medium-and-over: ~"(min-width: 791px)";
+@large-and-over: ~"(min-width: 991px)";
+
+.small(@rules) {
+	@media @small {
+		@rules();
+	}
+}
+
+.medium(@rules) {
+	@media @medium {
+		@rules();
+	}
+}
+
+.large(@rules) {
+	@media @large {
+		@rules();
+	}
+}
