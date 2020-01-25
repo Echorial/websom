@@ -327,7 +327,7 @@ template {
 									<tbody>
 										<tr>
 											<td class="debug-fill">
-												<button class="primary floating">Button</button>
+												<button class="primary floating"><icon icon="menu" /></button>
 											</td>
 										</tr>
 									</tbody>
@@ -1077,6 +1077,137 @@ template {
 			</div>
 		</div>
 
+		<!-- INPUT MODAL -->
+
+		<div class="debug-group">
+			<slide-out :edge="slideOut.edge" :size="slideOut.size" :show-close="slideOut.close" ref="slideOut"></slide-out>
+			<modal ref="modal"></modal>
+			<div class="debug-title">
+				<h3>Modal & Slide-Out</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Slide-Out</th>
+										<th>Full</th>
+										<th>Half</th>
+										<th>Normal</th>
+										<th>Max</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												left
+											</td>
+											<td>
+												<button @click="openSlideOut('left', 'full')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('left', 'half')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('left', 'normal')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('left', 'max')">Open</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												right
+											</td>
+											<td>
+												<button @click="openSlideOut('right', 'full')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('right', 'half')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('right', 'normal')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('right', 'max')">Open</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<button @click="openSlideOut('top', 'full')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('top', 'half')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('top', 'normal')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('top', 'max')">Open</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												bottom
+											</td>
+											<td>
+												<button @click="openSlideOut('bottom', 'full')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('bottom', 'half')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('bottom', 'normal')">Open</button>
+											</td>
+											<td>
+												<button @click="openSlideOut('bottom', 'max')">Open</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Modal</th>
+										<th>Empty</th>
+										<th>Half</th>
+										<th>Normal</th>
+										<th>Max</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												Normal
+											</td>
+											<td>
+												<button @click="openModal()" @tap="openModal()">Open</button>
+											</td>
+											<td>
+												<button @click="openModal()">Open</button>
+											</td>
+											<td>
+												<button @click="openModal()">Open</button>
+											</td>
+											<td>
+												<button @click="openModal()">Open</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div>
 			<h3>Headings</h3>
 
@@ -1219,7 +1350,12 @@ export default {
 			primary: "#FFFFFF",
 			secondary: "#FFFFFF",
 			tertiary: "#FFFFFF",
-			customCSS: ""
+			customCSS: "",
+			slideOut: {
+				edge: "left",
+				size: "normal",
+				close: false
+			}
 		};
 	},
 	mounted() {
@@ -1259,6 +1395,23 @@ export default {
 				important: '~"html"'
 			}})).css;
 			console.log("Color compilation took ", Date.now() - time);
+		},
+		openSlideOut(edge, size) {
+			this.slideOut.edge = edge;
+			this.slideOut.size = size;
+
+			if (size == "full" || size == "max")
+				this.slideOut.close = true;
+			else
+				this.slideOut.close = false;
+
+			// Wait for shift calculations after sizing change
+			setTimeout(() => {
+				this.$refs.slideOut.open();
+			}, 10);
+		},
+		openModal() {
+			this.$refs.modal.open();
 		}
 	},
 	watch: {
