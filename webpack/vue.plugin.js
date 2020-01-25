@@ -28,14 +28,23 @@ const WebsomVue = {
 
 		Vue.prototype.$send = function $send(eventName, ...args) {
 			let component = this;
-			
+
 			do {
-				component.$emit(eventName, ...args);
+				let stopPropogation = component.$emit(eventName, ...args);
+				
+				if (stopPropogation)
+					return;
+
 				component = component.$parent;
 			} while (component);
 		};
 
 		DragPlugin(Vue, options);
+
+		Vue.component("vnode", {
+			functional: true,
+			render: (h, ctx) => ctx.props.vnode
+		});
 	}
 };
 
