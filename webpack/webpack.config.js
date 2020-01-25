@@ -89,6 +89,18 @@ module.exports = (websomServer) => {
 					]
 				},
 				{
+					test: /\.websom-effects$/,
+					use: [
+						{
+							loader: path.resolve(__dirname, "./websom-loader/loader.js"),
+							options: {
+								type: "effects",
+								files: gatherViews
+							}
+						}
+					]
+				},
+				{
 					test: /\.websom-styles$/,
 					use: [
 						"vue-style-loader",
@@ -149,7 +161,10 @@ module.exports = (websomServer) => {
 		resolve: {
 			modules: [
 				path.resolve(__dirname, "../node_modules")
-			]
+			],
+			alias: {
+				Util: path.resolve(__dirname, './')
+			}
 		}
 	};
 };
