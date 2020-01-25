@@ -25,5 +25,29 @@ module.exports = function (source) {
 		}
 
 		return `${imports.join("\n")}`;
+	}else if (this.query.type == "effects") {
+		let imports = [];
+
+		for (let [i, file] of files.entries()) {
+			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
+			
+			let type = JSON.parse(`{${blocks.info.block}}`).type;
+			if (type != "effect")
+				continue;
+
+			imports.push(`
+				import effectInfo${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-info=true";
+				import effectConfig${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-config=true";
+				import effectScript${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-script=true";
+
+				imports.push({
+					info: effectInfo${i},
+					config: effectConfig${i},
+					script: effectScript${i}
+				});
+			`);
+		}
+
+		return `let imports = []; ${imports.join("\n")} export default imports`;
 	}
 };
