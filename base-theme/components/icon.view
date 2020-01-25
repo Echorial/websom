@@ -5,7 +5,7 @@ info {
 
 template {
 	<transition name="icon-transition">
-		<span :class="'websom-icon ' + iconClass + ' ' + (right ? 'right' : '') + ' ' + (left ? 'left' : '')">{{ligature}}</span>
+		<span :class="'websom-icon ' + iconClass + ' ' + (right ? 'right flex-right' : '') + ' ' + (left ? 'left' : '')">{{ligature}}</span>
 	</transition>
 }
 
