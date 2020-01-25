@@ -1,0 +1,77 @@
+info {
+	"name": "slide-button",
+	"type": "component"
+}
+
+template {
+	<div class="slide-button action fat-action" :class="{'slide-button-reverse' : reverse}">
+		<span class="slide-button-left"><slot /></span>
+		<span class="slide-button-right">
+			<icon :icon="reverse ? 'left' : 'right'" />
+		</span>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			reverse: {
+				type: Boolean,
+				default: false
+			}
+		}
+	}
+}
+
+style {
+	.slide-by-side-selected > .slide-button {
+		background: var(--background-overlay);
+	}
+	
+	.slide-button {
+		display: flex;
+		align-items: center;
+
+		flex-direction: row;
+		
+		cursor: var(--cursor-action);
+
+		background: var(--background);
+		color: var(--background-contrast);
+
+		height: calc(var(--base-size) * 5);
+
+		transition: var(--transition-color) var(--transition-easing);
+
+		padding: var(--padding-v) var(--padding-h);
+
+		user-select: none;
+
+		&:hover {
+			background: var(--background-tint);
+		}
+
+		&:active {
+			background: var(--background-overlay);
+		}
+
+		&.slide-button-reverse {
+			flex-direction: row-reverse;
+
+			.slide-button-left {
+				margin-left: auto;
+				margin-right: 0;
+			}
+		}
+
+		.slide-button-left {
+			justify-self: flex-start;
+
+			margin-right: auto;
+		}
+
+		.slide-button-right {
+			justify-self: flex-end;
+		}
+	}
+}

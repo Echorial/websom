@@ -1,0 +1,188 @@
+info {
+	"name": "slide-by-side",
+	"type": "component"
+}
+
+template {
+	<div :class="{'slide-by-side': true, 'slide-by-side-overlap': overlap}">
+	<slide-button :reverse="true" class="slide-by-side-back" @click.native="back()">Back</slide-button>
+		<div class="slide-by-side-grow">
+			<div v-for="(vnode, i) in $slots.body" :class="{'slide-by-side-body': true, 'slide-by-side-selected': selected == i}" :key="i" :data-index="i">
+				<vnode :vnode="vnode" />
+			</div>
+		</div>
+		<div class="slide-by-side-nav">
+			<div v-for="(vnode, i) in $slots.text" :class="{'slide-by-side-selected': selected == i}" :key="i" :data-index="i" @click="select(i)">
+				<vnode :vnode="vnode" />
+			</div>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			overlap: {
+				type: Boolean,
+				default: false
+			}
+		},
+		data() {
+			return {
+				selected: -1
+			};
+		},
+		methods: {
+			select(index) {
+				if (this.selected == index)
+					this.selected = -1;
+				else
+					this.selected = index;
+			},
+			back() {
+				if (this.selected != -1) {
+					this.selected = -1;
+					return;
+				}
+
+				let e = new Event("slide-by-side-back", {
+					bubbles: true
+				});
+				this.$el.dispatchEvent(e);
+			},
+			backFromChild() {
+				this.selected = 0;
+				return true;
+			}
+		},
+		mounted() {
+			this.$el.addEventListener("slide-by-side-back", () => {
+				this.selected = -1;
+			});
+		}
+	}
+}
+
+style {
+	.slide-by-side .slide-by-side-back {
+		display: none;
+
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: calc(var(--base-size) * 3);
+		z-index: 102;
+	}
+
+	.slide-by-side .slide-by-side {
+		top: calc(var(--base-size) * -3);
+		
+		.slide-by-side-grow {
+			top: calc(var(--base-size) * -3);
+		}
+	}
+
+	.slide-by-side {
+		position: relative;
+		display: flex;
+		flex-direction: row-reverse;
+
+		min-height: 600px;
+
+		@media @small {
+			overflow: hidden;
+
+			.slide-by-side .slide-by-side-back {
+				display: flex;
+			}
+		}
+
+		&.slide-by-side-overlap .slide-by-side .slide-by-side-back {
+			display: flex;
+		}
+
+		&.slide-by-side-overlap {
+			overflow: hidden;
+
+			.slide-by-side-nav {
+				width: 300px;
+				min-width: 300px;
+			}
+
+			.slide-by-side-grow {
+				width: 100%;
+				left: 100%;
+
+				overflow: visible;
+				left: 0;
+				
+				.slide-by-side-body {
+					left: 100%;
+				}
+			}
+		}
+
+		.slide-by-side-nav {
+			position: absolute;
+			top: 0;
+			left: 0px;
+			height: 100%;
+			width: 100%;
+			padding-top: calc(var(--base-size) * 3);
+			background: var(--background);
+			
+			z-index: var(--z-overlay);
+
+			@media @medium-and-over {
+				width: 300px;
+				min-width: 300px;
+			}
+		}
+
+		.slide-by-side-grow {
+			position: absolute;
+			left: 300px;
+			top: 0;
+			height: 100%;
+			width: calc(100% - 300px);
+
+			flex: 1;
+
+			background: var(--background-tint);
+			overflow: hidden;
+
+			@media @small {
+				width: 100%;
+				left: 100%;
+				overflow: visible;
+				left: 0;
+			}
+
+			.slide-by-side-body {
+				position: absolute;
+
+				left: -300px;
+				top: 0;
+				height: 100%;
+				width: 100%;
+				padding-top: calc(var(--base-size) * 3);
+
+				transition: var(--transition-movement) var(--transition-easing-movement);
+
+				@media @small {
+					left: 100%;
+				}
+
+				&.slide-by-side-selected {
+					left: 0px;
+
+					@media @small {
+						z-index: var(--z-above-overlay);
+					}
+				}
+
+				//z-index: var(--z-below-overlay);
+			}
+		}
+	}
+}
