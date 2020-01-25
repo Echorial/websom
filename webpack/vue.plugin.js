@@ -36,6 +36,10 @@ const WebsomVue = {
 			} while (component);
 		};
 
+		Vue.prototype.$toast = function $toast(toast) {
+			this.$send("toast", toast);
+		};
+
 		DragPlugin(Vue, options);
 
 		Vue.component("vnode", {
