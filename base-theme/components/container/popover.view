@@ -1,0 +1,250 @@
+info {
+	"name": "popover",
+	"type": "component"
+}
+
+template {
+	<div class="popover-insert">
+		<slot name="wrap" ref="slotWrap" @mouseenter="checkEnter()" @click="toggle()" @mouseleave="checkLeave()" />
+
+		<portal to="app-root">
+			<div class="popover" :class="{'popover-open': isOpen, ['popover-edge-' + realEdge]: true}" ref="popover" :style="{left, top}">
+				<div class="popover-edge-marker"></div>
+				<div class="popover-content">
+					<slot />
+				</div>
+			</div>
+		</portal>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			edge: {
+				type: String,
+				default: "bottom"
+			},
+			activateOnHover: {
+				type: Boolean,
+				default: true
+			}
+		},
+		data() {
+			return {
+				isOpen: false,
+				top: 0,
+				left: 0,
+				realEdge: ""
+			};
+		},
+		methods: {
+			checkEnter() {
+				if (this.activateOnHover)
+					this.open();
+			},
+			checkLeave() {
+				if (this.activateOnHover)
+					this.close();
+			},
+			open() {
+				this.isOpen = true;
+
+				this.computePosition();
+
+				let animFrame = () => {
+					if (!this.isOpen)
+						return;
+					
+					requestAnimationFrame(animFrame);
+
+					this.computePosition();
+				};
+
+				requestAnimationFrame(animFrame);
+			},
+			close() {
+				this.isOpen = false;
+			},
+			toggle() {
+				if (this.isOpen)
+					this.close();
+				else
+					this.open();
+			},
+			getTarget() {
+				if (this.$refs.slotWrap)
+					return this.$refs.slotWrap;
+				else
+					return this.$el.parentElement;
+			},
+			computePosition() {
+				let rect = this.$refs.popover.getBoundingClientRect();
+				let edge = this.edge; // Preferred edge
+
+				let target = this.getTarget();
+				let targetRect = target.getBoundingClientRect();
+
+				const edges = {
+					left: (t, size) => {
+						return {
+							left: t.left - size.width,
+							top: (t.top + t.height / 2) - size.height / 2,
+							next: "right"
+						};
+					},
+					right: (t, size) => {
+						return {
+							left: t.left + t.width,
+							top: (t.top + t.height / 2) - size.height / 2,
+							next: "top"
+						};
+					},
+					top: (t, size) => {
+						return {
+							left: (t.left + t.width / 2) - size.width / 2,
+							top: t.top - size.height,
+							next: "bottom"
+						};
+					},
+					bottom: (t, size) => {
+						return {
+							left: (t.left + t.width / 2) - size.width / 2,
+							top: t.top + t.height,
+							next: "left"
+						};
+					}
+				};
+
+				let checks = 0;
+
+				let checkEdge = (e) => {
+					checks++;
+
+					let out = edges[e](targetRect, rect);
+
+					if (
+						out.left + targetRect.width > window.innerWidth ||
+						out.left + targetRect.width < 0 ||
+						out.top + targetRect.height > window.innerHeight ||
+						out.top + targetRect.height < 0
+					) {
+						if (checks < 5) {
+							checkEdge(out.next);
+
+							return;
+						}
+					}
+
+					this.top = out.top + 'px';
+					this.left = out.left + 'px';
+					this.realEdge = e;
+				};
+
+				checkEdge(edge);
+			}
+		},
+		mounted() {
+			this.getTarget().addEventListener("mouseenter", () => {
+				this.checkEnter();
+			});
+
+			this.getTarget().addEventListener("mouseleave", () => {
+				this.checkLeave();
+			});
+
+			this.getTarget().addEventListener("click", () => {
+				this.toggle();
+			});
+		}
+	}
+}
+
+style {
+	.popover-insert {
+
+	}
+
+	.popover {
+		position: fixed;
+
+		z-index: var(--z-overlay);
+
+		opacity: 0;
+		transition: opacity var(--transition) var(--transition-easing);
+
+		pointer-events: none;
+
+		&.popover-edge-bottom {
+			margin-top: 10px;
+
+			.popover-content {
+				margin-top: 5px;
+			}
+		}
+
+		&.popover-edge-top {
+			margin-top: -15px;
+			
+			.popover-content {
+				margin-top: -5px;
+			}
+		}
+
+		&.popover-edge-left {
+			margin-left: -10px;
+			
+			.popover-content {
+				margin-right: 5px;
+			}
+		}
+
+		&.popover-edge-right {
+			margin-left: 10px;
+			
+			.popover-content {
+				margin-left: 5px;
+			}
+		}
+
+		&.popover-open {
+			opacity: 1;
+			pointer-events: all;
+		}
+
+		.popover-edge-marker {
+			position: absolute;
+
+			width: var(--base-size);
+			height: var(--base-size);
+			transform: rotate(45deg);
+			background: var(--color);
+		}
+
+		&.popover-edge-bottom > .popover-edge-marker {
+			top: 0;
+			left: calc(50% - var(--base-size) / 2);
+		}
+
+		&.popover-edge-top > .popover-edge-marker {
+			top: calc(100% - var(--base-size) / 2);
+			left: calc(50% - var(--base-size) / 2);
+		}
+
+		&.popover-edge-left > .popover-edge-marker {
+			right: 0;
+			top: calc(50% - var(--base-size) / 2);
+		}
+
+		&.popover-edge-right > .popover-edge-marker {
+			left: 0;
+			top: calc(50% - var(--base-size) / 2);
+		}
+
+		.popover-content {
+			background: var(--color);
+			color: var(--contrast);
+			padding: var(--base-size);
+		}
+	}
+}
