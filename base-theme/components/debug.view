@@ -1277,8 +1277,23 @@ template {
 									</thead>
 									<tbody>
 										<tr>
-											<td>
-												
+											<td class="debug-fill">
+												<vertical-list>
+													<div>
+														Item 1
+														<badge value="1" />
+													</div>
+
+													<div>
+														Item 2
+														<badge value="2" />
+													</div>
+
+													<div>
+														Item 3
+														<badge value="3" />
+													</div>
+												</vertical-list>
 											</td>
 										</tr>
 									</tbody>
@@ -1311,19 +1326,19 @@ template {
 												<div>
 													<g-l class="debug-grid">
 														<g-h>
-															<g-v v-for="num in 12" s="1"><div class="inside-grid">{{num}}</div></g-v>
+															<g-v v-for="num in 12" s="1" :key="num"><div class="inside-grid">{{num}}</div></g-v>
 														</g-h>
 														<g-h>
-															<g-v v-for="num in 6" s="2"><div class="inside-grid">{{num * 2}}</div></g-v>
+															<g-v v-for="num in 6" s="2" :key="num"><div class="inside-grid">{{num * 2}}</div></g-v>
 														</g-h>
 														<g-h>
-															<g-v v-for="num in 3" s="4"><div class="inside-grid">{{num * 4}}</div></g-v>
+															<g-v v-for="num in 3" s="4" :key="num"><div class="inside-grid">{{num * 4}}</div></g-v>
 														</g-h>
 														<g-h>
-															<g-v v-for="num in 2" s="6"><div class="inside-grid">{{num * 6}}</div></g-v>
+															<g-v v-for="num in 2" s="6" :key="num"><div class="inside-grid">{{num * 6}}</div></g-v>
 														</g-h>
 														<g-h>
-															<g-v v-for="num in 1" s="12"><div class="inside-grid">{{num * 12}}</div></g-v>
+															<g-v v-for="num in 1" s="12" :key="num"><div class="inside-grid">{{num * 12}}</div></g-v>
 														</g-h>
 													</g-l>
 													<g-l class="debug-grid">
@@ -1347,6 +1362,251 @@ template {
 														</g-h>
 													</g-l>
 												</div>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- LIST -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>List</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr class="primary">
+											<td class="debug-fill">
+												<vertical-list>
+													<div>
+														Item 1
+													</div>
+
+													<div>
+														Item 2
+													</div>
+
+													<div>
+														Item 3
+													</div>
+												</vertical-list>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Icon</th>
+									</thead>
+									<tbody>
+										<tr class="primary">
+											<td class="debug-fill">
+												<vertical-list>
+													<div>
+														Item 1
+														<icon right icon="star" />
+													</div>
+
+													<div>
+														Item 2
+														<icon right icon="star" />
+													</div>
+
+													<div>
+														Item 3
+														<icon right icon="star" />
+													</div>
+												</vertical-list>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- TABLE -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Table</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-12">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr class="primary">
+											<td class="debug-fill">
+												<table>
+													<thead>
+														<th>
+															column head
+														</th>
+
+														<th>
+															column 2
+														</th>
+
+														<th>
+															column 3
+														</th>
+													</thead>
+													<tbody>
+														<tr>
+															<td>row</td>
+															<td>Item 2</td>
+															<td>Item 3 <badge /></td>
+														</tr>
+														<tr>
+															<td>row 2</td>
+															<td>Item 2</td>
+															<td>Item 3 <badge /></td>
+														</tr>
+														<tr>
+															<td>row 3</td>
+															<td>Item 2</td>
+															<td>Item 3 <badge /></td>
+														</tr>
+													</tbody>
+												</table>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- POPOVER -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Popover</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-12">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+										<th>Hover</th>
+										<th>Click</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="top">
+														I'm on top
+													</popover>
+												</button>
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="top" :activate-on-hover="false">
+														I'm on top
+													</popover>
+												</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												left
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="left">
+														I'm to the left
+													</popover>
+												</button>
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="left" :activate-on-hover="false">
+														I'm to the left
+													</popover>
+												</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												right
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="right">
+														I'm to the right
+													</popover>
+												</button>
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="right" :activate-on-hover="false">
+														I'm to the right
+													</popover>
+												</button>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												bottom
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="bottom">
+														I'm on bottom
+													</popover>
+												</button>
+											</td>
+											<td>
+												<button>
+													Popover!
+													<popover edge="bottom" :activate-on-hover="false">
+														I'm on bottom
+													</popover>
+												</button>
 											</td>
 										</tr>
 									</tbody>
