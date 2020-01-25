@@ -7,7 +7,7 @@ template {
 	<portal :to="realEdge">
 		<div :class="'slide-out slide-out-size-' + size + ' slide-out-edge-' + edge + (isOpen ? ' slide-out-open' : '')">
 			<slot />
-			<button class="floating"><icon icon="close" /></button>
+			<button v-if="showClose" @click="close" class="slide-out-close floating"><icon icon="close" /></button>
 		</div>
 	</portal>
 }
@@ -111,9 +111,22 @@ style {
 
 		background: var(--background-tint);
 
-		transition: var(--transition) var(--transition-easing);
+		transition: var(--transition-movement) var(--transition-easing-movement);
 
 		z-index: var(--z-modal);
+
+		.slide-out-close {
+			position: absolute;
+			opacity: 0;
+			
+			transition: var(--transition) var(--transition-easing);
+		}
+
+		&.slide-out-open {
+			.slide-out-close {
+				opacity: 1;
+			}
+		}
 
 		&.slide-out-size-normal {
 			--slide-out-size: 300px;
@@ -129,10 +142,35 @@ style {
 
 		&.slide-out-size-max {
 			--slide-out-size: 100%;
+
+			&.slide-out-edge-left .slide-out-close {
+				right: calc(var(--base-size) * 2);
+				top: calc(var(--base-size) * 2);
+			}
+
+			&.slide-out-edge-right .slide-out-close {
+				left: calc(var(--base-size) * 2);
+				top: calc(var(--base-size) * 2);
+			}
+
+			&.slide-out-edge-bottom .slide-out-close {
+				right: calc(var(--base-size) * 2);
+				top: calc(var(--base-size) * 2);
+			}
+
+			&.slide-out-edge-top .slide-out-close {
+				right: calc(var(--base-size) * 2);
+				bottom: calc(var(--base-size) * 2);
+			}
 		}
 
 		&.slide-out-edge-left, &.slide-out-edge-bottom-left, &.slide-out-edge-top-left {
 			left: 0;
+
+			.slide-out-close {
+				right: calc(var(--base-size) * -6.5);
+				top: calc(var(--base-size) * 2);
+			}
 
 			&.slide-out-edge-left {
 				top: 0;
@@ -151,6 +189,11 @@ style {
 		&.slide-out-edge-right, &.slide-out-edge-bottom-right, &.slide-out-edge-top-right {
 			right: 0;
 
+			.slide-out-close {
+				left: calc(var(--base-size) * -6.5);
+				top: calc(var(--base-size) * 2);
+			}
+
 			&.slide-out-edge-right {
 				top: 0;
 				bottom: 0;
@@ -167,6 +210,11 @@ style {
 
 		&.slide-out-edge-bottom, &.slide-out-edge-bottom-right, &.slide-out-edge-bottom-left {
 			bottom: 0;
+			
+			.slide-out-close {
+				right: calc(var(--base-size) * 2);
+				top: calc(var(--base-size) * -6.5);
+			}
 
 			&.slide-out-edge-bottom {
 				left: 0;
@@ -184,6 +232,11 @@ style {
 
 		&.slide-out-edge-top, &.slide-out-edge-top-right, &.slide-out-edge-top-left {
 			top: 0;
+
+			.slide-out-close {
+				right: calc(var(--base-size) * 2);
+				bottom: calc(var(--base-size) * -6.5);
+			}
 
 			&.slide-out-edge-top {
 				left: 0;
