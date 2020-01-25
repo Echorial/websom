@@ -7,6 +7,7 @@ const lessSyntax = require('postcss-less');
 const path = require('path');
 const hash = require('hash-sum');
 const qs = require('querystring');
+const fs = require("fs");
 
 const componentNormalizerPath = require.resolve('./lib/componentNormalizer.js');
 
@@ -129,6 +130,8 @@ module.exports = async function (source) {
 				return lessOutput.toResult().css;
 			}else{
 				return `
+					${fs.readFileSync(path.resolve(__dirname, "../tools.less"))}
+
 					@component: ~"body:not(.${incomingQuery.package}-${info.name}-disabled):not(.${incomingQuery.package}-disabled).package-${incomingQuery.package}-${info.name}-on, body:not(.${incomingQuery.package}-${info.name}-disabled):not(.${incomingQuery.package}-disabled)";
 
 					${blocks.style.block};
@@ -138,6 +141,29 @@ module.exports = async function (source) {
 		}else{
 			return "";
 		}
+	}
+
+	if (incomingQuery["extract-info"]) {
+		return `export default {${blocks.info.block}};`;
+	}
+
+	if (incomingQuery["extract-script"]) {
+		if (blocks.script)
+			return blocks.script.block;
+		else
+			return `
+				throw new Error("No script block included in effect ${info.name}");
+				export default {}
+			`;
+	}
+
+	if (incomingQuery["extract-config"]) {
+		if (blocks.config)
+			return `export default {${blocks.config.block}};`;
+		else
+			return `
+				export default {options: []}
+			`;
 	}
 
 	// template
