@@ -139,6 +139,9 @@ export default (Vue, options) => {
 			el.addEventListener("touchstart", downListener);
 
 			listeners[myUid] = (type, e) => {
+				if (!state.dragging)
+					return;
+				
 				if (type == "mouseup" || type == "touchend" || type == "touchcancel") {
 					e.preventDefault();
 
