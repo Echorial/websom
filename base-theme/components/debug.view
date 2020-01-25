@@ -1618,6 +1618,67 @@ template {
 			</div>
 		</div>
 
+		<!-- TOAST -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Toast</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-12">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+										<th>normal</th>
+										<th>icon</th>
+										<th>badge</th>
+										<th>action</th>
+										<th>expires</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<button @click="$toast({text: 'Toast Text'})">
+													Toast
+												</button>
+											</td>
+											<td>
+												<button @click="$toast({text: 'Toast Text', icon: 'star'})">
+													Toast
+												</button>
+											</td>
+											<td>
+												<button @click="$toast({text: 'Balance', badge: {text: '$10', value: '+'}})">
+													Toast
+												</button>
+											</td>
+											<td>
+												<button @click="$toast({text: 'Deleted', action: {text: 'UNDO', callback: () => {}}})">
+													Toast
+												</button>
+											</td>
+											<td>
+												<button @click="$toast({text: '1000ms', expires: 1000})">
+													Toast
+												</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+
 		<div>
 			<h3>Headings</h3>
 
