@@ -8,9 +8,9 @@ template {
 		<select v-model="myValue">
 			<option v-for="option in options" :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :value="getValueOfOption(option)">{{option}}</option>
 		</select>
-		<button @click="toggle" class="full" :style="{'min-width': minWidth + 'px'}">
-			<span class="start">{{text}}</span>
-			<icon :icon="$config.dropIcon" pack="font-awesome" class="end" />
+		<button @click="toggle" ref="button" class="full" :style="{'min-width': minWidth + 'px'}">
+			<span ref="text" class="start">{{text}}</span>
+			<icon ref="icon" :icon="$config.dropIcon" pack="font-awesome" class="end" />
 		</button>
 
 		<portal to="app-root">
@@ -163,7 +163,7 @@ script {
 
 				if (this.$el && this.$refs.list) {
 					let listRect = this.$refs.list.getBoundingClientRect();
-					let buttonRect = this.$el.getBoundingClientRect();
+					let buttonRect = this.$refs.button.getBoundingClientRect();
 
 					return Math.max(listRect.width, buttonRect.width);
 				}else{
@@ -218,6 +218,8 @@ style {
 		flex-direction: column;
 
 		margin-top: var(--base-height);
+
+		z-index: var(--z-overlay);
 
 		&.open {
 			opacity: 1;
