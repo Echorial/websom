@@ -1,0 +1,60 @@
+info {
+	"name": "badge",
+	"type": "component"
+}
+
+template {
+	<div class="badge" :class="{'badge-only-value': text.length == 0}">
+		<span class="badge-value" v-if="value.length > 0" :class="{'badge-has-text': text.length > 0}">{{value}}</span><span class="badge-text" v-if="text.length > 0">{{text}}</span>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			text: {
+				type: String,
+				default: "New"
+			},
+			value: {
+				type: String,
+				default: "1"
+			}
+		}
+	}
+}
+
+style {
+	.badge {
+		display: inline-flex;
+
+		justify-content: center;
+		align-items: center;
+
+		background: var(--color);
+		color: var(--color-contrast);
+
+		padding: calc(var(--base-size) / 2);
+
+		letter-spacing: 0.5px;
+		text-transform: uppercase;
+
+		font-size: calc(var(--base-size) * 0.8);
+
+		border-radius: 2px;
+
+		&.badge-only-value {
+			border-radius: 50%;
+			width: var(--base-size);
+			height: var(--base-size);
+		}
+
+		.badge-value {
+			font-weight: bold;
+
+			&.badge-has-text {
+				margin-right: calc(var(--base-size) / 2);
+			}
+		}
+	}
+}
