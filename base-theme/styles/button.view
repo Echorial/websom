@@ -6,74 +6,93 @@ info {
 
 style {
 
-	@{component} {
-		button, input[type="submit"], input[type="button"], .button {
-			/* Resets */
+	button, input[type="submit"], input[type="button"], .button {
+		/* Resets */
 
-			background: none;
-			border: none;
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: default;
+
+		outline: 0;
+
+		/* Base utility */
+
+		user-select: none;
+
+		/* Base styling */
+
+		// Structure
+
+		display: inline-flex;
+
+		flex-direction: row;
+
+		align-items: center;
+
+		justify-content: center;
+
+		vertical-align: middle;
+
+		text-align: center;
+		
+		cursor: pointer;
+
+		background: var(--color);
+		color: var(--contrast);
+		height: calc(var(--base-size) * 3);
+		padding: var(--padding-v) var(--padding-h);
+
+		min-width: calc(var(--base-size) * 6);
+		
+		white-space: nowrap;
+
+		&.floating, &.uniform {
+			width: calc(var(--base-size) * 4.5);
+			min-width: calc(var(--base-size) * 4.5);
+			height: calc(var(--base-size) * 4.5);
+
+			&.floating {
+				border-radius: 50%;
+
+				--icon-size: calc(var(--base-size) * 2);
+			}
+
 			padding: 0;
-			cursor: default;
+		}
 
-			outline: 0;
 
-			/* Base utility */
+		// WARNING: Try not to use this. Instead rely on .floating for stand-out action buttons 
+		&.rounded {
+			border-radius: 50%;
+		}
 
-			user-select: none;
+		&.full {
+			width: 100%;
+			display: flex;
+			box-sizing: border-box;
+		}
 
-			/* Base styling */
+		&:hover {
+			background: var(--color-light);
+			color: var(--contrast-light);
+		}
 
-			// Structure
+		&:active {
+			background: var(--color-dark);
+			color: var(--contrast-dark);
+		}
 
-			display: inline-flex;
+		& > .start {
+			justify-self: flex-start;
+			margin-left: calc(var(--padding-h) * -0.5);
+			margin-right: auto;
+		}
 
-			flex-direction: row;
-
-			align-items: center;
-
-			justify-content: center;
-
-			vertical-align: middle;
-
-			text-align: center;
-			
-			cursor: pointer;
-
-			background: var(--color);
-			color: var(--contrast);
-			height: calc(var(--base-size) * 3);
-			padding: var(--padding-v) var(--padding-h);
-
-			min-width: calc(var(--base-size) * 6);
-			
-			white-space: nowrap;
-
-			&.full {
-				width: 100%;
-				display: flex;
-				box-sizing: border-box;
-			}
-
-			&:hover {
-				background: var(--color-light);
-				color: var(--contrast-light);
-			}
-
-			&:active {
-				background: var(--color-dark);
-				color: var(--contrast-dark);
-			}
-
-			& > .start {
-				justify-self: flex-start;
-				margin-left: calc(var(--padding-h) * -0.5);
-			}
-
-			& > .end {
-				justify-self: flex-end;
-				margin-left: auto;
-				margin-right: calc(var(--padding-h) * -0.5);
-			}
+		& > .end {
+			justify-self: flex-end;
+			margin-left: auto;
+			margin-right: calc(var(--padding-h) * -0.5);
 		}
 	}
 
