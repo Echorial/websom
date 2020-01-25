@@ -29,6 +29,9 @@ const movers = {
 
 		e.el.style.top = top + e.dy + 'px';
 		e.el.style.left = left + e.dx + 'px';
+	},
+	transform(e) {
+		e.el.style.transform = `translate(${e.dx}px, ${e.dy}px)`;
 	}
 };
 
@@ -72,6 +75,10 @@ export default (Vue, options) => {
 			let state = {
 				dragging: false,
 				moved: false,
+				lastKnown: {
+					x: 0, 
+					y: 0
+				},
 				start: {
 					x: 0,
 					y: 0,
@@ -90,6 +97,7 @@ export default (Vue, options) => {
 			let downListener = (e) => {
 				e.preventDefault();
 				el.classList.add("websom-dragging");
+				el.setAttribute("websom-dragging", "true");
 				state.dragging = true;
 
 				state.start.x = e.clientX;
@@ -146,9 +154,14 @@ export default (Vue, options) => {
 					e.preventDefault();
 
 					el.classList.remove("websom-dragging");
+					el.setAttribute("websom-dragging", "false");
 					
 					if (config.end && state.dragging) {
 						let { clientX, clientY } = e;
+						if (e.type == "touchend" || e.type == "touchcancel") {
+							clientX = state.lastKnown.x;
+							clientY = state.lastKnown.y;
+						}
 
 						config.end({
 							event: e,
@@ -171,6 +184,9 @@ export default (Vue, options) => {
 						clientX = e.touches[0].clientX;
 						clientY = e.touches[0].clientY;
 					}else e.preventDefault();
+
+					state.lastKnown.x = clientX;
+					state.lastKnown.y = clientY;
 					
 					let percentageX = 0;
 					let percentageY = 0;
