@@ -1,0 +1,141 @@
+info {
+	"name": "toaster",
+	"type": "component"
+}
+
+template {
+	<div class="toaster">	
+		<transition-group name="toaster" tag="div">
+			<div v-for="toast in queue" :style="toast.opacity == 1 ? '' : 'opacity: ' + toast.opacity" v-draggable="draggable(toast)" :key="toast.uid" class="toast">
+				{{toast.text}}
+				<icon v-if="toast.icon" right :icon="toast.icon" />
+				<badge v-if="toast.badge" :text="toast.badge.text" :value="toast.badge.value" />
+				<button v-if="toast.action" class="mute" @click="toast.action.callback">
+					{{toast.action.text}}
+					<icon v-if="toast.action.icon" :icon="toast.action.icon" />
+				</button>
+			</div>
+		</transition-group>
+	</div>
+}
+
+script {
+	export default {
+		data() {
+			return {
+				queue: [],
+				uid: 0
+			};
+		},
+		methods: {
+			add(toast) {
+				toast.uid = ++this.uid;
+				toast.opacity = 1;
+				this.queue.unshift(toast);
+
+				if (toast.expires)
+					setTimeout(() => {
+						this.remove(toast.uid);
+					}, toast.expires);
+
+				return this.uid;
+			},
+			remove(uid) {
+				this.queue.splice(this.queue.findIndex(a => a.uid == uid), 1);
+			},
+			clear() {
+				this.queue.splice(0, this.queue.length);
+			},
+			draggable(toast) {
+				return {
+					axis: {
+						x: 1,
+						y: 0
+					},
+					position: "transform",
+					move: (e) => {
+						toast.opacity = 1 - Math.abs(e.dx) / 100;
+					},
+					end: (e) => {
+						toast.opacity = 1;
+						e.el.style.transform = "";
+
+						if (Math.abs(e.dx) > 100) {
+							this.remove(toast.uid);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+style {
+	.toaster {
+		position: fixed;
+		pointer-events: none;
+
+		& > div {
+			display: flex;
+			flex-direction: column;
+			height: 100%;
+		}
+
+		@media @medium-and-over {
+			right: 16px;
+			top: 0;
+			bottom: 0;
+			width: 300px;
+		}
+
+		@media @small {
+			left: 0;
+			right: 0;
+			bottom: 0;
+			height: 300px;
+
+			& > div {
+				justify-content: flex-start;
+				flex-direction: column-reverse;
+			}
+		}
+	}
+
+	.toast {
+		transition: var(--transition-movement) var(--transition-easing-movement);
+
+		&[websom-dragging="true"] {
+			transition: transform 0s !important;
+		}
+
+		display: inline-flex;
+		align-items: center;
+		background: var(--background-contrast);
+		color: var(--background);
+		padding: var(--base-size) calc(var(--base-size) * 2);
+		margin: var(--base-size) calc(var(--base-size) * 2);
+
+		opacity: 1;
+
+		pointer-events: all;
+		user-select: none;
+
+		margin-left: auto;
+	}
+
+	.toaster-enter, .toaster-leave-to {
+		opacity: 0;
+
+		@media @small {
+			transform: translateY(var(--base-size));
+		}
+
+		@media @medium-and-over {
+			transform: translateX(calc(var(--base-size) * -2));
+		}
+	}
+
+	.toaster-leave-active {
+		position: absolute;
+	}
+}

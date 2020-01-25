@@ -15,7 +15,7 @@ template {
 					<portal-target :multiple="true" name="left" />
 				</div>
 
-				<router-view @set-css-var="setCSSVar" @open-shade="openShade" @close-shade="closeShade" :class="classes" :style="vars"></router-view>
+				<router-view @toast="doToast" @set-css-var="setCSSVar" @open-shade="openShade" @close-shade="closeShade" :class="classes" :style="vars"></router-view>
 
 				<div @click="clickShade" :class="{'websom-shade': true, 'websom-shaded': shade}"></div>
 
@@ -27,6 +27,8 @@ template {
 				<portal-target :multiple="true" name="bottom" />
 			</div>
 		</div>
+
+		<toaster ref="toaster" />
 	</div>
 }
 
@@ -104,6 +106,9 @@ script {
 			},
 			setCSSVar(name, val) {
 				this.vars[name] = val;
+			},
+			doToast(toast) {
+				this.$refs.toaster.add(toast);
 			}
 		}
 	}
