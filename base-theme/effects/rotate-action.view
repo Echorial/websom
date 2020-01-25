@@ -1,0 +1,81 @@
+info {
+	"name": "rotate-effect",
+	"type": "effect",
+	"apply": [
+		{
+			"type": "component",
+			"name": "button"
+		}
+	]
+}
+
+script {
+	export default {
+		event: ["mousedown", "touchstart", "mouseup", "touchend", "mousemove", "touchmove"],
+		mount(el) {
+			el.parentElement.classList.add("perspective-container");
+			el.classList.add("rotate-effect");
+		},
+		activate(el, event) {
+			let update = () => {
+				let rect = el.getBoundingClientRect();
+				let center = {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+
+				let cx = event.clientX;
+				let cy = event.clientY;
+
+				if (event.touches) {
+					let touch = event.touches[0] || event.changedTouches[0];
+
+					cx = touch.clientX;
+					cy = touch.clientY;
+				}
+
+				let dx = center.x - cx;
+				let dy = center.y - cy;
+
+				//el.style.setProperty("--rotate-x", (dy * this.config.rotation) / 50 + "deg");
+				//el.style.setProperty("--rotate-y", (-1 * dx * this.config.rotation) / 50 + "deg");
+			};
+
+			if (event.type == "mousedown" || event.type == "touchstart" || event.type == "mouseenter") {
+				el.classList.add("rotate-effect-on");
+				update();
+			}
+
+			if (event.type == "mousemove" || event.type == "touchmove") {
+				update();
+
+				event.stopPropagation();
+			}
+
+			if (event.type == "mouseup" || event.type == "touchend" || event.type == "mouseleave") {
+				el.classList.remove("rotate-effect-on");
+			}
+		}
+	}
+}
+
+style {
+	.rotate-effect {
+		transition: .03s var(--transition-easing-movement);
+
+		&.rotate-effect-on {
+			transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
+		}
+	}
+
+	.perspective-container {
+		perspective: 30px;
+	}
+}
+
+config {
+	"options": {
+		"rotation": {
+			"name": "Rotation",
+			"default": 3,
+			"description": "The amount of rotation to apply."
+		}
+	}
+}
