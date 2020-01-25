@@ -30,10 +30,7 @@ const WebsomVue = {
 			let component = this;
 
 			do {
-				let stopPropogation = component.$emit(eventName, ...args);
-				
-				if (stopPropogation)
-					return;
+				component.$emit(eventName, ...args);
 
 				component = component.$parent;
 			} while (component);
