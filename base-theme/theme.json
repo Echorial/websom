@@ -16,6 +16,9 @@
 			"path": "./components/scaffold"
 		},
 		{
+			"path": "./components/container"
+		},
+		{
 			"path": "./effects"
 		},
 		{
