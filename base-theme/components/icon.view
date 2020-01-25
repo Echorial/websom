@@ -4,7 +4,9 @@ info {
 }
 
 template {
-	<span :class="'websom-icon ' + iconClass + ' ' + (right ? 'right' : '') + ' ' + (left ? 'left' : '')">{{ligature}}</span>
+	<transition name="icon-transition">
+		<span :class="'websom-icon ' + iconClass + ' ' + (right ? 'right' : '') + ' ' + (left ? 'left' : '')">{{ligature}}</span>
+	</transition>
 }
 
 script {
