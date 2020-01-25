@@ -1290,6 +1290,74 @@ template {
 			</div>
 		</div>
 
+		<!-- GRID -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h3>Grid</h3>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-12">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Sizing</th>
+									</thead>
+									<tbody>
+										<tr class="primary">
+											<td class="debug-fill">
+												<div>
+													<g-l class="debug-grid">
+														<g-h>
+															<g-v v-for="num in 12" s="1"><div class="inside-grid">{{num}}</div></g-v>
+														</g-h>
+														<g-h>
+															<g-v v-for="num in 6" s="2"><div class="inside-grid">{{num * 2}}</div></g-v>
+														</g-h>
+														<g-h>
+															<g-v v-for="num in 3" s="4"><div class="inside-grid">{{num * 4}}</div></g-v>
+														</g-h>
+														<g-h>
+															<g-v v-for="num in 2" s="6"><div class="inside-grid">{{num * 6}}</div></g-v>
+														</g-h>
+														<g-h>
+															<g-v v-for="num in 1" s="12"><div class="inside-grid">{{num * 12}}</div></g-v>
+														</g-h>
+													</g-l>
+													<g-l class="debug-grid">
+														<g-h>
+															<g-v s="6" shift="3">
+																<div class="inside-grid">s6 shift3</div>
+															</g-v>
+														</g-h>
+													</g-l>
+													<g-l class="debug-grid">
+														<g-h>
+															<g-v s="12" m="2">
+																<div class="inside-grid">Left s12 m2</div>
+															</g-v>
+															<g-v s="12" m="8">
+																<div class="inside-grid">Center s12 m8</div>
+															</g-v>
+															<g-v s="12" m="2">
+																<div class="inside-grid">Right s12 m2</div>
+															</g-v>
+														</g-h>
+													</g-l>
+												</div>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div>
 			<h3>Headings</h3>
 
@@ -1510,6 +1578,14 @@ export default {
 }
 
 style {
+
+	.debug-grid {
+		.inside-grid {
+			margin: 1px;
+			background: var(--background-tint);
+			padding: var(--base-size);
+		}
+	}
 
 	.websom-color-bubble-container {
 		position: relative;

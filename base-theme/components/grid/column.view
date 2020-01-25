@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<div :class="'grid-column purpose-' + purpose">
+	<div :class="'grid-column purpose-' + purpose + ' s' + rs + ' m' + rm + ' l' + rl + ' shift' + shift + (fluid ? ' grid-column-fluid' : '')">
 		<slot />
 	</div>	
 }
@@ -15,17 +15,85 @@ script {
 			purpose: {
 				type: String,
 				default: "general"
+			},
+			s: {
+				type: String,
+				default: "unset"
+			},
+			m: {
+				type: String,
+				default: "unset"
+			},
+			l: {
+				type: String,
+				default: "unset"
+			},
+			shift: {
+				type: String,
+				default: "0"
+			},
+			fluid: {
+				type: Boolean,
+				default: false
+			}
+		},
+		computed: {
+			rs() {
+				return this.s == "unset" ? "12" : this.s;
+			},
+			rm() {
+				return this.m == "unset" ? this.rs : this.m;
+			},
+			rl() {
+				return this.l == "unset" ? this.rm : this.l;
 			}
 		}
 	}
 }
 
 style {
+	.define-shift(@prefix, @size) when (@size <= 12) {
+		&.@{prefix}@{size} {
+			margin-left: (@size / 12) * 100%;
+		}
+
+		.define-shift(@prefix, @size + 1);
+	}
+
+	.define(@prefix, @size) when (@size <= 12) {
+		&.@{prefix}@{size} {
+			flex-basis: (@size / 12) * 100%;
+			min-width: (@size / 12) * 100%;
+
+			&:not(.grid-column-fluid) {
+				max-width: (@size / 12) * 100%;
+			}
+		}
+
+		.define(@prefix, @size + 1);
+	}
+
 	.grid-column {
 		flex: 1;
 
 		display: flex;
 
 		flex-direction: column;
+
+		&.purpose-general {
+			@media @small {
+				.define(s, 1);
+			}
+
+			@media @medium {
+				.define(m, 1);
+			}
+
+			@media @large {
+				.define(l, 1);
+			}
+
+			.define-shift(shift, 1);
+		}
 	}
 }
