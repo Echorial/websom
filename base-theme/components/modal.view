@@ -1,0 +1,90 @@
+info {
+	"name": "modal",
+	"type": "component"
+}
+
+template {
+	<portal to="top">
+		<div class="modal-wrap" :class="{'modal-wrap-open': isOpen}">
+			<div :class="'modal' + (isOpen ? ' modal-open' : '')">
+				<slot />
+				<button v-if="showClose" @click="close" class="modal-close floating"><icon icon="close" /></button>
+			</div>
+		</div>
+	</portal>
+}
+
+script {
+	export default {
+		props: {
+			showClose: {
+				type: Boolean,
+				default: false
+			}
+		},
+		data() {
+			return {
+				isOpen: false
+			};
+		},
+		methods: {
+			open() {
+				this.isOpen = true;
+				this.$send("open-shade", () => this.close());
+			},
+			close() {
+				this.isOpen = false;
+				this.$send("close-shade");
+			},
+			toggle() {
+				if (this.isOpen)
+					this.close();
+				else
+					this.open();
+			}
+		}
+	}
+}
+
+style {
+	.modal-wrap {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 0;
+
+		z-index: var(--z-modal);
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		pointer-events: none;
+	}
+
+	.modal {
+		background: var(--background-tint);
+
+		transition: var(--transition) var(--transition-easing);
+
+		opacity: 0;
+
+		pointer-events: none;
+
+		min-width: var(--modal-width);
+
+		min-height: 300px;
+
+		.modal-close {
+			position: absolute;
+			top: calc(var(--base-size) * 2);
+			right: calc(var(--base-size) * 2);
+		}
+
+		&.modal-open {
+			opacity: 1;
+			pointer-events: all;
+		}
+	}
+}
