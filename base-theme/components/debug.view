@@ -10,7 +10,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Color</h3>
+				<h1>Color</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-8">
@@ -237,7 +237,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Buttons</h3>
+				<h1>Buttons</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-8">
@@ -521,7 +521,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Select</h3>
+				<h1>Select</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -627,7 +627,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Checkbox & Switch</h3>
+				<h1>Checkbox & Switch</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -727,7 +727,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Text</h3>
+				<h1>Text</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -809,7 +809,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Range</h3>
+				<h1>Range</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -917,7 +917,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Dial</h3>
+				<h1>Dial</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -999,7 +999,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Radio</h3>
+				<h1>Radio</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1083,7 +1083,7 @@ template {
 			<slide-out :edge="slideOut.edge" :size="slideOut.size" :show-close="slideOut.close" ref="slideOut"></slide-out>
 			<modal ref="modal"></modal>
 			<div class="debug-title">
-				<h3>Modal & Slide-Out</h3>
+				<h1>Modal & Slide-Out</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1212,7 +1212,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Badge</h3>
+				<h1>Badge</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1309,7 +1309,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Grid</h3>
+				<h1>Grid</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1377,7 +1377,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>List</h3>
+				<h1>List</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1450,7 +1450,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Table</h3>
+				<h1>Table</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1511,7 +1511,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Popover</h3>
+				<h1>Popover</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1622,7 +1622,7 @@ template {
 
 		<div class="debug-group">
 			<div class="debug-title">
-				<h3>Toast</h3>
+				<h1>Toast</h1>
 			</div>
 			<div class="debug-row">
 				<div class="debug-column debug-12">
@@ -1680,14 +1680,14 @@ template {
 
 
 		<div>
-			<h3>Headings</h3>
+			<h1>Headings</h1>
 
 			
 
 			<div>
 				<h1>Heading 1</h1>
 				<h2>Heading 2</h2>
-				<h3>Heading 3</h3>
+				<h1>Heading 3</h1>
 				<h4>Heading 4</h4>
 				<h5>Heading 5</h5>
 				<h6>Heading 6</h6>
@@ -1695,7 +1695,7 @@ template {
 		</div>
 
 		<div>
-			<h3>Text</h3>
+			<h1>Text</h1>
 
 			<div>
 				<p>Paragraph text. <strong>strong</strong> <i>italic</i> <time>{{new Date().toLocaleTimeString()}}</time> <span>span</span> <a href="#">anchor</a></p>
@@ -1718,7 +1718,7 @@ Line 3
 			</div>
 		</div>
 		<div>
-			<h3>Lists</h3>
+			<h1>Lists</h1>
 
 			<ul>
 				<li>Unordered list</h1>
@@ -1985,7 +1985,7 @@ style {
 			padding-left: 20px;
 			border-left: 10px solid var(--color-light);
 
-			& > h3 {
+			& > h1 {
 				margin: 0;
 				font-size: 32px;
 			}
@@ -2047,6 +2047,9 @@ style {
 			th {
 				font-size: 20px;
 				padding: 10px;
+
+				font-family: var(--sub-heading-font);
+				font-weight: var(--sub-weight-font);
 			}
 
 			td {
@@ -2063,6 +2066,11 @@ style {
 				background: var(--background-tint);
 				color: var(--background-contrast);
 				width: 40px;
+
+				&:not(.debug-fill) {
+					font-family: var(--sub-heading-font);
+					font-weight: var(--sub-weight-font);
+				}
 
 				&.debug-fill {
 					background: var(--background-overlay);

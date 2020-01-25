@@ -33,7 +33,6 @@ export function createApp () {
 	if (typeof window !== "undefined") {
 		let effectLoader = new EffectLoader(Effects);
 		effectLoader.initialize();
-		console.log(effectLoader);
 	}
 	
 	return { app, router };

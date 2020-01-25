@@ -38,4 +38,19 @@ style {
 			background: var(--color);
 		}
 	}
+
+	#app {
+		font-family: var(--body-font);
+		font-weight: var(--body-weight);
+
+		h2, h3, h4, h5, h6 {
+			font-family: var(--sub-heading-font);
+			font-weight: var(--sub-heading-weight);
+		}
+
+		h1 {
+			font-family: var(--heading-font);
+			font-weight: var(--heading-weight);
+		}
+	}
 }

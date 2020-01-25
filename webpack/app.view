@@ -29,6 +29,8 @@ template {
 		</div>
 
 		<toaster ref="toaster" />
+
+		<link rel="preload" :href="fonts" as="style" onload="this.onload=null; this.rel = 'stylesheet'">
 	</div>
 }
 
@@ -77,6 +79,33 @@ script {
 				}
 
 				return names.join(" ");
+			},
+			fonts() {
+				if (this.$config.fontLoader == "google-fonts") {
+					let families = {};
+
+					let configOptions = ["heading", "subHeading", "body"];
+					
+					for (let name of configOptions) {
+						let family = this.$config[name + "Font"];
+						let weight = this.$config[name + "Weight"];
+
+						if (!families[family])
+							families[family] = {};
+						
+						families[family][weight] = true;
+					}
+
+					let loads = [];
+
+					for (let key in families) {
+						loads.push(`${key}:${Object.keys(families[key]).join(",")}`);
+					}
+
+					return `https://fonts.googleapis.com/css?family=${loads.join("|")}&display=swap`;
+				}else{
+					console.error("Custom font loaders are not working yet.");
+				}
 			}
 		},
 		methods: {
@@ -110,6 +139,69 @@ script {
 			doToast(toast) {
 				this.$refs.toaster.add(toast);
 			}
+		}
+	}
+}
+
+config {
+	"options": {
+		"fontLoader": {
+			"group": "font",
+			"type": "string",
+			"name": "Font Loader",
+			"description": "The client loader to use when downloading fonts.",
+			"default": "google-fonts",
+			"custom": true,
+			"options": {
+				"google-fonts": {
+					"name": "Google Fonts"
+				}
+			}
+		},
+		"headingFont": {
+			"group": "font",
+			"type": "font",
+			"name": "Heading Font",
+			"description": "Default font used for all headings",
+			"default": "Quicksand"
+		},
+		"headingWeight": {
+			"group": "font",
+			"type": "font-weight",
+			"context": "headingFont",
+			"name": "Heading Weight",
+			"description": "The default font weight used for all headings",
+			"default": "300"
+		},
+		"subHeadingFont": {
+			"group": "font",
+			"type": "font",
+			"name": "Sub Heading Font",
+			"description": "Default font used for all sub-headings",
+			"default": "Quicksand"
+		},
+		"subHeadingWeight": {
+			"group": "font",
+			"type": "font-weight",
+			"context": "subHeadingFont",
+			"name": "Sub Heading Weight",
+			"description": "The default font weight used for all sub-headings",
+			"default": "400"
+		},
+		"bodyFont": {
+			"group": "font",
+			"type": "font",
+			"name": "Body Font",
+			"description": "Default font used for all bodies",
+			"default": "Roboto"
+		},
+		"bodyWeight": {
+			"group": "font",
+			"type": "font-weight",
+			"context": "bodyFont",
+			"name": "Body Weight",
+			"description": "The default font weight used for all bodies",
+			"default": "300"
 		}
 	}
 }
