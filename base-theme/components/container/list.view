@@ -1,0 +1,31 @@
+info {
+	"name": "vertical-list",
+	"type": "component"
+}
+
+template {
+	<div class="vertical-list">
+		<slot />
+	</div>
+}
+
+style {
+	.vertical-list {
+		& > * {
+			display: flex;
+
+			align-items: center;
+
+			height: calc(var(--base-size) * 2);
+			padding: var(--padding-v) var(--padding-h);
+
+			background: var(--background-tint);
+
+			margin: 2px 0px;
+
+			& > .flex-right, & > .websom-icon.flex-right {
+				margin-left: auto;
+			}
+		}
+	}
+}
