@@ -23,12 +23,14 @@ style {
 
 	@{important}:root {
 
-		
-
 		@contrast: rgba(white, 100%);
 
 		@set-contrast-dark: #262626;
 		@set-contrast-light: #e1e1e1;
+
+		--mobile: 790px;
+		--tablet: 990px;
+		--desktop: 1200px;
 		
 		.define-color(light-mode-primary, @primary);
 		.define-color(light-mode-secondary, @secondary);
@@ -75,10 +77,11 @@ style {
 		--contrast-dark: var(--contrast-primary-dark);*/
 
 		--transition: 0.333333s;
-		--transition-color: var(--transition);
+		--transition-color: 0.11111s;
 		--transition-movement: var(--transition);
 
 		--transition-easing: ease-in-out;
+		--transition-easing-movement: ease-in-out;
 
 		--light-background: #fdfdfd;
 			--light-background-contrast: #1a1a1a;
@@ -121,9 +124,25 @@ style {
 		--z-absolute-top: 10001;
 		--z-below-absolute-top: 10000;
 
+		--z-above-nav: 151;
+		--z-nav: 150;
+		--z-below-nav: 149;
+
 		--z-above-overlay: 102;
 		--z-overlay: 101;
 		--z-below-overlay: 100;
+
+		--modal-width: 50%;
+
+		--modal-test: @small;
+
+		.small({
+			--modal-width: calc(100% - 50px);
+		});
+
+		.medium({
+			--modal-width: 70%;
+		});
 
 		.define-color(light-mode-success, #62d662);
 		.define-color(light-mode-danger, red);
