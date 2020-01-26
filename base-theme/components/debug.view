@@ -1687,11 +1687,11 @@ template {
 			<div class="debug-row">
 				<div class="debug-column debug-12">
 					<div class="debug-row">
-						<div class="debug-column debug-12">
+						<div class="debug-column debug-6">
 							<div class="debug-panel">
 								<table>
 									<thead>
-										<th>Simple</th>
+										<th>Date</th>
 										<th>normal</th>
 									</thead>
 									<tbody>
@@ -1701,6 +1701,26 @@ template {
 											</td>
 											<td>
 												<input-date value="1/20/24" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Time</th>
+										<th>normal</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<input-time />
 											</td>
 										</tr>
 									</tbody>

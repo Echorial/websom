@@ -1,0 +1,358 @@
+info {
+	"name": "input-time",
+	"type": "component"
+}
+
+template {
+	<div class="input-time">
+		<input-text :placeholder="placeholder" icon="clock" v-model="myValue" @click.native="showModal" />
+
+		<modal ref="modal" modal-class="time-modal">
+			<g-l class="time-layout">
+				<g-h>
+					<g-v s="12" m="6" class="time-display">
+						<div>
+							<h1><span class="time-display-hour" :class="{'time-active': mode == 'hours'}" @click="mode = 'hours'">{{hours}}</span>:<span class="time-display-hour" :class="{'time-active': mode == 'minutes'}" @click="mode = 'minutes'">{{minutes.padStart(2, "0")}}</span> {{meridiem}}</h1>
+						</div>
+						<div>
+							<input-cycle ref="meridiem" :options="meridiems" v-model="meridiem" class="time-cycle" />
+						</div>
+					</g-v>
+					<g-v s="12" m="6">
+						<div class="time-clock" :style="clockStyle">
+							<div class="time-top" ref="top" v-draggable="pointer" :class="{'time-mode-hours': mode == 'hours'}">
+								<div class="time-hand"><div class="time-selector"></div></div>
+								<div class="time-hours">
+									<div v-for="i in 12" class="time-stop" :style="generateStopStyle(i / 12)">
+										{{i}}
+									</div>
+								</div>
+								<div class="time-minutes">
+									<div v-for="i in 12" class="time-stop" :style="generateStopStyle(i / 12)">
+										{{(i / 12) * 60}}
+									</div>
+								</div>
+							</div>
+
+							<div class="time-bottom">
+								<action-bar edge="bottom">
+									<button @click="close"><txt>OK</txt></button>
+								</action-bar>
+							</div>
+						</div>
+					</g-v>
+				</g-h>
+			</g-l>
+		</modal>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: String,
+				default: () => {
+					let d = new Date();
+					
+					if (d.getHours() > 12) {
+						return `${d.getHours() - 12}:${d.getMinutes()} PM`;
+					}else{
+						return `${d.getHours()}:${d.getMinutes()} AM`;
+					}
+				}
+			},
+			placeholder: {
+				type: String,
+				default: "Time"
+			}
+		},
+		data() {
+			let meridiems = ["AM", "PM"];
+
+			let listener = (e) => {
+				let rect = this.$refs.top.getBoundingClientRect();
+
+				let centerX = rect.left + rect.width / 2;
+				let centerY = rect.top + rect.height / 2;
+
+				let dx = e.x - centerX;
+				let dy = e.y - centerY;
+
+				let angle = Math.atan2(dy, dx);
+
+				if (this.mode == "hours") {
+					this.hours = Math.round(((angle + Math.PI / 2) / (Math.PI * 2)) * 12);
+					if (this.hours <= 0) {
+						this.hours = 12 + this.hours;
+						
+						if (this.hours == 0)
+							this.hours = 12;
+					}
+					this.hours = this.hours.toString();
+				}else{
+					this.minutes = Math.round(((angle + Math.PI / 2) / (Math.PI * 2)) * 60);
+					if (this.minutes < 0) {
+						this.minutes = 60 + this.minutes;
+					}
+					this.minutes = this.minutes.toString();
+				}
+			};
+
+			return {
+				myValue: this.value || "",
+				meridiems,
+				meridiem: "AM",
+				hours: "0",
+				minutes: "0",
+				mode: "hours",
+				pointer: {
+					move: listener,
+					start: listener,
+					end: () => {
+						if (this.mode == "hours") {
+							this.mode = "minutes";
+						}
+					}
+				}
+			};
+		},
+		methods: {
+			showModal() {
+				this.$refs.modal.open();
+			},
+			parseValue() {
+				let reg = /(\d+):(\d\d) (PM|AM)/g;
+				let groups = reg.exec(this.myValue);
+
+				this.hours = groups[1];
+				this.minutes = groups[2];
+				this.meridiem = groups[3].toUpperCase();
+			},
+			updateValue() {
+				this.myValue = `${this.hours}:${this.minutes.toString().padStart(2, "0")} ${this.meridiem}`;
+				this.$emit("input", this.myValue);
+			},
+			generateStopStyle(i) {
+				let angle = Math.PI * 2 * i - Math.PI / 2;
+
+				return `
+					--time-stop-sin: ${Math.sin(angle)};
+					--time-stop-cos: ${Math.cos(angle)};
+				`;
+			},
+			close() {
+				this.$refs.modal.close();
+			}
+		},
+		computed: {
+			timeDisplay() {
+				return `${this.hours}:${this.minutes.toString().padStart(2, "0")} ${this.meridiem}`;
+			},
+			clockStyle() {
+				let selectedAngle = (this.hours / 12) * Math.PI * 2 - Math.PI / 2;
+				
+				if (this.mode == "minutes") {
+					selectedAngle = (this.minutes / 60) * Math.PI * 2 - Math.PI / 2;
+				}
+
+				return `
+					--time-hand-angle: ${selectedAngle};
+				`;
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+				this.parseValue();
+			},
+			meridiem() {
+				this.updateValue();
+			},
+			hours() {
+				this.updateValue();
+			},
+			minutes() {
+				this.updateValue();
+			}
+		},
+		created() {
+			this.parseValue();
+		}
+	}
+}
+
+style {
+	.time-modal {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.time-layout {
+		flex: 1;
+	}
+
+	.time-clock {
+		display: flex;
+		flex-direction: column;
+
+		height: 100%;
+
+		user-select: none;
+		
+		.time-top {
+			flex: 4;
+
+			position: relative;
+			min-height: 250px;
+
+			&.websom-dragging {
+				.time-hand {
+					transition: 0s;
+				}
+			}
+
+			.time-hand {
+				position: absolute;
+
+				left: 50%;
+				top: 50%;
+				width: 100px;
+				height: 2px;
+				background: var(--mute);
+				transform-origin: left center;
+
+				transition: var(--transition-movement) var(--transition-easing-movement);
+
+				transform: rotate(calc(var(--time-hand-angle) * 1rad));
+
+				.time-selector {
+					position: absolute;
+					right: calc(var(--base-size) * -1.5);
+					top: calc(50% - var(--base-size) * 1.5);
+					width: calc(var(--base-size) * 3);
+					height: calc(var(--base-size) * 3);
+					border-radius: 50%;
+
+					background: var(--color);
+				}
+			}
+
+			.time-hours, .time-minutes {
+				position: absolute;
+				width: 200px;
+				height: 200px;
+				left: calc(50% - 100px);
+				top: calc(50% - 100px);
+				opacity: 0;
+				transition: var(--transition-movement) var(--transition-easing-movement);
+
+				.time-stop {
+					position: absolute;
+					text-align: center;
+
+					display: flex;
+					align-items: center;
+					justify-content: center;
+
+					width: calc(var(--base-size) * 2);
+					height: calc(var(--base-size) * 2);
+
+					left: calc(100px + var(--time-stop-cos) * 100px - var(--base-size));
+					top: calc(100px + var(--time-stop-sin) * 100px - var(--base-size));
+				}
+			}
+
+			.time-hours {
+				transform: scale(0.6);
+				z-index: 10;
+				pointer-events: none;
+			}
+
+			&:not(.time-mode-hours) {
+				.time-minutes {
+					opacity: 1;
+				}
+			}
+		}
+
+		.time-bottom {
+			flex: 1;
+		}
+	}
+
+	.time-modal.modal-open {
+		.time-clock .time-top {
+			&.time-mode-hours {
+				.time-hours {
+					opacity: 1;
+					transform: scale(1);
+					pointer-events: all;
+				}
+			}
+		}
+	}
+
+	.time-display {
+		display: flex;
+		flex-direction: column;
+
+		& > div {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			flex: 1;
+
+			&:first-child {
+				background: var(--color);
+				color: var(--contrast);
+			}
+
+			&:last-child {
+				background: var(--background);
+			}
+
+			& > * {
+				margin: var(--base-size);
+			}
+		}
+
+		.time-display-hour, .time-display-minute {
+			cursor: var(--cursor-action);
+
+			padding: 0 2px;
+			border-radius: 4px;
+
+			&:hover, &:active {
+				color: var(--contrast-dark);
+			}
+
+			&.time-active {
+				animation: time-blink 2s infinite;
+			}
+		}
+	}
+
+	.time-cycle {
+		min-width: 50%;
+		max-width: 50%;
+	}
+
+	@keyframes time-blink {
+		0% {
+			background: transparent;
+			color: var(--contrast);
+		}
+
+		50% {
+			background: var(--color-dark);
+			color: var(--contrast-dark);
+		}
+
+		100% {
+			background: transparent;
+			color: var(--contrast);
+		}
+	}
+}
