@@ -1,0 +1,10 @@
+info {
+	"name": "txt",
+	"type": "component"
+}
+
+template {
+	<span class="i18">
+		<slot />
+	</span>
+}
