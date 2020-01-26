@@ -138,8 +138,8 @@ export default (Vue, options) => {
 						...state,
 						dx: 0,
 						dy: 0,
-						x: e.clientX,
-						y: e.clientY
+						x: state.start.x,
+						y: state.start.y
 					});
 			};
 
