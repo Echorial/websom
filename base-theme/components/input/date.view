@@ -125,13 +125,6 @@ script {
 				let daysBefore = new Date((monthIndex == 0) ? parseInt(this.year) - 1 : this.year, monthIndex == 0 ? 12 : monthIndex, 1).getDay();
 				let days = new Date(this.year, monthIndex + 1, 0).getDate();
 				let offset = new Date(((monthIndex == 11) ? parseInt(this.year) + 1 : this.year), ((monthIndex == 11) ? 0 : monthIndex + 1), 0).getDay();
-				console.log({
-					totalDaysBefore,
-					daysBefore,
-					days,
-					offset,
-					monthIndex
-				})
 				
 				for (let index = 0; index <= 7 * 6; index++) {
 					if (index <= daysBefore) {
