@@ -1,0 +1,47 @@
+info {
+	"name": "action-bar",
+	"type": "component"
+}
+
+template {
+	<div :class="'action-bar action-bar-edge-' + edge">
+		<slot />
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			edge: {
+				type: String,
+				default: "center"
+			}
+		}
+	}
+}
+
+style {
+	.action-bar {
+		display: flex;
+		flex-direction: row;
+
+		height: 100%;
+		flex: 1;
+		
+		&.action-bar-edge-center {
+			align-items: center;
+		}
+
+		&.action-bar-edge-bottom {
+			align-items: flex-end;
+		}
+
+		&.action-bar-edge-top {
+			align-items: flex-start;
+		}
+		
+		> * {
+			flex: 1;
+		}
+	}
+}
