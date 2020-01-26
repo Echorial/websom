@@ -6,7 +6,7 @@ info {
 template {
 	<portal to="top">
 		<div class="modal-wrap" :class="{'modal-wrap-open': isOpen}">
-			<div :class="'modal' + (isOpen ? ' modal-open' : '')">
+			<div :class="'modal' + (isOpen ? ' modal-open' : '') + ' ' + modalClass">
 				<slot />
 				<button v-if="showClose" @click="close" class="modal-close floating"><icon icon="close" /></button>
 			</div>
@@ -20,6 +20,10 @@ script {
 			showClose: {
 				type: Boolean,
 				default: false
+			},
+			modalClass: {
+				type: String,
+				default: ""
 			}
 		},
 		data() {
