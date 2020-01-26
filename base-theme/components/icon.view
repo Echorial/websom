@@ -116,7 +116,8 @@ export default {
 						left: "chevron_left",
 						mute: "volume_mute",
 						sound: "volume_up",
-						power: "power_settings_new"
+						power: "power_settings_new",
+						calendar: "calendar_today"
 					},
 					styles: {
 						all: {
