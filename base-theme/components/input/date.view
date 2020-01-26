@@ -48,6 +48,9 @@ template {
 								</div>
 							</template>
 						</div>
+						<action-bar edge="bottom">
+							<button @click="close"><txt>OK</txt></button>
+						</action-bar>
 					</g-v>
 				</g-h>
 			</g-l>
@@ -60,7 +63,7 @@ script {
 		props: {
 			value: {
 				type: String,
-				default: false
+				default: ""
 			},
 			placeholder: {
 				type: String,
@@ -114,6 +117,9 @@ script {
 			updateValue() {
 				this.myValue = new Date(this.year, this.months.indexOf(this.month), this.day).toLocaleDateString();
 				this.$emit("input", this.myValue);
+			},
+			close() {
+				this.$refs.modal.close();
 			}
 		},
 		computed: {
