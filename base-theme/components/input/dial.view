@@ -158,7 +158,7 @@ style {
 					transform: scale(0.8);
 					transform-origin: center center;
 					stroke-dasharray: 76px;
-					stroke-dashoffset: calc((1 - var(--input-dial-value-decimal)) * 76);
+					stroke-dashoffset: calc((1 - var(--input-dial-value-decimal)) * 76px);
 				}
 
 				.input-dial-under-path {
