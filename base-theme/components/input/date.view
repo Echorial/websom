@@ -1,0 +1,254 @@
+info {
+	"name": "input-date",
+	"type": "component"
+}
+
+template {
+	<div class="input-date">
+		<input-text :placeholder="placeholder" icon="calendar" v-model="myValue" @click.native="showModal" />
+
+		<modal ref="modal" modal-class="calendar-modal">
+			<g-l class="calendar-layout">
+				<g-h>
+					<g-v s="12" m="6" class="calendar-months">
+						<div>
+							<h1>{{dateDisplay}}</h1>
+						</div>
+						<div>
+							<input-cycle ref="months" :options="months" v-model="month" class="calendar-date-cycle" />
+							<input-cycle :options="generateYears()" v-model="year" class="calendar-date-cycle" />
+						</div>
+					</g-v>
+					<g-v s="12" m="6">
+						<div class="calendar-grid">
+							<div class="calendar-day">
+								Sun
+							</div>
+							<div class="calendar-day">
+								Mon
+							</div>
+							<div class="calendar-day">
+								Tue
+							</div>
+							<div class="calendar-day">
+								Wed
+							</div>
+							<div class="calendar-day">
+								Thu
+							</div>
+							<div class="calendar-day">
+								Fri
+							</div>
+							<div class="calendar-day">
+								Sat
+							</div>
+							<template v-for="i in (7 * 6)">
+								<div @click="selectDay(i)" :key="i" class="calendar-date" :class="{'calendar-mute': monthIndex[i].muted, 'calendar-selected': !monthIndex[i].muted && monthIndex[i].day == day}">
+									<span>{{monthIndex[i].day}}</span>
+								</div>
+							</template>
+						</div>
+					</g-v>
+				</g-h>
+			</g-l>
+		</modal>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: String,
+				default: false
+			},
+			placeholder: {
+				type: String,
+				default: "Date"
+			}
+		},
+		data() {
+			let months = ['January', 'Febuary', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+			return {
+				myValue: this.value || "",
+				year: new Date().getFullYear().toString(),
+				month: months[new Date().getMonth()],
+				day: 1,
+				months
+			};
+		},
+		methods: {
+			showModal() {
+				this.$refs.modal.open();
+			},
+			generateYears() {
+				let min = new Date().getFullYear() - 100;
+				let arr = new Array(200);
+				for (let i = min; i < min + 200; i++)
+					arr[i] = i.toString();
+				return arr;
+			},
+			selectDay(i) {
+				let day = this.monthIndex[i];
+				if (day.muted) {
+					if (day.day > 15)
+						this.$refs.months.left();
+					
+					if (day.day < 15)
+						this.$refs.months.right();
+
+					this.day = day.day;
+				}else{
+					this.day = day.day;
+				}
+
+				this.updateValue();
+			},
+			parseValue() {
+				let parsed = new Date(this.myValue);
+				this.year = parsed.getFullYear().toString();
+				this.month = this.months[parsed.getMonth()];
+				this.day = parsed.getDate();
+			},
+			updateValue() {
+				this.myValue = new Date(this.year, this.months.indexOf(this.month), this.day).toLocaleDateString();
+				this.$emit("input", this.myValue);
+			}
+		},
+		computed: {
+			monthIndex() {
+				let arr = new Array(7 * 6);
+
+				let monthIndex = this.months.indexOf(this.month);
+				let totalDaysBefore = new Date((monthIndex == 0) ? parseInt(this.year) - 1 : this.year, monthIndex == 0 ? 12 : monthIndex, 0).getDate();
+				let daysBefore = new Date((monthIndex == 0) ? parseInt(this.year) - 1 : this.year, monthIndex == 0 ? 12 : monthIndex, 1).getDay();
+				let days = new Date(this.year, monthIndex + 1, 0).getDate();
+				let offset = new Date(((monthIndex == 11) ? parseInt(this.year) + 1 : this.year), ((monthIndex == 11) ? 0 : monthIndex + 1), 0).getDay();
+				console.log({
+					totalDaysBefore,
+					daysBefore,
+					days,
+					offset,
+					monthIndex
+				})
+				
+				for (let index = 0; index <= 7 * 6; index++) {
+					if (index <= daysBefore) {
+						arr[index] = {day: totalDaysBefore - (daysBefore - index), muted: true};
+						continue;
+					}
+					
+					if ((index - daysBefore) > days) {
+						arr[index] = {day: Math.abs(days - (index - daysBefore)), muted: true};
+						continue;
+					}
+
+					arr[index] = {day: index - daysBefore, muted: false};
+				}
+
+				return arr;
+			},
+			dateDisplay() {
+				return `${this.month.substr(0, 3)} ${this.day}, ${this.year}`;
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+				this.parseValue();
+			},
+			year() {
+				this.updateValue();
+			},
+			month() {
+				this.updateValue();
+			}
+		},
+		created() {
+			this.parseValue();
+		}
+	}
+}
+
+style {
+	.calendar-grid {
+		display: grid;
+
+		grid-template-columns: repeat(7, (1 / 7) * 100%);
+		grid-template-rows: repeat(7, (1 / 7) * 100%);
+
+		height: 100%;
+	}
+
+	.calendar-modal {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.calendar-layout {
+		flex: 1;
+	}
+
+	.calendar-day {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.calendar-date {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		min-height: calc(var(--base-size) * 3);
+
+		transition: var(--transition-color) var(--transition-easing);
+
+		cursor: var(--cursor-action);
+
+		&.calendar-mute {
+			color: var(--mute);
+		}
+
+		&:hover {
+			background: var(--background);
+		}
+
+		&.calendar-selected {
+			background: var(--color);
+			color: var(--contrast);
+		}
+	}
+
+	.calendar-months {
+		display: flex;
+		flex-direction: column;
+
+		& > div {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			flex: 1;
+
+			&:first-child {
+				background: var(--color);
+				color: var(--contrast);
+			}
+
+			&:last-child {
+				background: var(--background);
+			}
+
+			& > * {
+				margin: var(--base-size);
+			}
+		}
+	}
+
+	.calendar-date-cycle {
+		min-width: 50%;
+		max-width: 50%;
+	}
+}
