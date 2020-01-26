@@ -1,0 +1,221 @@
+info {
+	"name": "input-cycle",
+	"type": "component"
+}
+
+template {
+	<div class="input-cycle" v-draggable="draggable" :class="{'input-cycle-transition': transition}" :style="style">
+		<div class="input-cycle-left" @click="left">
+			<icon icon="left" />
+		</div>
+
+		<div class="input-cycle-content">
+			<div class="input-cycle-value-left">
+				{{valueLeft}}
+			</div>
+			<div class="input-cycle-value">
+				{{myValue}}
+			</div>
+			<div class="input-cycle-value-right">
+				{{valueRight}}
+			</div>
+		</div>
+
+		<div class="input-cycle-right" @click="right">
+			<icon icon="right" />
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: String,
+				default: ""
+			},
+			options: {
+				type: Array,
+				default: []
+			}
+		},
+		data() {
+			let dragCycles = 0;
+
+			return {
+				myValue: this.value || "",
+				translate: 0,
+				transition: false,
+				draggable: {
+					axis: {
+						x: 1,
+						y: 0
+					},
+					move: (e) => {
+						this.translate = e.dx - (dragCycles * 100);
+
+						if (this.translate >= 100) {
+							this.myValue = this.valueLeft;
+							this.$emit("input", this.myValue);
+							dragCycles++;
+						}else if (this.translate <= -100) {
+							this.myValue = this.valueRight;
+							this.$emit("input", this.myValue);
+							dragCycles--;
+						}
+					},
+					end: (e) => {
+						if (!e.moved)
+							return;
+
+						dragCycles = 0;
+
+						if (this.translate > 75) {
+							this.left();
+						}else if (this.translate < -75) {
+							this.right();
+						}else{
+							this.transition = true;
+							setTimeout(() => {
+								this.translate = 0;
+								setTimeout(() => {
+									this.transition = false;
+									this.translate = 0;
+								}, 300);
+							});
+						}
+					}
+				}
+			};
+		},
+		methods: {
+			left() {
+				this.transition = true;
+				setTimeout(() => {
+					this.translate = 100;
+					setTimeout(() => {
+						this.transition = false;
+						this.myValue = this.valueLeft;
+						this.$emit("input", this.myValue);
+						this.translate = 0;
+					}, 300);
+				});
+			},
+			right() {
+				this.transition = true;
+				setTimeout(() => {
+					this.translate = -100;
+					setTimeout(() => {
+						this.transition = false;
+						this.myValue = this.valueRight;
+						this.$emit("input", this.myValue);
+						this.translate = 0;
+					}, 300);
+				});
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		},
+		computed: {
+			style() {
+				return `--input-cycle-translate: ${this.translate}%; --input-cycle-value-opacity: ${1 - Math.max(this.rightOpacity, this.leftOpacity)}; --input-cycle-right-opacity: ${this.rightOpacity}; --input-cycle-left-opacity: ${this.leftOpacity}`;
+			},
+			rightOpacity() {
+				return (this.translate / -100);
+			},
+			leftOpacity() {
+				return (this.translate / 100);
+			},
+			valueRight() {
+				let index = this.options.indexOf(this.myValue) + 1;
+
+				if (index >= this.options.length)
+					index = 0;
+				
+				return this.options[index];
+			},
+			valueLeft() {
+				let index = this.options.indexOf(this.myValue) - 1;
+
+				if (index < 0)
+					index = this.options.length - 1;
+				
+				return this.options[index];
+			}
+		}
+	}
+}
+
+style {
+	.input-cycle {
+		--input-cycle-translate: 0;
+		--input-cycle-right-opacity: 0;
+		--input-cycle-left-opacity: 0;
+
+		display: flex;
+		flex-direction: row;
+
+		user-select: none;
+
+		.input-cycle-left, .input-cycle-right {
+			flex: 1;
+			cursor: var(--cursor-action);
+			text-align: center;
+		}
+
+		.input-cycle-content {
+			flex: 4;
+
+			position: relative;
+
+			overflow: hidden;
+			
+			.input-cycle-value-left {
+				position: absolute;
+				text-align: center;
+				width: 100%;
+				left: -100%;
+				pointer-events: none;
+				top: 0px;
+				opacity: var(--input-cycle-left-opacity);
+
+				transform: translateX(var(--input-cycle-translate));
+			}
+
+			.input-cycle-value-right {
+				position: absolute;
+				text-align: center;
+				width: 100%;
+				right: -100%;
+				pointer-events: none;
+				top: 0px;
+				opacity: var(--input-cycle-right-opacity);
+
+				transform: translateX(var(--input-cycle-translate));
+			}
+
+			.input-cycle-value {
+				opacity: var(--input-cycle-value-opacity);
+				transform: translateX(var(--input-cycle-translate));
+				text-align: center;
+			}
+		}
+
+		&.input-cycle-transition {
+			.input-cycle-value-left {
+				transition: var(--transition) var(--transition-easing);
+			}
+
+			.input-cycle-value-right {
+				transition: var(--transition) var(--transition-easing);
+			}
+
+			.input-cycle-value {
+				transition: var(--transition) var(--transition-easing);
+			}
+		}
+	}
+}
