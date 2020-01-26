@@ -1,0 +1,40 @@
+info {
+	"name": "helpers",
+	"type": "style"
+}
+
+style {
+	@media @small {
+		.hide-on-small {
+			display: none;
+		}
+
+		.hide-on-medium-and-down {
+			display: none;
+		}
+	}
+
+	@media @medium {
+		.hide-on-medium {
+			display: none;
+		}
+
+		.hide-on-medium-and-up {
+			display: none;
+		}
+
+		.hide-on-medium-and-down {
+			display: none;
+		}
+	}
+
+	@media @large {
+		.hide-on-large {
+			display: none;
+		}
+
+		.hide-on-medium-and-up {
+			display: none;
+		}
+	}
+}
