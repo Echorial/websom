@@ -86,7 +86,8 @@ export default {
 						mute: "volume-mute",
 						sound: "volume-up",
 						power: "power-off",
-						menu: "bars"
+						menu: "bars",
+						time: "clock"
 					},
 					styles: {
 						free: {
@@ -117,7 +118,9 @@ export default {
 						mute: "volume_mute",
 						sound: "volume_up",
 						power: "power_settings_new",
-						calendar: "calendar_today"
+						calendar: "calendar_today",
+						clock: "access_time",
+						time: "access_time"
 					},
 					styles: {
 						all: {
@@ -141,7 +144,8 @@ export default {
 						up: "arrow-up-s",
 						mute: "volume-mute",
 						sound: "volume-up",
-						power: "shut-down"
+						power: "shut-down",
+						clock: "time"
 					},
 					styles: {
 						all: {
