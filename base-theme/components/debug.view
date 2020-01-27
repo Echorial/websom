@@ -1077,7 +1077,49 @@ template {
 			</div>
 		</div>
 
-		<!-- INPUT MODAL -->
+		<!-- INPUT FILE -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h1>File</h1>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-12">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Type</th>
+										<th>Single</th>
+										<th>Multiple</th>
+										<th>No file size</th>
+									</thead>
+									<tbody>
+										<tr class="primary">
+											<td>
+												primary
+											</td>
+											<td>
+												<input-file />
+											</td>
+											<td>
+												<input-file :multiple="true" />
+											</td>
+											<td>
+												<input-file :display-file-size="false" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- MODAL & SLIDE OUT -->
 
 		<div class="debug-group">
 			<slide-out :edge="slideOut.edge" :size="slideOut.size" :show-close="slideOut.close" ref="slideOut"></slide-out>
