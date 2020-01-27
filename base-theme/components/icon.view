@@ -120,7 +120,8 @@ export default {
 						power: "power_settings_new",
 						calendar: "calendar_today",
 						clock: "access_time",
-						time: "access_time"
+						time: "access_time",
+						upload: "cloud_upload"
 					},
 					styles: {
 						all: {
