@@ -60,6 +60,9 @@ script {
 		},
 		computed: {
 			fileSizeDisplay() {
+				if (!this.displayFileSize)
+					return "";
+				
 				const fs = this.fileSize;
 
 				if (fs < 1024) {
