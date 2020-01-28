@@ -5,7 +5,7 @@ info {
 
 template {
 	<div :class="'input-range input-range-orientation-' + orientation">
-		<div class="input-range-rail" ref="rail">
+		<div class="input-range-rail" :class="railClass" ref="rail">
 			<div v-for="(val, i) in snaps" class="input-range-snap" :style="getStyleForSnap(i, val)"></diV>
 			<div class="input-range-gap" v-if="myValue.length == 2" :style="getStyleForGap()"></div>
 			<div v-for="(val, i) in myValue" :ref="`handle-${i}`" v-draggable="getDraggableForHandle(i)" :style="getStyleForHandle(i, val)" :data-value="val" :key="i" class="input-range-handle">
@@ -55,6 +55,10 @@ script {
 			snaps: {
 				type: Array,
 				default: () => []
+			},
+			railClass: {
+				type: String,
+				default: ""
 			}
 		},
 		data() {
@@ -279,7 +283,7 @@ style {
 				border-top-right-radius: var(--input-range-value-high-round);
 
 				left: calc(var(--input-range-value-percentage) - var(--base-size));
-				top: calc(var(--base-size) * -0.75);
+				top: calc(50% - var(--base-size));
 			}
 		}
 	}
