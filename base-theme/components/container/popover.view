@@ -8,7 +8,7 @@ template {
 		<slot name="wrap" ref="slotWrap" @mouseenter="checkEnter()" @click="toggle()" @mouseleave="checkLeave()" />
 
 		<portal to="app-root">
-			<div class="popover" :class="{'popover-open': isOpen, ['popover-edge-' + realEdge]: true}" ref="popover" :style="{left, top}">
+			<div class="popover" :class="{'popover-open': isOpen, ['popover-edge-' + realEdge]: true, 'popover-full': full}" ref="popover" :style="{left, top, '--popover-color': 'var(--' + color + ')'}">
 				<div class="popover-edge-marker"></div>
 				<div class="popover-content">
 					<slot />
@@ -28,6 +28,14 @@ script {
 			activateOnHover: {
 				type: Boolean,
 				default: true
+			},
+			full: {
+				type: Boolean,
+				default: false
+			},
+			color: {
+				type: String,
+				default: "color"
 			}
 		},
 		data() {
@@ -218,7 +226,7 @@ style {
 			width: var(--base-size);
 			height: var(--base-size);
 			transform: rotate(45deg);
-			background: var(--color);
+			background: var(--popover-color);
 		}
 
 		&.popover-edge-bottom > .popover-edge-marker {
@@ -242,9 +250,17 @@ style {
 		}
 
 		.popover-content {
-			background: var(--color);
+			background: var(--popover-color);
 			color: var(--contrast);
 			padding: var(--base-size);
+
+			position: relative;
+		}
+
+		&.popover-full {
+			.popover-content {
+				padding: 0px;
+			}
 		}
 	}
 }
