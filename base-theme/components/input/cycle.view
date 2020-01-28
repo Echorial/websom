@@ -166,6 +166,8 @@ style {
 			text-align: center;
 		}
 
+		color: var(--background-contrast);
+
 		.input-cycle-content {
 			flex: 4;
 
