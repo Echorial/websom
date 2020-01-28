@@ -1,0 +1,313 @@
+info {
+	"name": "input-color",
+	"type": "component"
+}
+
+template {
+	<div class="input-color">
+		<button>
+			<div class="input-color-display" :style="{'--input-color-value': displayColor}"></div>
+			<popover :activate-on-hover="false" :full="true" color="background">
+				<div class="input-color-dialog" :style="{'--input-color-value': displayColor, '--input-color-track': trackColor}">
+					<div class="input-color-dialog-top" ref="top" v-draggable="draggable">
+						<div class="input-color-gradient-color" :style="colorStyle"></div>
+						<div class="input-color-gradient-darkness" :style="darknessStyle"></div>
+						<div class="input-color-gradient-spot" :style="{'--input-color-position-x': position.x, '--input-color-position-y': position.y}"></div>
+					</div>
+					<div class="input-color-dialog-middle">
+						<div class="input-color-dialog-row">
+							<div class="input-color-dialog-left">
+								<div class="input-color-dialog-left-display"></div>
+							</div>
+							<div class="input-color-dialog-right">
+								<input-range :min="0" :max="360" v-model="hue" rail-class="input-color-hue-rail" />
+								<input-range :min="0" :max="100" v-model="alpha" rail-class="input-color-alpha-rail" />
+							</div>
+						</div>
+						<div class="input-color-dialog-info">
+							<div class="input-color-inputs">
+								<div class="input-color-hex">
+									<input-text :value="displayValues" @input="updateValue" />
+								</div>
+							</div>
+							<input-cycle v-model="displayMode" :options="displayModes" />
+						</div>
+					</div>
+					<div class="input-color-dialog-bottom">
+					</div>
+				</div>
+			</popover>
+		</button>
+	</div>
+}
+
+script {
+
+	import Color from "color";
+
+	export default {
+		props: {
+			value: {
+				required: false,
+				default: "#FFFFFF"
+			},
+			output: {
+				type: String,
+				default: "hex",
+				validator(v) {
+					return [
+						"hex",
+						"rgb",
+						"cmyk",
+						"object",
+						"hsl",
+						"red",
+						"blue",
+						"green",
+						"hue",
+						"saturation",
+						"luminosity",
+						"hsv"
+					].indexOf(v) !== -1;
+				}
+			}
+		},
+		data() {
+			let setPosition = (e) => {
+				let rect = this.$refs.top.getBoundingClientRect();
+				
+				let x = (e.x - rect.x) / rect.width;
+				let y = (e.y - rect.y) / rect.height;
+
+				this.position.x = Math.min(1, Math.max(0, x));
+				this.position.y = Math.min(1, Math.max(0, y));
+			};
+
+			return {
+				myValue: this.value || "#FFFFFF",
+				position: {x: 0.5, y: 1},
+				displayModes: [
+					"RGB",
+					"HEX",
+					"HSL"
+				],
+				displayMode: "HEX",
+				hue: [0],
+				alpha: [100],
+				draggable: {
+					start: setPosition,
+					move: setPosition
+				}
+			};
+		},
+		methods: {
+			updateValue(e) {
+				let color = Color(e);
+				this.$set(this.hue, 0, color.hue());
+				this.$set(this.alpha, 0, color.valpha * 100);
+				
+				let r = color.red() / 255;
+				let g = color.green() / 255;
+				let b = color.blue() / 255;
+
+				let max = Math.max(r, g, b);
+				let min = Math.min(r, g, b);
+
+				this.position.y = 1-max;
+
+				if (max == 0)
+					this.position.x = 0;
+				else
+					this.position.x = (max-min)/max;
+			},
+			lerp: (a, b, c) => {
+				return (1 - c) * a + c * b;
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.value || "#FFFFFF";
+			}
+		},
+		computed: {
+			color() {
+				let baseColor = Color(`hsl(${this.hue}, 100%, 50%)`);
+
+				let light = {
+					r: this.lerp(255, baseColor.red(), this.position.x),
+					g: this.lerp(255, baseColor.green(), this.position.x),
+					b: this.lerp(255, baseColor.blue(), this.position.x)
+				};
+
+				let dark = {
+					r: this.lerp(light.r, 0, this.position.y),
+					g: this.lerp(light.g, 0, this.position.y),
+					b: this.lerp(light.b, 0, this.position.y)
+				};
+				
+				return Color(dark).alpha(this.alpha[0] / 100);
+			},
+			displayColor() {
+				return this.color.toString();
+			},
+			colorStyle() {
+				return `--input-color-gradient: linear-gradient(to right, white 0%, ${this.trackColor} 100%)`;
+			},
+			darknessStyle() {
+				return `--input-color-gradient: linear-gradient(to bottom, transparent 0%, #000 100%)`;
+			},
+			trackColor() {
+				return Color(`hsl(${this.hue}, 100%, 50%)`).hex();
+			},
+			displayValues() {
+				if (this.displayMode == "HEX") {
+					return this.alpha[0] == 100 ? this.color.hex() : this.color.hex() + (this.alpha[0].toString(16).padStart(2, "0"));
+				}
+			}
+		},
+		created() {
+			this.updateValue(this.myValue);
+		}
+	}
+}
+
+style {
+	.input-color-display {
+		width: 100%;
+		height: var(--base-size);
+		background: var(--input-color-value);
+	}
+
+	.input-color-dialog {
+		min-height: 300px;
+		min-width: 250px;
+
+		display: flex;
+		flex-direction: column;
+
+		height: 100%;
+
+		& > * {
+			flex: 1;
+		}
+
+		.input-color-dialog-top {
+			flex: 1.5;
+			position: relative;
+
+			min-height: 125px;
+
+			.input-color-gradient-color, .input-color-gradient-darkness {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+
+				background: var(--input-color-gradient);
+			}
+
+			.input-color-gradient-spot {
+				position: absolute;
+				left: calc(100% * var(--input-color-position-x) - var(--base-size) / 2);
+				top: calc(100% * var(--input-color-position-y) - var(--base-size) / 2);
+
+				width: var(--base-size);
+				height: var(--base-size);
+
+				border-radius: 50%;
+				border: 1px solid white;
+				box-shadow: 0px 0px 3px black;
+			}
+		}
+
+		.input-color-dialog-middle {
+			display: flex;
+			flex-direction: column;
+
+			.input-color-dialog-row {
+				display: flex;
+				flex-direction: row;
+				padding: var(--base-size) 0;
+				
+				.input-color-dialog-left {
+					flex: 1;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+
+					.input-color-dialog-left-display {
+						position: relative;
+
+						border-radius: 50%;
+						width: calc(var(--base-size) * 3);
+						height: calc(var(--base-size) * 3);
+						border: 2px solid var(--contrast);
+
+						background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+						background-size: var(--base-size) var(--base-size);
+						background-position: 0 0, 0 calc(var(--base-size) * 0.5), calc(var(--base-size) * 0.5) calc(var(--base-size) * -0.5), calc(var(--base-size) * -0.5) 0px;
+
+						&::after {
+							border-radius: 50%;
+							position: absolute;
+							content: "";
+							left: 0;
+							top: 0;
+							width: 100%;
+							height: 100%;
+							background: var(--input-color-value);
+						}
+					}
+				}
+				
+				.input-color-dialog-right {
+					flex: 2;
+
+					display: flex;
+					flex-direction: column;
+					justify-content: space-evenly;
+
+					padding: 0 var(--base-size);
+				}
+			}
+
+			.input-color-dialog-info {
+				padding: 0 var(--base-size);
+
+				.input-color-inputs {
+					margin-bottom: var(--base-size);
+				}
+			}
+
+			.input-range-rail.input-color-hue-rail, .input-range-rail.input-color-alpha-rail {
+				.input-range-handle {
+					--base-size: 10px;
+				}
+			}
+
+			.input-range-rail.input-color-hue-rail {
+				height: var(--base-size);
+				background: linear-gradient(to right, red 0%, #ff0 17%, lime 33%, cyan 50%, blue 66%, #f0f 83%, red 100%);
+			}
+
+			.input-range-rail.input-color-alpha-rail {
+				height: var(--base-size);
+				background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+				background-size: var(--base-size) var(--base-size);
+				background-position: 0 0, 0 calc(var(--base-size) * 0.5), calc(var(--base-size) * 0.5) calc(var(--base-size) * -0.5), calc(var(--base-size) * -0.5) 0px;
+
+				&::before {
+					content: "";
+					position: absolute;
+					left: 0;
+					width: 100%;
+					top: 0;
+					height: 100%;
+
+					background: linear-gradient(to right, transparent 0%, var(--input-color-value) 100%)
+				}
+			}
+		}
+	}
+}
