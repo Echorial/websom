@@ -181,7 +181,7 @@ style {
 
 				&:focus {
 					background: var(--mute-light);
-					color: var(--mute-light-contrast);
+					color: var(--mute-contrast);
 				}
 			}
 		}
