@@ -1,0 +1,41 @@
+info {
+	"name": "breadcrumbs",
+	"type": "component"
+}
+
+template {
+	<div class="breadcrumbs">
+		<div v-for="(c, i) in crumbs" class="breadcrumbs-crumb">
+			<span>{{c}}</span>
+			<icon v-if="i != crumbs.length - 1" :icon="$config.breadcrumbsIcon" />
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			crumbs: {
+				type: Array,
+				default: () => []
+			}
+		}
+	}
+}
+
+style {
+	.breadcrumbs {
+		display: flex;
+		align-items: center;
+	}
+}
+
+config {
+	"options": {
+		"breadcrumbsIcon": {
+			"name": "Breadcrumbs Icon",
+			"type": "string",
+			"default": "right"
+		}
+	}
+}
