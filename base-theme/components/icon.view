@@ -87,7 +87,9 @@ export default {
 						sound: "volume-up",
 						power: "power-off",
 						menu: "bars",
-						time: "clock"
+						time: "clock",
+						loading: "sync",
+						refresh: "sync"
 					},
 					styles: {
 						free: {
@@ -121,7 +123,8 @@ export default {
 						calendar: "calendar_today",
 						clock: "access_time",
 						time: "access_time",
-						upload: "cloud_upload"
+						upload: "cloud_upload",
+						loading: "refresh"
 					},
 					styles: {
 						all: {
@@ -146,7 +149,8 @@ export default {
 						mute: "volume-mute",
 						sound: "volume-up",
 						power: "shut-down",
-						clock: "time"
+						clock: "time",
+						loading: "refresh"
 					},
 					styles: {
 						all: {
