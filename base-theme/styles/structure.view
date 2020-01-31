@@ -56,4 +56,8 @@ style {
 			font-weight: var(--heading-weight);
 		}
 	}
+
+	.pad-content {
+		padding: var(--base-size);
+	}
 }
