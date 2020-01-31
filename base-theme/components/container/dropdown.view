@@ -1,0 +1,174 @@
+info {
+	"name": "dropdown",
+	"type": "component"
+}
+
+template {
+	<div class="dropdown">
+		<portal to="app-root">
+			<ul class="dropdown-list" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': width + 'px'}">
+				<slot />
+			</ul>
+		</portal>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			edge: {
+				type: String,
+				default: "bottom"
+			}
+		},
+		data() {
+			return {
+				left: 0,
+				top: 0,
+				width: 0,
+				active: false
+			};
+		},
+		methods: {
+			toggle() {
+				if (this.active)
+					this.close();
+				else
+					this.open();
+			},
+			open() {
+				this.active = true;
+				this.computeWidth();
+
+				this.startUpdating();
+			},
+			close() {
+				this.active = false;
+			},
+			startUpdating() {
+				let frame = () => { if (this.active) requestAnimationFrame(frame); this.updatePosition(); };
+
+				frame();
+			},
+			updatePosition() {
+				let rect = this.$el.parentElement.getBoundingClientRect();
+
+				this.left = rect.left;
+				this.top = rect.top;
+
+				if (this.edge == "right") {
+					this.left += rect.width;
+					this.top -= rect.height;
+				}else if (this.edge == "left") {
+					this.left -= rect.width;
+					this.top -= rect.height;
+				}
+
+				let listRect = this.$refs.list.getBoundingClientRect();
+
+				let styleMap = this.$refs.list.computedStyleMap();
+				let height = listRect.height
+					+ styleMap.get("margin-top").value
+					+ styleMap.get("margin-bottom").value
+					+ styleMap.get("padding-top").value
+					+ styleMap.get("padding-bottom").value;
+				
+				if (this.top + height > window.innerHeight) {
+					this.top -= height;
+				}
+			},
+			computeWidth() {
+				console.log(this.$el.parentElement);
+				this.width = this.$el.parentElement.getBoundingClientRect().width;
+				console.log(this.width);
+			}
+		},
+		mounted() {
+			this.$el.parentElement.addEventListener("click", () => {
+				this.toggle();
+			});
+
+			this.onGlobal("mouseup", (e) => {
+				let clickedOnParent = false;
+
+				let closestSelect = e.target.closest(".dropdown-list");
+				if (this.$el == closestSelect)
+					clickedOnParent = true;
+
+				let closestList = e.target.closest(".dropdown-list");
+				if (this.$refs.list == closestList)
+					clickedOnParent = true;
+				
+				console.log(clickedOnParent);
+
+				if (!clickedOnParent)
+					this.close();
+			});
+		}
+	}
+}
+
+style {
+	.dropdown-list {
+		position: fixed;
+		
+		list-style: none;
+		margin: 0px;
+		padding: 0px;
+
+		display: flex;
+		opacity: 0;
+		pointer-events: none;
+
+		flex-direction: column;
+
+		margin-top: var(--base-height);
+
+		z-index: var(--z-overlay);
+
+		&.open {
+			opacity: 1;
+			pointer-events: all;
+		}
+	}
+
+	.dropdown-list > * {
+		padding: var(--padding-v) var(--padding-h);
+
+		white-space: nowrap;
+		
+		background: var(--color-light);
+		color: var(--contrast-light);
+
+		height: var(--base-height);
+
+		cursor: var(--cursor-action);
+
+		display: flex;
+
+		align-items: center;
+
+		user-select: none;
+
+		&:hover {
+			background: var(--color);
+			color: var(--contrast);
+		}
+
+		&:active, &.selected {
+			background: var(--color-dark);
+			color: var(--contrast-dark);
+		}
+
+		& > .start {
+			justify-self: flex-start;
+			margin-left: calc(var(--padding-h) * -0.5);
+		}
+
+		& > .end {
+			justify-self: flex-end;
+			margin-left: auto;
+			margin-right: calc(var(--padding-h) * -0.5);
+		}
+	}
+}
