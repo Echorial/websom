@@ -35,7 +35,8 @@ config {
 		"breadcrumbsIcon": {
 			"name": "Breadcrumbs Icon",
 			"type": "string",
-			"default": "right"
+			"default": "right",
+			"helper": "icons"
 		}
 	}
 }
