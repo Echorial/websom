@@ -1816,6 +1816,291 @@ template {
 			</div>
 		</div>
 
+		<!-- CARD -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h1>Card</h1>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Plain</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card>
+													<h2 slot="title">Card Title</h2>
+													<div slot="body">
+														Card body with slot="body"
+													</div>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Image</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card>
+													<img slot="image" src="https://source.unsplash.com/collection/3330445/600x400" />
+													<h2 slot="title">Card Title <span class="debug-card-right">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>FAB</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card>
+													<img slot="image" src="https://source.unsplash.com/collection/3330445/600x400?a" />
+													<h2 slot="title">Card Title <span class="debug-card-top">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+													<button slot="fab" class="floating">
+														<icon icon="star" />
+													</button>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					<div class="debug-row">
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Reveal</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card>
+													<img slot="image" src="https://source.unsplash.com/collection/3330445/600x400?b" />
+													<h2 slot="title">Card Title <span class="debug-card-right">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+													<h2 slot="reveal-title">Reveal Title</h2>
+													<div slot="reveal">
+														This is the reveal body. Content in here is hidden until a user takes action by clicking on the card.
+													</div>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Action Bar</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card>
+													<img slot="image" src="https://source.unsplash.com/collection/3330445/600x400?c" />
+													<h2 slot="title">Card Title <span class="debug-card-right">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+													<action-bar slot="action">
+														<button class="mute">Author</button>
+														<button>View</button>
+													</action-bar>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Title Position</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card title-position="content">
+													<img slot="image" src="https://source.unsplash.com/collection/3330445/600x400?d" />
+													<h2 slot="title">Card Title <span class="debug-card-relative">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+													<button slot="fab" class="floating">
+														<icon icon="add" />
+													</button>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					<div class="debug-row">
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Slider</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card :images="['https://source.unsplash.com/600x400/weekly?water', 'https://source.unsplash.com/600x400/weekly?fire', 'https://source.unsplash.com/600x400/weekly?earth']">
+													<h2 slot="title">Card Title <span class="debug-card-right">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+													<h2 slot="reveal-title">Reveal Title</h2>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Action Bar</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card>
+													<img slot="image" src="https://source.unsplash.com/collection/3330445/600x400?e" />
+													<h2 slot="title">Card Title <span class="debug-card-right">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+													<action-bar slot="action">
+														<button class="mute">Author</button>
+														<button>View</button>
+													</action-bar>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-4">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Title Position</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<card title-position="content">
+													<img slot="image" src="https://source.unsplash.com/collection/3330445/600x400?f" />
+													<h2 slot="title">Card Title <span class="debug-card-relative">Images from <a href="https://unsplash.com">Unsplash</a></span></h2>
+													<div slot="body">
+														Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+													</div>
+													<button slot="fab" class="floating">
+														<icon icon="add" />
+													</button>
+												</card>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- BREADCRUMBS & PAGINATION -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h1>Breadcrumbs & Pagination</h1>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<breadcrumbs :crumbs="['Pages', 'Items', 'Item 1']" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<pagination :current="3" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div>
 			<h1>Headings</h1>
 
@@ -2107,6 +2392,60 @@ style {
 		margin: -5px;
 
 		margin-bottom: 5px;
+	}
+
+	.debug-card-right {
+		font-size: 12px;
+		float: right;
+		backdrop-filter: blur(6px);
+		height: 26px;
+		width: 146px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 31px;
+		background: rgba(0, 0, 0, 0.07);
+		
+		a {
+			margin-left: 5px;
+		}
+	}
+
+	.debug-card-top {
+		font-size: 12px;
+		position: absolute;
+		top: -14px;
+		backdrop-filter: blur(6px);
+		height: 26px;
+		width: 146px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 31px;
+		background: rgba(0, 0, 0, 0.07);
+		
+		a {
+			margin-left: 5px;
+		}
+	}
+
+	.debug-card-relative {
+		font-size: 12px;
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		backdrop-filter: blur(6px);
+		height: 26px;
+		width: 146px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 31px;
+		background: rgba(0, 0, 0, 0.07);
+		
+		a {
+			margin-left: 5px;
+		}
 	}
 
 	.debug-rows {
