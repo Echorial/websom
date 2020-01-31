@@ -1,0 +1,140 @@
+info {
+	"name": "slider",
+	"type": "component"
+}
+
+template {
+	<div class="slider" :style="'--slider-active-index: ' + activeSlide">
+		<div class="slider-top">
+			<div class="slider-left" @click="left">
+				<icon icon="left" />
+			</div>
+			<div class="slider-content">
+				<template v-if="images.length > 0">
+					<div class="slider-image" style="--slider-index: -1;">
+						<img :src="images[images.length - 1]" />
+					</div>
+					<div v-for="(image, i) in images" :key="i" class="slider-image" :style="'--slider-index: ' + i">
+						<img :src="image" />
+					</div>
+					<div class="slider-image" :style="'--slider-index: ' + images.length">
+						<img :src="images[0]" />
+					</div>
+				</template>
+				<template v-else>
+					<slot />
+				</template>
+			</div>
+			<div class="slider-right" @click="right">
+				<icon icon="right"/>
+			</div>
+		</div>
+		<div class="slider-bottom">
+			<div v-for="slide in slideCount" :key="slide" class="slider-stop" :class="{'slider-stop-active': slide - 1 == activeSlide}"></div>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			images: {
+				type: Array,
+				default: () => []
+			}
+		},
+		data() {
+			return {
+				activeSlide: 0
+			};
+		},
+		computed: {
+			slideCount() {
+				return this.images.length || this.$slots.default.length;
+			}
+		},
+		methods: {
+			right() {
+				this.activeSlide++;
+				if (this.activeSlide >= this.images.length)
+					this.activeSlide = 0;
+			},
+			left() {
+				this.activeSlide--;
+
+				if (this.activeSlide < 0)
+					this.activeSlide = this.images.length - 1;
+			}
+		}
+	}
+}
+
+style {
+	.slider {
+		display: flex;
+		flex-direction: column;
+
+		width: 100%;
+		height: 300px;
+
+		.slider-top {
+			display: flex;
+			flex-direction: row;
+
+			flex: 1;
+
+			.slider-content {
+				flex: 10;
+
+				display: flex;
+				flex-direction: row;
+
+				overflow: hidden;
+				width: 100%;
+				position: relative;
+
+				.slider-image {
+					width: 100%;
+					position: absolute;
+
+					transition: var(--transition-movement) var(--transition-easing-movement);
+
+					left: calc(var(--slider-index) * 100% - var(--slider-active-index) * 100%);
+
+					display: flex;
+					align-items: center;
+					justify-content: center;
+
+					& > img {
+						max-width: 100%;
+						max-height: 100%;
+					}
+				}
+			}
+		}
+
+		.slider-bottom {
+			min-height: calc(var(--base-size) * 2);
+
+			display: flex;
+			align-items: center;
+			justify-content: center;
+
+			.slider-stop {
+				width: var(--base-size);
+				height: var(--base-size);
+
+				background: var(--background-overlay);
+				border-radius: 50%;
+
+				transition: var(--transition) var(--transition-easing);
+
+				margin: 0 2px;
+
+				&.slider-stop-active {
+					background: var(--background-contrast);
+				}
+			}
+		}
+	}
+}
