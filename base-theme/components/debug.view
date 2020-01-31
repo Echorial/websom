@@ -2150,6 +2150,64 @@ template {
 			</div>
 		</div>
 
+		<!-- ACCORDION -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h1>Accordion</h1>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<accordion>
+													<div>
+														<div class="fat-action"><h2>Item 1</h2></div>
+														<div><div class="pad-content">Lorem ipsum</div></div>
+													</div>
+													<div>
+														<div class="fat-action"><h2>Item 2</h2></div>
+														<div><div class="pad-content">Lorem ipsum</div></div>
+													</div>
+												</accordion>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<loader type="small" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div>
 			<h1>Headings</h1>
 

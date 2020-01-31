@@ -1,0 +1,122 @@
+info {
+	"name": "accordion",
+	"type": "component"
+}
+
+template {
+	<div class="accordion" :class="'accordion-' + type">
+		<div v-for="(vnode, i) in $slots.default" v-if="vnode.tag" class="accordion-fold" :class="{'accordion-active': selected == i}" :key="i" :data-index="i" @click="select($event, i)" :ref="'folds' + i">
+			<vnode :vnode="vnode" />
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			type: {
+				type: String,
+				default: "normal"
+			}
+		},
+		data() {
+			return {
+				selected: -1
+			};
+		},
+		methods: {
+			select(e, i) {
+				if (!e.target.closest(".accordion-fold > div > div:first-child"))
+					return;
+
+				for (let key in this.$refs) {
+					let content = this.$refs[key][0].children[0].children[1];
+					content.style.height = "0px";
+				}
+
+				if (this.selected == i)
+					this.selected = -1;
+				else {
+					this.selected = i;
+
+					let content = this.$refs['folds' + i][0].children[0].children[1];
+					content.classList.add("fold-height");
+					content.style.transition = "0.3s";
+					content.style.height = `auto`;
+
+					this.$nextTick(() => {
+						let height = content.getBoundingClientRect().height;
+						content.style.height = `0px`;
+						
+						this.$nextTick(() => {
+							setTimeout(() => {
+								content.style.height = `${height}px`;
+								content.classList.remove("fold-height");
+							}, 1);
+						}, 1);
+					});
+				}
+
+			}
+		}
+	}
+}
+
+style {
+	.accordion {
+		display: flex;
+		flex-direction: column;
+
+		text-align: left;
+
+		.accordion-fold > div {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.accordion-fold {
+			border: 1px solid var(--background-center);
+
+			&:last-child {
+				& > div > div:last-child {
+					border-bottom: 1px solid var(--background-center);
+				}
+			}
+
+			border-bottom: 0px;
+		}
+
+		.accordion-fold > div > div:first-child {
+			cursor: var(--cursor-action);
+
+			transition: var(--transition-color) var(--transition-easing);
+			
+			background: var(--background-overlay);
+			padding: 0 var(--base-size);
+
+			&:hover {
+				background: var(--background-tint);
+			}
+		}
+
+		.accordion-fold > div > div:last-child {
+				transition: .3s ease;
+			&.fold-height {
+			}
+			
+			overflow: hidden;
+			height: 0px;
+
+			&::before {
+				content: "";
+				width: 100%;
+				display: block;
+				border-top: 1px solid var(--background-center);
+			}
+		}
+
+		.accordion-fold.accordion-active > div > div:last-child {
+			
+		}
+	}
+}
