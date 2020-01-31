@@ -2101,6 +2101,55 @@ template {
 			</div>
 		</div>
 
+		<!-- LOADER -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h1>Loader</h1>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-3">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<loader />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-9">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<loader type="small" />
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div>
 			<h1>Headings</h1>
 

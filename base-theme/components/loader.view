@@ -1,0 +1,101 @@
+info {
+	"name": "loader",
+	"type": "component"
+}
+
+template {
+	<div class="loader" :class="{'loader-active': active, ['loader-' + type]: true}">
+		<div class="loader-before"></div>
+		<div class="loader-icon"><icon icon="loading" /></div>
+		<div class="loader-after"></div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			type: {
+				type: String,
+				default: "long"
+			},
+			active: {
+				type: Boolean,
+				default: true
+			}
+		}
+	}
+}
+
+style {
+	.loader {
+		&.loader-long {
+			width: 100%;
+			height: calc(var(--base-size) / 2);
+
+			background: var(--background-overlay);
+
+			overflow: hidden;
+
+			position: relative;
+
+			&.loader-after, .loader-icon {
+				display: none;
+			}
+
+			.loader-before {
+				position: absolute;
+				top: 0%;
+				height: 100%;
+				width: 0%;
+
+				background: var(--color);
+			}
+
+			&.loader-active {
+				.loader-before {
+					animation: loader-long-slide 1s infinite cubic-bezier(0.75, 0, 0.25, 0.99);
+				}
+			}
+		}
+
+		&.loader-small {
+			.loader-icon {
+				opacity: 0;
+			}
+			
+			&.loader-active {
+				.loader-icon {
+					opacity: 1;
+					animation: loader-small-rotate 1s infinite linear;
+				}
+			}
+		}
+	}
+
+	@keyframes loader-long-slide {
+		0% {
+			left: 0%;
+			width: 0%;
+		}
+
+		50% {
+			left: 25%;
+			width: 50%;
+		}
+
+		100% {
+			left: 100%;
+			width: 0%;
+		}
+	}
+
+	@keyframes loader-small-rotate {
+		0% {
+			transform: rotate(0deg);
+		}
+
+		100% {
+			transform: rotate(360deg);
+		}
+	}
+}
