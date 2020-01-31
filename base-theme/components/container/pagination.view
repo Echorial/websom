@@ -1,0 +1,84 @@
+info {
+	"name": "pagination",
+	"type": "component"
+}
+
+template {
+	<div class="pagination">
+		<div v-for="(c, i) in _pages" class="pagination-pages button" :class="{'pagination-active primary': c == current, 'mute': c != current}">
+			<span>{{c}}</span>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			current: {
+				type: Number,
+				default: 1
+			},
+			total: {
+				type: Number,
+				default: 10
+			},
+			pages: {
+				type: Array,
+				default: () => []
+			}
+		},
+		computed: {
+			_pages() {
+				if (this.pages.length > 0) {
+					return this.pages;
+				}else{
+					let arr = [];
+
+					if (this.total < 5) {
+						for (let i = 0; i < 5; i++) {
+							arr.push(i.toString());
+						}
+					}else if (this.current - 2 <= 0) {
+						for (let i = 0; i < 5; i++) {
+							arr.push(i.toString());
+						}
+					}else if (this.current - 2 > 0 && this.current + 2 < this.total) {
+						arr.push("1");
+						arr.push("2");
+
+						
+						arr.push(this.current - 2);
+						arr.push(this.current - 1);
+						arr.push(this.current);
+						arr.push(this.current + 1);
+						arr.push(this.current + 2);
+
+						arr.push(this.total - 1);
+						arr.push(this.total);
+					}else{
+						arr.push("1");
+						arr.push("2");
+
+						for (let i = 0; i < 3; i++) {
+							arr.push(current - i);
+						}
+					}
+
+					return arr;
+				}
+			}
+		}
+	}
+}
+
+style {
+	.pagination {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		.pagination-page {
+			
+		}
+	}
+}
