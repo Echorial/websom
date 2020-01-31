@@ -87,16 +87,19 @@ style {
 			--light-background-contrast: #1a1a1a;
 			--light-background-overlay: #f5f5f5;
 			--light-background-tint: #eeeeee;
+			--light-background-center: #eeeeee;
 		
 		--dark-background: #1a1a1a;
 			--dark-background-contrast: #fdfdfd;
 			--dark-background-overlay: #232323;
 			--dark-background-tint: #2b2b2b;
+			--dark-background-center: #525252;
 
 		--background: var(--light-background);
 		--background-contrast: var(--light-background-contrast);
 		--background-overlay: var(--light-background-overlay);
 		--background-tint: var(--light-background-tint);
+		--background-center: var(--light-background-center);
 
 		.define-color(light-mode-mute, rgba(0, 0, 0, 0.1), @set-contrast-dark, $--light-background);
 		.define-color(dark-mode-mute, rgba(255, 255, 255, 0.1), @set-contrast-light, $--dark-background);
@@ -261,6 +264,7 @@ style {
 		--background-contrast: var(--dark-background-contrast);
 		--background-overlay: var(--dark-background-overlay);
 		--background-tint: var(--dark-background-tint);
+		--background-center: var(--dark-background-center);
 
 		.set-vars(primary, dark-mode-primary);
 
@@ -288,6 +292,7 @@ style {
 		--background-contrast: var(--light-background-contrast);
 		--background-overlay: var(--light-background-overlay);
 		--background-tint: var(--light-background-tint);
+		--background-center: var(--light-background-center);
 
 		.set-vars(primary, light-mode-primary);
 
