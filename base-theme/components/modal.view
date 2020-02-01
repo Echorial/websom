@@ -24,6 +24,10 @@ script {
 			modalClass: {
 				type: String,
 				default: ""
+			},
+			autoOpen: {
+				type: Boolean,
+				default: false
 			}
 		},
 		data() {
@@ -46,6 +50,10 @@ script {
 				else
 					this.open();
 			}
+		},
+		mounted() {
+			if (this.autoOpen)
+				this.open();
 		}
 	}
 }
