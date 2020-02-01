@@ -1,0 +1,47 @@
+info {
+	"name": "light-box",
+	"type": "component"
+}
+
+template {
+	<div v-if="active">
+		<modal :auto-open="true">
+			<img class="light-box-image" :src="image" />
+		</modal>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			image: {
+				type: String,
+				default: ""
+			},
+			openOnClick: {
+				type: Boolean,
+				default: false
+			}
+		},
+		data() {
+			return {
+				active: false
+			};
+		},
+		mounted() {
+			if (this.openOnClick) {
+				this.$el.parentElement.addEventListener("click", () => {
+					this.open();
+				});
+			}
+		},
+		methods: {
+			open() {
+				this.active = true;
+			},
+			close() {
+				this.active = false;
+			}
+		}
+	}
+}
