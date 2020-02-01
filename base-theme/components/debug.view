@@ -2279,6 +2279,79 @@ template {
 			</div>
 		</div>
 
+		<!-- TABS -->
+
+		<div class="debug-group">
+			<div class="debug-title">
+				<h1>Tabs</h1>
+			</div>
+			<div class="debug-row">
+				<div class="debug-column debug-12">
+					<div class="debug-row">
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Simple</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												top
+											</td>
+											<td>
+												<tabs>
+													<div slot="tab">Tab 1</div>
+													<div slot="body">Tab 1 body</div>
+
+													<div slot="tab">Tab 2</div>
+													<div slot="body">Tab 2 body</div>
+
+													<div slot="tab">Tab 3</div>
+													<div slot="body">Tab 3 body</div>
+												</tabs>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="debug-column debug-6">
+							<div class="debug-panel">
+								<table>
+									<thead>
+										<th>Nested</th>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="debug-fill">
+												<button>
+													Drop me!
+													<dropdown>
+														<a href="#">Item 1</a>
+														<a href="#">Item 2</a>
+														<a href="#">Item 3</a>
+														<a href="#">
+															Dropdown
+															<dropdown edge="right">
+																<a href="#">Item 1</a>
+																<a href="#">Item 2</a>
+																<a href="#">Item 3</a>
+															</dropdown>
+														</a>
+													</dropdown>
+												</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div>
 			<h1>Headings</h1>
 

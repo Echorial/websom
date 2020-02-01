@@ -1,0 +1,99 @@
+info {
+	"name": "tabs",
+	"type": "component"
+}
+
+template {
+	<div class="tabs" :style="style">
+		<div class="tabs-bar">
+			<div v-for="(vnode, i) in $slots.tab" :style="{'--tab-index': i}" v-if="vnode.tag" class="tabs-tab" :class="{'tabs-active': _selected == i}" :key="i" :data-index="i" @click="select($event, i)" :ref="'tabs' + i">
+				<vnode :vnode="vnode" />
+			</div>
+		</div>
+		<div class="tabs-body">
+			<div v-for="(vnode, i) in $slots.body" :style="{'--tab-index': i}" v-if="vnode.tag" class="tab-body" :class="{'tabs-active': _selected == i}" :key="i" :data-index="i" :ref="'body' + i">
+				<vnode :vnode="vnode" />
+			</div>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			selected: {
+				type: Number,
+				default: 0
+			}
+		},
+		data() {
+			return {
+				_selected: this.selected
+			};
+		},
+		methods: {
+			select(e, i) {
+				this._selected = i;
+			}
+		},
+		computed: {
+			totalTabs() {
+				return this.$slots.tab.filter((a) => a.tag).length;
+			},
+			style() {
+				return `
+					--tabs-total-tabs: ${this.totalTabs};
+					--tabs-selected-tab: ${this._selected};
+				`;
+			}
+		}
+	}
+}
+
+style {
+	.tabs {
+		display: flex;
+		flex-direction: column;
+
+		.tabs-bar {
+			display: flex;
+			flex-direction: row;
+
+			height: var(--base-height);
+
+			.tabs-tab {
+				flex: 1;
+				cursor: var(--cursor-action);
+
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition: var(--transition-color) var(--transition-easing);
+
+				&:hover, &.tabs-active {
+					background: var(--mute);
+				}
+			}
+		}
+
+		.tabs-body {
+			display: flex;
+
+			.tab-body {
+				opacity: 0;
+				pointer-events: none;
+				transition: var(--transition) var(--transition-easing);
+
+				min-width: 100%;
+
+				position: relative;
+				left: calc(var(--tab-index) * -100%);
+
+				&.tabs-active {
+					opacity: 1;
+					pointer-events: all;
+				}
+			}
+		}
+	}
+}
