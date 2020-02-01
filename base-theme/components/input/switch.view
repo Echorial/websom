@@ -135,7 +135,7 @@ style {
 					transition: var(--transition) var(--transition-easing);
 					
 					&.websom-dragging {
-						transition: background var(--transition-color) var(--transition-easing);
+						transition: background-color var(--transition-color) var(--transition-easing);
 						width: calc(var(--base-size) * 2);
 					}
 
@@ -157,7 +157,7 @@ style {
 				.input-switch-main {
 					.input-switch-handle {
 						left: calc(100% - var(--base-size) * 2);
-						background: var(--secondary);
+						background: var(--color-light);
 						width: calc(var(--base-size) * 2);
 					}
 				}
