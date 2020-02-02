@@ -89,7 +89,7 @@ config {
 	"options": {
 		"stickyNavigationBar": {
 			"type": "boolean",
-			"name": "Sitcky Navigation Bar",
+			"name": "Sticky Navigation Bar",
 			"description": "Should the nav bar follow along while scrolling.",
 			"default": true,
 			"group": "nav"
