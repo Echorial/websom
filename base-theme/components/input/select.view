@@ -182,7 +182,7 @@ script {
 					}
 					
 					if (selected.length > 0)
-						return selected.join(this.$config.multipleSeperator);
+						return selected.join(this.$config.multipleSeparator);
 
 					return this.placeholder;
 				}else{
@@ -270,9 +270,9 @@ style {
 
 config {
 	"options": {
-		"multipleSeperator": {
+		"multipleSeparator": {
 			"type": "string",
-			"name": "Multiple selection seperator",
+			"name": "Multiple selection separator",
 			"description": "The deliminator between selection items. (Note the space after the comma)",
 			"default": ", "
 		},
