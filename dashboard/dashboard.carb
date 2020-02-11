@@ -163,6 +163,10 @@ class Dashboard.Module inherits Websom.Standard.Dashboard.Module {
 		}
 		return rtn;
 	}
+
+	void configure() {
+		
+	}
 }
 
 class Websom.Standard.Dashboard.Tab inherits Websom.Standard.Dashboard.Tab {

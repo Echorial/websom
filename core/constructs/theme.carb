@@ -29,6 +29,10 @@ class Websom.Theme {
 		
 	}
 
+	void configure() {
+		
+	}
+
 	string prefix() {
 		if (this.key.length > 0)
 			return "theme-" + this.key;
