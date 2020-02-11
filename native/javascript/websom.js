@@ -36,6 +36,8 @@ Websom.Server = function () {var _c_this = this;
 
 	this.micro = null;
 
+	this.adaptation = null;
+
 	this.dashboard = null;
 
 	this.userSystem = null;
@@ -43,6 +45,8 @@ Websom.Server = function () {var _c_this = this;
 	this.paymentSystem = null;
 
 	this.config = null;
+
+	this.configService = null;
 
 	this.scriptPath = "";
 
@@ -52,6 +56,7 @@ Websom.Server = function () {var _c_this = this;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Config) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var config = arguments[0];
+/*async*/
 		
 		
 			this.scriptPath = __filename;
@@ -59,12 +64,15 @@ Websom.Server = function () {var _c_this = this;
 		_c_this.websomRoot = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(_c_this.scriptPath) + "/../../");
 		_c_this.config = config;
 		_c_this.config.legacy = true;
-		_c_this.startServices();
-		if (_c_this.config.bucket) {
-			if ("reference" in _c_this.config.bucket) {
-				_c_this.bucketReference = _c_this.config.bucket["reference"];
+		_c_this.startServices/* async call */(function (_c_async1) {
+			_c_async1;
+			if (_c_this.config.bucket) {
+				if ("reference" in _c_this.config.bucket) {
+					_c_this.bucketReference = _c_this.config.bucket["reference"];
+					}
 				}
-			}
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+			return;	});
 	}
 else 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var config = arguments[0];
@@ -72,27 +80,37 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof ar
 		
 			this.scriptPath = __filename;
 		
+		var basePath = "./";
+		if (config["base"]) {
+			basePath = config["base"];
+			}
 		_c_this.websomRoot = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(_c_this.scriptPath) + "/../../");
 		_c_this.config = new Websom.Config();
 		
 			const $path = require("path");
 
-			this.config.absolute = $path.resolve("./");
-			this.config.root = $path.resolve(config.assets);
+			this.config.absolute = $path.resolve(basePath);
+			this.config.root = $path.resolve(basePath + "/" + config.assets);
 		
 		
 		if ("dist" in config) {
-			_c_this.config.javascriptOutput = Oxygen.FileSystem.resolve(config["dist"]);
-			_c_this.config.cssOutput = Oxygen.FileSystem.resolve(config["dist"]);
+			_c_this.config.javascriptOutput = Oxygen.FileSystem.resolve(basePath + "/" + config["dist"]);
+			_c_this.config.cssOutput = Oxygen.FileSystem.resolve(basePath + "/" + config["dist"]);
 			}
 		if ("buckets" in config) {
-			_c_this.config.devBuckets = Oxygen.FileSystem.resolve(config["buckets"]);
+			_c_this.config.devBuckets = Oxygen.FileSystem.resolve(basePath + "/" + config["buckets"]);
 			}
 		if ("dev" in config) {
 			_c_this.config.dev = config["dev"] == true;
 			}
+		if ("headless" in config) {
+			_c_this.config.headless = config["headless"] == true;
+			}
+		if ("verbose" in config) {
+			_c_this.config.verbose = config["verbose"] == true;
+			}
 		if ("config" in config) {
-			_c_this.config.configOverrides = Oxygen.FileSystem.resolve(config["config"]);
+			_c_this.config.configOverrides = Oxygen.FileSystem.resolve(basePath + "/" + config["config"]);
 			}
 		if ("name" in config) {
 			_c_this.config.name = config["name"];
@@ -113,39 +131,60 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof ar
 				Oxygen.FileSystem.makeDir(_c_this.config.javascriptOutput);
 				}
 			}
-		_c_this.startServices();
 	}
 
 }
 
-Websom.Server.prototype.startServices = function () {var _c_this = this; var _c_root_method_arguments = arguments;
-	if (arguments.length == 0) {
-		_c_this.security = new Websom.Services.Security(_c_this);
+Websom.Server.prototype.adapt = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		return _c_this.adaptation.adapt(name);
+	}
+}
+
+/*i async*/Websom.Server.prototype.startServices = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+/*async*/
+		_c_this.configService = new Websom.Services.Config(_c_this);
+		_c_this.status.inherit(_c_this.configService.start());
+		_c_this.adaptation = new Websom.Services.Adaptation(_c_this);
+		_c_this.status.inherit(_c_this.adaptation.start());
 		_c_this.database = new Websom.Services.Database(_c_this);
+		_c_this.security = new Websom.Services.Security(_c_this);
 		_c_this.module = new Websom.Services.Module(_c_this);
+		_c_this.theme = new Websom.Services.Theme(_c_this);
 		_c_this.resource = new Websom.Services.Resource(_c_this);
 		_c_this.view = new Websom.Services.View(_c_this);
 		_c_this.router = new Websom.Services.Router(_c_this);
-		_c_this.theme = new Websom.Services.Theme(_c_this);
 		_c_this.pack = new Websom.Services.Pack(_c_this);
 		_c_this.input = new Websom.Services.Input(_c_this);
 		_c_this.crypto = new Websom.Services.Crypto(_c_this);
 		_c_this.email = new Websom.Services.Email(_c_this);
 		_c_this.micro = new Websom.Services.Micro(_c_this);
 		_c_this.render = new Websom.Services.Render(_c_this);
-		_c_this.status.inherit(_c_this.security.start());
-		_c_this.status.inherit(_c_this.database.start());
 		_c_this.status.inherit(_c_this.module.start());
-		_c_this.status.inherit(_c_this.resource.start());
-		_c_this.status.inherit(_c_this.view.start());
-		_c_this.status.inherit(_c_this.router.start());
-		_c_this.status.inherit(_c_this.theme.start());
-		_c_this.status.inherit(_c_this.pack.start());
-		_c_this.status.inherit(_c_this.input.start());
-		_c_this.status.inherit(_c_this.crypto.start());
-		_c_this.status.inherit(_c_this.email.start());
-		_c_this.status.inherit(_c_this.micro.start());
-		_c_this.status.inherit(_c_this.render.start());
+		_c_this.database.loadAdapter/* async call */(function (_c_async1) {
+			_c_async1;
+			_c_this.status.inherit(_c_this.database.start());
+			_c_this.configService.loadFromDatabase();
+			_c_this.status.inherit(_c_this.security.start());
+			_c_this.status.inherit(_c_this.resource.start());
+			_c_this.status.inherit(_c_this.view.start());
+			_c_this.status.inherit(_c_this.theme.start());
+			if (_c_this.config.legacy == false) {
+				_c_this.configService.gatherOptions();
+				_c_this.module.startModules();
+				}
+			_c_this.status.inherit(_c_this.router.start());
+			_c_this.status.inherit(_c_this.pack.start());
+			_c_this.status.inherit(_c_this.input.start());
+			_c_this.status.inherit(_c_this.crypto.start());
+			_c_this.status.inherit(_c_this.email.start());
+			_c_this.status.inherit(_c_this.micro.start());
+			_c_this.status.inherit(_c_this.render.start());
+			_c_this.configService.logOptions();
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+			return;	});
 	}
 }
 
@@ -211,22 +250,32 @@ Websom.Server.prototype.loadBucket = function () {var _c_this = this; var _c_roo
 	}
 }
 
-Websom.Server.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
-	if (arguments.length == 0) {
-		_c_this.start(8970);
+/*i async*/Websom.Server.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+/*async*/
+		_c_this.start/* async call */(8970, function (_c_async1) {
+			_c_async1;
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+			return;	});
 	}
-else 	if (arguments.length == 1 && (typeof arguments[0] == 'number' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+else 	if (arguments.length == 2 && (typeof arguments[0] == 'number' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var port = arguments[0];
-		if (_c_this.config.dev) {
+/*async*/
+		_c_this.startServices/* async call */(function (_c_async1) {
+			_c_async1;
+			if (_c_this.config.dev) {
+				
+				const nodeDevPlatform = require(_c_this.websomRoot + "/platform/node/index.js");
+				
+				if (!_c_this.config.headless)
+					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, port);
 			
-				const nodeDevPlatform = require(this.websomRoot + "/platform/node/index.js");
+				
+				}else{
 
-				nodeDevPlatform.startWebsomDevelopmentServer(this, port);
-			
-			
-			}else{
-
-			}
+				}
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+			return;	});
 	}
 }
 
@@ -449,14 +498,26 @@ Memory = function () {var _c_this = this;
 //Relative void
 //Relative string
 //Relative Math
+Websom.Adapters = function () {var _c_this = this;
+
+
+}
+
 Websom.Service = function () {var _c_this = this;
 	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
+}
+
+Websom.Service.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
 }
 
 Websom.Service.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -487,12 +548,133 @@ Oxygen = function () {var _c_this = this;
 
 }
 
+Websom.Services.Adaptation = function () {var _c_this = this;
+	this.interfaces = [];
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+		_c_this.preStart();
+	}
+
+}
+
+Websom.Services.Adaptation.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+else 	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Adaptation.prototype.adapt = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		var interface = new Websom.AdapterInterface(_c_this.server, name);
+		_c_this.interfaces.push(interface);
+		return interface;
+	}
+}
+
+Websom.Services.Adaptation.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Adaptation.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Adaptation.prototype.end = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.AdapterInterface = function () {var _c_this = this;
+	this.server = null;
+
+	this.adapter = null;
+
+	this.name = "";
+
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var server = arguments[0];
+		var name = arguments[1];
+		_c_this.server = server;
+		_c_this.name = name;
+		if (_c_this.server.config.verbose) {
+			console.log("Setup adapter " + name);
+			}
+	}
+
+}
+
+/*i async*/Websom.AdapterInterface.prototype.load = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 3 && ((typeof arguments[0] == 'object') || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var mod = arguments[0];
+		var className = arguments[1];
+/*async*/
+		
+			let splits = className.split(".");
+			let cls = mod.pullFromGlobalScope(splits[0]);
+			for (let i = 1; i < splits.length; i++)
+				cls = cls[splits[i]];
+
+			this.adapter = new cls(this.server);
+		
+		
+		
+		console.log(this.adapter.initialize);
+		
+		_c_this.adapter.initialize/* async call */(function (_c_async1) {
+			_c_async1;
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+			return;	});
+	}
+}
+
+/*i async*/Websom.AdapterInterface.prototype.loadFromConfig = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+/*async*/
+		var adapterName = _c_this.server.configService.getString("adapters", _c_this.name);
+		if (_c_this.server.config.verbose) {
+			console.log("Searching for adapter: " + _c_this.name + ", found: " + adapterName);
+			}
+		var selectedModule = null;
+		var selectedClass = "";
+		for (var i = 0; i < _c_this.server.module.modules.length; i++) {
+			var mod = _c_this.server.module.modules[i];
+			var adapters = mod.baseConfig["adapters"];
+			if (adapters != null) {
+				var opts = adapters[adapterName];
+				if (opts != null) {
+					var cls = opts["class"];
+					selectedModule = mod;
+					selectedClass = cls;
+					}
+				}
+			}
+		_c_this.load/* async call */(selectedModule, selectedClass, function (_c_async1) {
+			_c_async1;
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+			return;	});
+	}
+}
+
 Websom.Services.Builder = function () {var _c_this = this;
 	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -521,6 +703,12 @@ Websom.Services.Builder.prototype.buildResource = function () {var _c_this = thi
 	}
 }
 
+Websom.Services.Builder.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Builder.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -539,12 +727,227 @@ Websom.Services.Builder.prototype.end = function () {var _c_this = this; var _c_
 	}
 }
 
+Websom.Services.Config = function () {var _c_this = this;
+	this.optionValues = {};
+
+	this.optionValuesFromDatabase = {};
+
+	this.optionDefaults = {};
+
+	this.global = "";
+
+	this.loaded = false;
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+		_c_this.preStart();
+	}
+
+}
+
+Websom.Services.Config.prototype.getString = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var route = arguments[0];
+		var option = arguments[1];
+		if (_c_this.loaded == false) {
+			_c_this.load();
+			}
+		if (_c_this.optionValues[route]) {
+			return _c_this.optionValues[route][option];
+			}else if (_c_this.optionValuesFromDatabase[route]) {
+			return _c_this.optionValuesFromDatabase[route][option];
+			}else{
+				return _c_this.optionDefaults[route][option];
+			}
+	}
+}
+
+Websom.Services.Config.prototype.loadFromDatabase = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Config.prototype.load = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		if (_c_this.server.database.primary != null) {
+
+			}
+		var rawOverrides = Websom.Json.parse(Oxygen.FileSystem.readSync(_c_this.global, "utf8"));
+		_c_this.mergeOptions(rawOverrides);
+	}
+}
+
+Websom.Services.Config.prototype.mergeOptions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var rawOverrides = arguments[0];
+		for (var key in rawOverrides) {
+			if ((key in _c_this.optionValues) == false) {
+				_c_this.optionValues[key] = {};
+				}
+			var rawVal = rawOverrides[key];
+			for (var valKey in rawVal) {
+				_c_this.optionValues[key][valKey] = rawVal[valKey];
+				}
+			}
+	}
+}
+
+Websom.Services.Config.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.global = _c_this.server.config.configOverrides + "/global.json";
+	}
+}
+
+Websom.Services.Config.prototype.logOptions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.load();
+		console.log(_c_this.optionValues);
+	}
+}
+
+Websom.Services.Config.prototype.gatherOptions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var cache = _c_this.server.config.configOverrides + "/optionsCache.json";
+		if (_c_this.server.config.dev == false && Oxygen.FileSystem.exists(cache)) {
+			var rawConfigs = Oxygen.FileSystem.readSync(cache, "utf8");
+			var configs = Websom.Json.parse(rawConfigs);
+			_c_this.fillDefaults(configs);
+			}else{
+				if (_c_this.server.config.dev) {
+					console.log("No options cache found. Websom will (re)build it.");
+					console.log("Note: This is always rebuilt while in dev mode.");
+					_c_this.fillDefaults(_c_this.cacheOptions());
+					}else{
+
+					}
+			}
+	}
+}
+
+Websom.Services.Config.prototype.cacheOptionsFromPackage = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 4 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'object' || typeof arguments[2] == 'undefined' || arguments[2] === null) && (typeof arguments[3] == 'string' || typeof arguments[3] == 'undefined' || arguments[3] === null)) {
+		var ptype = arguments[0];
+		var pid = arguments[1];
+		var baseConfig = arguments[2];
+		var root = arguments[3];
+		var baseOptions = {};
+		var parse = function (file) {
+
+			};
+		
+			parse = require(this.server.websomRoot + "/webpack/view-loader/parser.js");
+		
+		var parseViews = function (route, views) {
+			for (var i = 0; i < views.length; i++) {
+				var parsed = parse(Oxygen.FileSystem.readSync(views[i], "utf8"));
+				if ("config" in parsed) {
+					var info = Websom.Json.parse("{" + parsed["info"]["block"] + "}");
+					var name = info["name"];
+					var parsedConfig = Websom.Json.parse("{" + parsed["config"]["block"] + "}");
+					baseOptions[route + "." + name] = parsedConfig["options"];
+					}
+				}
+			};
+		if ("config" in baseConfig) {
+			var merge = baseConfig["config"];
+			for (var namespace in merge) {
+				if (namespace == "root") {
+					baseOptions[ptype + "." + pid] = merge[namespace];
+					}else{
+						baseOptions[namespace] = merge[namespace];
+					}
+				}
+			}
+		var views = [];
+		if ("resources" in baseConfig) {
+			var resources = baseConfig["resources"];
+			for (var i = 0; i < resources.length; i++) {
+				var res = resources[i];
+				if (res["type"] == "view") {
+					views.push(root + "/" + res["path"]);
+					}else if (("type" in res) == false) {
+					var dir = Oxygen.FileSystem.readDirSync(root + "/" + res["path"]);
+					for (var di = 0; di < dir.length; di++) {
+						var file = dir[di];
+						var splits = file.split(".");
+						var ext = splits[splits.length - 1];
+						if (ext == "view") {
+							views.push(root + "/" + res["path"] + "/" + file);
+							}
+						}
+					}
+				}
+			}
+		parseViews(ptype + "." + pid, views);
+		return baseOptions;
+	}
+}
+
+Websom.Services.Config.prototype.cacheOptions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var cache = {};
+		for (var i = 0; i < _c_this.server.module.modules.length; i++) {
+			var mod = _c_this.server.module.modules[i];
+			cache[mod.id] = _c_this.cacheOptionsFromPackage("module", mod.id, mod.baseConfig, mod.root);
+			}
+		for (var i = 0; i < _c_this.server.theme.themes.length; i++) {
+			var theme = _c_this.server.theme.themes[i];
+			var key = theme.key;
+			if (key.length == 0) {
+				key = "theme";
+				}
+			cache[key] = _c_this.cacheOptionsFromPackage("theme", key, theme.config, theme.root);
+			}
+		var cacheFile = _c_this.server.config.configOverrides + "/optionsCache.json";
+		Oxygen.FileSystem.writeSync(cacheFile, Websom.Json.encode(cache));
+		return cache;
+	}
+}
+
+Websom.Services.Config.prototype.fillDefaults = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var configs = arguments[0];
+		for (var owner in configs) {
+			var routes = configs[owner];
+			for (var route in routes) {
+				var options = routes[route];
+				for (var option in options) {
+					_c_this.optionDefaults[route + option] = options[option]["default"];
+					}
+				}
+			}
+	}
+}
+
+Websom.Services.Config.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Config.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Config.prototype.end = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Crypto = function () {var _c_this = this;
 	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -640,6 +1043,12 @@ Websom.Services.Crypto.prototype.longId = function () {var _c_this = this; var _
 	}
 }
 
+Websom.Services.Crypto.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Crypto.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -657,13 +1066,40 @@ Websom.Services.Database = function () {var _c_this = this;
 
 	this.databases = [];
 
+	this.primaryAdapter = null;
+
+	this.central = null;
+
+	this.search = null;
+
 	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
+}
+
+Websom.Services.Database.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.primaryAdapter = _c_this.server.adapt("database");
+	}
+else 	if (arguments.length == 0) {
+
+	}
+}
+
+/*i async*/Websom.Services.Database.prototype.loadAdapter = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+/*async*/
+		_c_this.primaryAdapter.loadFromConfig/* async call */(function (_c_async1) {
+			_c_async1;
+			_c_this.central = _c_this.primaryAdapter.adapter;
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+			return;	});
+	}
 }
 
 Websom.Services.Database.prototype.loadDatabase = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -675,7 +1111,7 @@ Websom.Services.Database.prototype.loadDatabase = function () {var _c_this = thi
 		var type = raw["type"];
 		var database = Websom.Database.make(_c_this.server, type);
 		if (database == null) {
-			return Websom.Status.singleError("Services.Database", "Unkown database type '" + type + "'");
+			return Websom.Status.singleError("Services.Database", "Unknown database type '" + type + "'");
 			}
 		database.load(raw);
 		
@@ -736,6 +1172,7 @@ Websom.Services.Email = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -791,6 +1228,12 @@ Websom.Services.Email.prototype.send = function () {var _c_this = this; var _c_r
 			
 				
 			}
+	}
+}
+
+Websom.Services.Email.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
 	}
 }
 
@@ -854,6 +1297,7 @@ Websom.Services.Input = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -1009,6 +1453,12 @@ Websom.Services.Input.prototype.interface = function () {var _c_this = this; var
 			});
 		chain = new Websom.InputChain(handler);
 		return chain;
+	}
+}
+
+Websom.Services.Input.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
 	}
 }
 
@@ -1239,6 +1689,7 @@ Websom.Services.Micro = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -1255,6 +1706,12 @@ Websom.Services.Micro.prototype.start = function () {var _c_this = this; var _c_
 		return status;
 	}
 else 	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Micro.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
 
 	}
 }
@@ -1291,6 +1748,7 @@ Websom.Services.Module = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -1365,8 +1823,10 @@ Websom.Services.Module.prototype.load = function () {var _c_this = this; var _c_
 						var slash = "/";
 						if (ext == "carb") {
 							console.log("Saw change on " + file + ". Rebuilding carbon");
-							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + config["name"] + ".json")));
-							that.server.resource.build(true);
+							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + "module.json")));
+							if (that.server.config.legacy) {
+								that.server.resource.build(true);
+							}
 						}else{
 							if (that.server.config.legacy) {
 								console.log("Saw change on " + file + ". Rebuilding resources");
@@ -1463,10 +1923,13 @@ Websom.Services.Module.prototype.reload = function () {var _c_this = this; var _
 		
 		var mods = Oxygen.FileSystem.readDirSync(path);
 		var dash = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(_c_this.server.scriptPath) + "/../../dashboard");
-		var core = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(_c_this.server.scriptPath) + "/../../coreModule");
+		var core = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(_c_this.server.scriptPath) + "/../../coreModuleLegacy");
 		if (_c_this.server.config.legacy) {
 			_c_this.load(dash, Websom.Json.parse(Oxygen.FileSystem.readSync(dash + "/dashboard.json", "utf8")), true);
 			_c_this.load(core, Websom.Json.parse(Oxygen.FileSystem.readSync(core + "/coreModule.json", "utf8")), true);
+			}else{
+				var newCore = Oxygen.FileSystem.resolve(Oxygen.FileSystem.dirName(_c_this.server.scriptPath) + "/../../coreModule");
+				_c_this.load(newCore, Websom.Json.parse(Oxygen.FileSystem.readSync(newCore + "/module.json", "utf8")), true);
 			}
 		for (var i = 0; i < _c_this.modules.length; i++) {
 			if (_c_this.modules[i].name == "dashboard") {
@@ -1498,6 +1961,14 @@ Websom.Services.Module.prototype.reload = function () {var _c_this = this; var _
 					}
 				}
 			}
+		if (_c_this.server.config.legacy) {
+			return _c_this.startModules();
+			}
+	}
+}
+
+Websom.Services.Module.prototype.startModules = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
 		for (var i = 0; i < _c_this.modules.length; i++) {
 			var module = _c_this.modules[i];
 			var containers = module.setupData();
@@ -1598,6 +2069,12 @@ Websom.Services.Module.prototype.handleBridge = function () {var _c_this = this;
 	}
 }
 
+Websom.Services.Module.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Module.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -1618,6 +2095,7 @@ Websom.Services.Pack = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -1718,6 +2196,12 @@ Websom.Services.Pack.prototype.start = function () {var _c_this = this; var _c_r
 	}
 }
 
+Websom.Services.Pack.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Pack.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -1741,6 +2225,7 @@ Websom.Services.Render = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -1783,6 +2268,12 @@ Websom.Services.Render.prototype.findView = function () {var _c_this = this; var
 	}
 }
 
+Websom.Services.Render.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Render.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -1811,6 +2302,7 @@ Websom.Services.Resource = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -2226,6 +2718,12 @@ Websom.Services.Resource.prototype.compile = function () {var _c_this = this; va
 				}
 			}
 		return output;
+	}
+}
+
+Websom.Services.Resource.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
 	}
 }
 
@@ -3091,6 +3589,7 @@ Websom.Services.Router = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -3374,6 +3873,12 @@ Websom.Services.Router.prototype.handlePost = function () {var _c_this = this; v
 	}
 }
 
+Websom.Services.Router.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Router.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -3487,6 +3992,7 @@ Websom.Services.Security = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -3589,6 +4095,12 @@ Websom.Services.Security.prototype.request = function () {var _c_this = this; va
 	}
 }
 
+Websom.Services.Security.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Security.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -3609,6 +4121,7 @@ Websom.Services.Theme = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -3743,6 +4256,12 @@ Websom.Services.Theme.prototype.start = function () {var _c_this = this; var _c_
 	}
 }
 
+Websom.Services.Theme.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.Theme.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -3767,6 +4286,7 @@ Websom.Services.View = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.preStart();
 	}
 
 }
@@ -4032,6 +4552,12 @@ Websom.Services.View.prototype.loadViews = function () {var _c_this = this; var 
 	}
 }
 
+Websom.Services.View.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Services.View.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -4041,6 +4567,23 @@ Websom.Services.View.prototype.stop = function () {var _c_this = this; var _c_ro
 Websom.Services.View.prototype.end = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
+	}
+}
+
+Websom.Adapter = function () {var _c_this = this;
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+	}
+
+}
+
+/*i async*/Websom.Adapter.prototype.initialize = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+		return;
 	}
 }
 
@@ -4233,6 +4776,10 @@ Websom.Config = function () {var _c_this = this;
 	this.cache = "";
 
 	this.dev = false;
+
+	this.verbose = false;
+
+	this.headless = false;
 
 	this.devSendMail = false;
 
@@ -7281,6 +7828,12 @@ Websom.Module.prototype.stop = function () {var _c_this = this; var _c_root_meth
 	}
 }
 
+Websom.Module.prototype.configure = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Module.prototype.setupData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -7290,6 +7843,15 @@ Websom.Module.prototype.setupData = function () {var _c_this = this; var _c_root
 Websom.Module.prototype.setupBridge = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
+	}
+}
+
+Websom.Module.prototype.pullFromGlobalScope = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		
+			return global[name];
+		
 	}
 }
 
@@ -7759,6 +8321,12 @@ Websom.Theme.prototype.start = function () {var _c_this = this; var _c_root_meth
 	}
 }
 
+Websom.Theme.prototype.configure = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.Theme.prototype.prefix = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 		if (_c_this.key.length > 0) {
@@ -8128,7 +8696,7 @@ Websom.Render.Context.prototype.find = function () {var _c_this = this; var _c_r
 			root = _c_this.props[splits[0]];
 			}
 		if (root == null) {
-			return "Unkown variable " + key;
+			return "Unknown variable " + key;
 			}
 		if (splits.length == 1) {
 			return root;
@@ -9431,6 +9999,12 @@ Websom.StandardModule.prototype.stop = function () {var _c_this = this; var _c_r
 	}
 }
 
+Websom.StandardModule.prototype.configure = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
 Websom.StandardModule.prototype.setupData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -9440,6 +10014,15 @@ Websom.StandardModule.prototype.setupData = function () {var _c_this = this; var
 Websom.StandardModule.prototype.setupBridge = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
+	}
+}
+
+Websom.StandardModule.prototype.pullFromGlobalScope = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+		
+			return global[name];
+		
 	}
 }
 
@@ -10267,6 +10850,228 @@ Websom.MySqlDatabaseInsert.prototype.multi = function () {var _c_this = this; va
 	if (arguments.length == 0) {
 		_c_this.isMulti = true;
 		return _c_this;
+	}
+}
+
+Websom.Adapters.Database = function () {var _c_this = this;
+
+
+}
+
+Websom.Adapters.Database.Adapter = function () {var _c_this = this;
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+	}
+
+}
+
+Websom.Adapters.Database.Adapter.prototype.collection = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var name = arguments[0];
+
+	}
+}
+
+/*i async*/Websom.Adapters.Database.Adapter.prototype.initialize = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+_c_root_method_arguments[_c_root_method_arguments.length - 1](undefined);
+		return;
+	}
+}
+
+Websom.Adapters.Database.Collection = function () {var _c_this = this;
+
+	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Adapters.Database.Collection.prototype.insert = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Adapters.Database.Collection.prototype.select = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Adapters.Database.Collection.prototype.where = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && ((arguments[2] instanceof Array || typeof arguments[2] == 'boolean' || typeof arguments[2] == 'string' || typeof arguments[2] == 'number' || typeof arguments[2] == 'number' || typeof arguments[2] == 'object' || typeof arguments[2] == 'string') || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var field = arguments[0];
+		var operator = arguments[1];
+		var val = arguments[2];
+
+	}
+}
+
+Websom.Adapters.Database.Collection.prototype.update = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Adapters.Database.InsertQuery = function () {var _c_this = this;
+
+	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Adapters.Database.InsertQuery.prototype.set = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Array || typeof arguments[1] == 'boolean' || typeof arguments[1] == 'string' || typeof arguments[1] == 'number' || typeof arguments[1] == 'number' || typeof arguments[1] == 'object' || typeof arguments[1] == 'string') || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var field = arguments[0];
+		var value = arguments[1];
+
+	}
+}
+
+Websom.Adapters.Database.InsertQuery.prototype.run = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Adapters.Database.InsertQueryResult = function () {var _c_this = this;
+	this.success = false;
+
+	this.message = "";
+
+	this.id = "";
+
+	if (arguments.length == 3 && (typeof arguments[0] == 'boolean' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'string' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var success = arguments[0];
+		var message = arguments[1];
+		var id = arguments[2];
+		_c_this.success = success;
+		_c_this.message = message;
+		_c_this.id = id;
+	}
+
+}
+
+Websom.Adapters.Database.SelectQuery = function () {var _c_this = this;
+
+	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Adapters.Database.SelectQuery.prototype.where = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && ((arguments[2] instanceof Array || typeof arguments[2] == 'boolean' || typeof arguments[2] == 'string' || typeof arguments[2] == 'number' || typeof arguments[2] == 'number' || typeof arguments[2] == 'object' || typeof arguments[2] == 'string') || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var field = arguments[0];
+		var operator = arguments[1];
+		var value = arguments[2];
+
+	}
+}
+
+Websom.Adapters.Database.SelectQuery.prototype.get = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+
+	}
+}
+
+Websom.Adapters.Database.SelectQueryResult = function () {var _c_this = this;
+	this.success = false;
+
+	this.message = "";
+
+	this.results = [];
+
+	if (arguments.length == 2 && (typeof arguments[0] == 'boolean' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var success = arguments[0];
+		var message = arguments[1];
+		_c_this.success = success;
+		_c_this.message = message;
+	}
+
+}
+
+Websom.Adapters.Database.UpdateQuery = function () {var _c_this = this;
+
+	if (arguments.length == 0) {
+
+	}
+else 	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Adapters.Database.UpdateQuery.prototype.set = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Array || typeof arguments[1] == 'boolean' || typeof arguments[1] == 'string' || typeof arguments[1] == 'number' || typeof arguments[1] == 'number' || typeof arguments[1] == 'object' || typeof arguments[1] == 'string') || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var field = arguments[0];
+		var value = arguments[1];
+
+	}
+}
+
+Websom.Adapters.Database.UpdateQuery.prototype.run = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+
+	}
+}
+
+Websom.Adapters.Database.UpdateQuery.prototype.where = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && ((arguments[2] instanceof Array || typeof arguments[2] == 'boolean' || typeof arguments[2] == 'string' || typeof arguments[2] == 'number' || typeof arguments[2] == 'number' || typeof arguments[2] == 'object' || typeof arguments[2] == 'string') || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var field = arguments[0];
+		var operator = arguments[1];
+		var value = arguments[2];
+
+	}
+}
+
+Websom.Adapters.Database.UpdateQuery.prototype.get = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1) {
+
+	}
+}
+
+Websom.Adapters.Database.UpdateQueryResult = function () {var _c_this = this;
+	this.success = false;
+
+	this.message = "";
+
+	this.updateCount = 0;
+
+	if (arguments.length == 2 && (typeof arguments[0] == 'boolean' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var success = arguments[0];
+		var message = arguments[1];
+		_c_this.success = success;
+		_c_this.message = message;
+	}
+
+}
+
+Websom.Adapters.Database.Document = function () {var _c_this = this;
+	this.id = "";
+
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var id = arguments[0];
+		_c_this.id = id;
+	}
+
+}
+
+Websom.Adapters.Database.Document.prototype.get = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var field = arguments[0];
+
+	}
+}
+
+Websom.Adapters.Database.Document.prototype.data = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
 	}
 }
 

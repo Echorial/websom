@@ -24,12 +24,14 @@ class Websom.Server {
 	Websom.Services.Render render = null;
 	Websom.Services.Pack pack = null;
 	Websom.Services.Micro micro = null;
+	Websom.Services.Adaptation adaptation = null;
 	
 	Websom.Standard.Dashboard.Module dashboard = null;
 	Websom.Standard.UserSystem.Module userSystem = null;
 	Websom.Standard.PaymentSystem.Module paymentSystem = null;
 
 	Websom.Config config = null;
+	Websom.Services.Config configService = null;
 
 	string scriptPath = "";
 	string websomRoot = "";
@@ -66,6 +68,10 @@ class Websom.Server {
 			this.scriptPath = __filename;
 		}
 
+		let basePath = "./";
+		if (config["base"])
+			basePath = config["base"];
+
 		this.websomRoot = FileSystem.resolve(FileSystem.dirName(this.scriptPath) + "/../../");
 
 		this.config = new Websom.Config();
@@ -73,8 +79,8 @@ class Websom.Server {
 		native javascript {
 			const $path = require("path");
 
-			this.config.absolute = $path.resolve("./");
-			this.config.root = $path.resolve(config.assets);
+			this.config.absolute = $path.resolve(basePath);
+			this.config.root = $path.resolve(basePath + "/" + config.assets);
 		}
 
 		native php {
@@ -83,20 +89,28 @@ class Websom.Server {
 		}
 
 		if ("dist" in config) {
-			this.config.javascriptOutput = FileSystem.resolve(config["dist"]);
-			this.config.cssOutput = FileSystem.resolve(config["dist"]);
+			this.config.javascriptOutput = FileSystem.resolve(basePath + "/" + config["dist"]);
+			this.config.cssOutput = FileSystem.resolve(basePath + "/" + config["dist"]);
 		}
 
 		if ("buckets" in config) {
-			this.config.devBuckets = FileSystem.resolve(config["buckets"]);
+			this.config.devBuckets = FileSystem.resolve(basePath + "/" + config["buckets"]);
 		}
 
 		if ("dev" in config) {
 			this.config.dev = config["dev"] == true;
 		}
 
+		if ("headless" in config) {
+			this.config.headless = config["headless"] == true;
+		}
+
+		if ("verbose" in config) {
+			this.config.verbose = config["verbose"] == true;
+		}
+
 		if ("config" in config) {
-			this.config.configOverrides = FileSystem.resolve(config["config"]);
+			this.config.configOverrides = FileSystem.resolve(basePath + "/" + config["config"]);
 		}
 
 		if ("name" in config) {
@@ -123,19 +137,26 @@ class Websom.Server {
 				FileSystem.makeDir(this.config.javascriptOutput);
 			}
 		}
+	}
 
-
-		this.startServices();
+	Websom.AdapterInterface adapt(string name) {
+		return this.adaptation.adapt(name);
 	}
 
 	void startServices() {
-		this.security = new Websom.Services.Security(this);
+		this.configService = new Websom.Services.Config(this);
+		this.status.inherit(this.configService.start());
+
+		this.adaptation = new Websom.Services.Adaptation(this);
+		this.status.inherit(this.adaptation.start());
+
 		this.database = new Websom.Services.Database(this);
+		this.security = new Websom.Services.Security(this);
 		this.module = new Websom.Services.Module(this);
+		this.theme = new Websom.Services.Theme(this);
 		this.resource = new Websom.Services.Resource(this);
 		this.view = new Websom.Services.View(this);
 		this.router = new Websom.Services.Router(this);
-		this.theme = new Websom.Services.Theme(this);
 		this.pack = new Websom.Services.Pack(this);
 		this.input = new Websom.Services.Input(this);
 		this.crypto = new Websom.Services.Crypto(this);
@@ -143,13 +164,23 @@ class Websom.Server {
 		this.micro = new Websom.Services.Micro(this);
 		this.render = new Websom.Services.Render(this);
 
-		this.status.inherit(this.security.start());
-		this.status.inherit(this.database.start());
 		this.status.inherit(this.module.start());
+
+		this.database.loadAdapter();
+
+		this.status.inherit(this.database.start());
+		this.configService.loadFromDatabase();
+		this.status.inherit(this.security.start());
 		this.status.inherit(this.resource.start());
 		this.status.inherit(this.view.start());
-		this.status.inherit(this.router.start());
 		this.status.inherit(this.theme.start());
+
+		if (this.config.legacy == false) {
+			this.configService.gatherOptions();
+			this.module.startModules();
+		}
+
+		this.status.inherit(this.router.start());
 		this.status.inherit(this.pack.start());
 		this.status.inherit(this.input.start());
 		this.status.inherit(this.crypto.start());
@@ -205,11 +236,14 @@ class Websom.Server {
 	}
 
 	void start(int port) {
+		this.startServices();
+
 		if (this.config.dev) {
 			native javascript {
-				const nodeDevPlatform = require(this.websomRoot + "/platform/node/index.js");
-
-				nodeDevPlatform.startWebsomDevelopmentServer(this, port);
+				const nodeDevPlatform = require(_c_this.websomRoot + "/platform/node/index.js");
+				
+				if (!_c_this.config.headless)
+					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, port);
 			}
 
 			native php {
