@@ -22,7 +22,7 @@ class Websom.Render.Context {
 		}
 
 		if (root == null)
-			return "Unkown variable " + key;
+			return "Unknown variable " + key;
 
 		if (splits.length == 1) {
 			return root;
