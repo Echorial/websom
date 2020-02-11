@@ -98,8 +98,10 @@ class Websom.Services.Module inherits Websom.Service {
 						var slash = "/";
 						if (ext == "carb") {
 							console.log("Saw change on " + file + ". Rebuilding carbon");
-							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + config["name"] + ".json")));
-							that.server.resource.build(true);
+							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + "module.json")));
+							if (that.server.config.legacy) {
+								that.server.resource.build(true);
+							}
 						}else{
 							if (that.server.config.legacy) {
 								console.log("Saw change on " + file + ". Rebuilding resources");
@@ -209,11 +211,14 @@ class Websom.Services.Module inherits Websom.Service {
 
 		var mods = FileSystem.readDirSync(path);
 		var dash = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../dashboard");
-		var core = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../coreModule");
+		var core = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../coreModuleLegacy");
 
 		if (this.server.config.legacy) {
 			this.load(dash, Websom.Json.parse(FileSystem.readSync(dash + "/dashboard.json", "utf8")), true);
 			this.load(core, Websom.Json.parse(FileSystem.readSync(core + "/coreModule.json", "utf8")), true);
+		}else{
+			let newCore = FileSystem.resolve(FileSystem.dirName(this.server.scriptPath) + "/../../coreModule");
+			this.load(newCore, Websom.Json.parse(FileSystem.readSync(newCore + "/module.json", "utf8")), true);
 		}
 
 		for (var int i in this.modules)
@@ -247,6 +252,12 @@ class Websom.Services.Module inherits Websom.Service {
 			}
 		}
 
+		if (this.server.config.legacy) {
+			return this.startModules();
+		}
+	}
+
+	Websom.Status startModules() {
 		//Start each module
 		for (var int i in this.modules) {
 			var module = this.modules[i];
