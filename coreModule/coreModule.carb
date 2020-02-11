@@ -1,10 +1,17 @@
 namespace CoreModule {}
 
+#script Carbon
+	print("Core module");
+#end script
+
 class CoreModule.Module inherits Websom.Module {
 	override Websom.Status start() {
 
 	}
 }
 
-#include "src/richText.carb"
-#include "src/image.carb"
+class test {
+	
+}
+
+#include "adapters/loki"

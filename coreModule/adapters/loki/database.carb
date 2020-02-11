@@ -1,0 +1,5 @@
+class CoreModule.LokiDB inherits Websom.Adapters.Database.Adapter {
+	override void initialize() {
+		Console.log("Started LokiDB");
+	}
+}
