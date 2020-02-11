@@ -8,7 +8,7 @@ module.exports = {
 		c.noExports.push("Oxygen");
 		c.noCore = true;
 		c.useOldTemplates = true;
-		var moduleName = "Unkown";
+		var moduleName = "Unknown";
 		var moduleClass = null;
 		c.buildScript.setVar("websomRegister", (args) => {
 			moduleClass = args[0];
@@ -63,7 +63,7 @@ module.exports = {
 		cp.noExports.push("Oxygen");
 		cp.noCore = true;
 		cp.useOldTemplates = true;
-		var moduleName = "Unkown";
+		var moduleName = "Unknown";
 		var moduleClass = null;
 		cp.buildScript.setVar("websomRegister", (args) => {
 			moduleClass = args[0];
