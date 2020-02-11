@@ -2,6 +2,21 @@ class Websom.Services.Database inherits Websom.Service {
 	Websom.Database primary = null;
 	<Websom.Database>array databases = new <Websom.Database>array();
 
+	Websom.AdapterInterface primaryAdapter = null;
+
+	Websom.Adapters.Database.Adapter central = null;
+	void search = null;
+
+	void preStart() {
+		this.primaryAdapter = this.server.adapt("database");
+	}
+
+	void loadAdapter() {
+		this.primaryAdapter.loadFromConfig();
+
+		this.central = this.primaryAdapter.adapter;
+	}
+
 	Websom.Status loadDatabase(map raw) {
 		if (("type" in raw) == false)
 			return Websom.Status.singleError("Services.Database", "No type provided in database config " + raw["name"]);
@@ -10,7 +25,7 @@ class Websom.Services.Database inherits Websom.Service {
 		var database = Websom.Database.make(this.server, type);
 
 		if (database == null)
-			return Websom.Status.singleError("Services.Database", "Unkown database type '" + type + "'");
+			return Websom.Status.singleError("Services.Database", "Unknown database type '" + type + "'");
 
 		database.load(raw);
 
