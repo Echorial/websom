@@ -1,0 +1,92 @@
+namespace Websom.Adapters.Database {}
+
+header class Websom.Adapters.Database.Adapter extends Websom.Adapter {
+	Websom.Adapters.Database.Collection collection(string name) {}
+}
+
+header class Websom.Adapters.Database.Collection {
+	void @construct() {
+
+	}
+
+	Websom.Adapters.Database.InsertQuery insert() {}
+
+	Websom.Adapters.Database.SelectQuery select() {}
+
+	Websom.Adapters.Database.SelectQuery where(string field, string operator, primitive val) {}
+
+	Websom.Adapters.Database.UpdateQuery update() {}
+}
+
+header class Websom.Adapters.Database.InsertQuery {
+	void @construct() {
+
+	}
+
+	Websom.Adapters.Database.InsertQuery set(string field, primitive value) {}
+	Websom.Adapters.Database.InsertQueryResult run() {}
+}
+
+header class Websom.Adapters.Database.InsertQueryResult {
+	bool success = false;
+	string message = "";
+	string id = "";
+
+	void @construct(bool success, string message, string id) {
+		this.success = success;
+		this.message = message;
+		this.id = id;
+	}
+}
+
+header class Websom.Adapters.Database.SelectQuery {
+	void @construct() {
+
+	}
+
+	Websom.Adapters.Database.SelectQuery where(string field, string operator, primitive value) {}
+	async Websom.Adapters.Database.SelectQueryResult get() {}
+}
+
+header class Websom.Adapters.Database.SelectQueryResult {
+	bool success = false;
+	string message = "";
+	<Websom.Adapters.Database.Document>array results = new <Websom.Adapters.Database.Document>array();
+
+	void @construct(bool success, string message) {
+		this.success = success;
+		this.message = message;
+	}
+}
+
+header class Websom.Adapters.Database.UpdateQuery extends Websom.Adapters.Database.SelectQuery {
+	void @construct() {
+
+	}
+
+	Websom.Adapters.Database.UpdateQuery set(string field, primitive value) {}
+	async Websom.Adapters.Database.UpdateQueryResult run() {}
+}
+
+header class Websom.Adapters.Database.UpdateQueryResult {
+	bool success = false;
+	string message = "";
+	int updateCount = 0;
+
+	void @construct(bool success, string message) {
+		this.success = success;
+		this.message = message;
+	}
+}
+
+header class Websom.Adapters.Database.Document {
+	string id = "";
+
+	void @construct(string id) {
+		this.id = id;
+	}
+
+	primitive get(string field) {}
+
+	map data() {}
+}
