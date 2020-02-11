@@ -15,7 +15,7 @@ header class Websom.Module {
 	`Display name of module`
 	string name = "";
 
-	`Unique id for module(typically the name of the module)`
+	`Unique id for this module (typically just the name of the module)`
 	string id = "";
 
 	`Absolute module root directory. @note This is loaded dynamically by the module service.`
@@ -29,7 +29,7 @@ header class Websom.Module {
 
 	string repo = "";
 
-	`Base constructor that should not be overriden(use spawn instead)`
+	`Base constructor that should not be overridden(use spawn instead)`
 	void @construct(Websom.Server server) {
 		this.server = server;
 	}
@@ -55,6 +55,10 @@ header class Websom.Module {
 	Websom.Status stop() {
 		
 	}
+	
+	void configure() {
+
+	}
 
 	phpNoRef <Websom.Container>array setupData() {
 
@@ -62,5 +66,12 @@ header class Websom.Module {
 
 	phpNoRef <Websom.Bridge>array setupBridge() {
 
+	}
+
+	`Only used in node environments to grab classes defined within this module.`
+	void pullFromGlobalScope(string name) {
+		native javascript {
+			return global[name];
+		}
 	}
 }
