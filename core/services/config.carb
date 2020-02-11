@@ -1,0 +1,190 @@
+class Websom.Services.Config inherits Websom.Service {
+	map optionValues = new map();
+	map optionValuesFromDatabase = new map();
+	map optionDefaults = new map();
+
+	string global = "";
+
+	// We lazy load options in bulk. All or nothing.
+	bool loaded = false;
+
+	// Routes could be:
+	// type.package-name.namespace -> theme.theme.icon
+	// type.sub-type.package-name -> adapter.database.loki
+	// type.package-name -> module.usermanager
+	string getString(string route, string option) {
+		if (this.loaded == false)
+			this.load();
+
+		if (this.optionValues[route]) {
+			return this.optionValues[route][option];
+		}else if (this.optionValuesFromDatabase[route]) {
+			return this.optionValuesFromDatabase[route][option];
+		}else{
+			return this.optionDefaults[route][option];
+		}
+	}
+
+	`Executed after starting the database service`
+	void loadFromDatabase() {
+		
+	}
+
+	void load() {
+		if (this.server.database.primary != null) {
+			// TODO: Load config from database
+		}
+
+		// Load all overrides from the file system.
+		// These take precedence and "override" options coming from the DB.
+
+		let rawOverrides = Websom.Json.parse(FileSystem.readSync(this.global, "utf8"));
+		this.mergeOptions(rawOverrides);
+	}
+
+	void mergeOptions(map rawOverrides) {
+		for (let string key in rawOverrides) {
+			if ((key in this.optionValues) == false)
+				this.optionValues[key] = new map();
+			
+			let rawVal = rawOverrides[key];
+
+			for (let string valKey in rawVal) {
+				this.optionValues[key][valKey] = rawVal[valKey];
+			}
+		}
+	}
+
+	override Websom.Status start() {
+		this.global = this.server.config.configOverrides + "/global.json";
+	}
+
+	// For debugging
+	void logOptions() {
+		this.load();
+		Console.log(this.optionValues);
+	}
+
+	void gatherOptions() {
+		let cache = this.server.config.configOverrides + "/optionsCache.json";
+
+		if (this.server.config.dev == false and FileSystem.exists(cache)) {
+			let rawConfigs = FileSystem.readSync(cache, "utf8");
+
+			let configs = Websom.Json.parse(rawConfigs);
+
+			this.fillDefaults(configs);
+		}else{
+			if (this.server.config.dev) {
+				Console.log("No options cache found. Websom will (re)build it.");
+				Console.log("Note: This is always rebuilt while in dev mode.");
+
+				this.fillDefaults(this.cacheOptions());
+			}else{
+				//Console.log("No options cache found. Websom can't function without it. Try redeploying this production build from a dev environment.");
+			}
+		}
+	}
+
+	map cacheOptionsFromPackage(string ptype, string pid, map baseConfig, string root) {
+		let map baseOptions = new map();
+
+		let parse = map (string file) => {};
+
+		native javascript {
+			parse = require(this.server.websomRoot + "/webpack/view-loader/parser.js");
+		}
+
+		let parseViews = void (string route, <string>array views) => {
+			for (let int i in views) {
+				let parsed = parse(FileSystem.readSync(views[i], "utf8"));
+
+				if ("config" in parsed) {
+					let map info = Websom.Json.parse("{" + parsed["info"]["block"] + "}");
+					let string name = info["name"];
+					let parsedConfig = Websom.Json.parse("{" + parsed["config"]["block"] + "}");
+					baseOptions[route + "." + name] = parsedConfig["options"];
+				}
+			}
+		};
+
+		if ("config" in baseConfig) {
+			let merge = baseConfig["config"];
+			
+			for (let string namespace in merge) {
+				if (namespace == "root") {
+					baseOptions[ptype + "." + pid] = merge[namespace];
+				}else{
+					baseOptions[namespace] = merge[namespace];
+				}
+			}
+		}
+
+		let views = new <string>array();
+		
+		if ("resources" in baseConfig) {
+			let <map>array resources = baseConfig["resources"];
+
+			for (let int i in resources) {
+				let map res = resources[i];
+
+				if (res["type"] == "view") {
+					views.push(root + "/" + res["path"]);
+				}else if (("type" in res) == false) {
+					let dir = FileSystem.readDirSync(root + "/" + res["path"]);
+
+					for (let int di in dir) {
+						let string file = dir[di];
+						let splits = file.split(".");
+						let ext = splits[splits.length - 1];
+
+						if (ext == "view") {
+							views.push(root + "/" + res["path"] + "/" + file);
+						}
+					}
+				}
+			}
+		}
+
+		parseViews(ptype + "." + pid, views);
+
+		return baseOptions;
+	}
+
+	map cacheOptions() {
+		let cache = new map();
+
+		for (let int i in this.server.module.modules) {
+			let mod = this.server.module.modules[i];
+			cache[mod.id] = this.cacheOptionsFromPackage("module", mod.id, mod.baseConfig, mod.root);
+		}
+
+		for (let int i in this.server.theme.themes) {
+			let theme = this.server.theme.themes[i];
+			let key = theme.key;
+			if (key.length == 0)
+				key = "theme";
+
+			cache[key] = this.cacheOptionsFromPackage("theme", key, theme.config, theme.root);
+		}
+
+		let cacheFile = this.server.config.configOverrides + "/optionsCache.json";
+		FileSystem.writeSync(cacheFile, Websom.Json.encode(cache));
+
+		return cache;
+	}
+
+	void fillDefaults(map configs) {
+		for (let string owner in configs) {
+			let routes = configs[owner];
+			
+			for (let string route in routes) {
+				let options = routes[route];
+
+				for (let string option in options) {
+					this.optionDefaults[route + option] = options[option]["default"];
+				}
+			}
+		}
+	}
+}
