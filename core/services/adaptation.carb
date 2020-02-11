@@ -1,0 +1,78 @@
+class Websom.Services.Adaptation inherits Websom.Service {
+
+	<Websom.AdapterInterface>array interfaces = new <Websom.AdapterInterface>array();
+
+	Websom.Status start() {
+		
+	}
+
+	Websom.AdapterInterface& adapt(string name) {
+		let interface = new Websom.AdapterInterface(this.server, name);
+
+		this.interfaces.push(interface);
+
+		return interface;
+	}
+}
+
+class Websom.AdapterInterface {
+	Websom.Server server = null;
+
+	Websom.Adapter adapter = null;
+	string name = "";
+
+	void @construct(Websom.Server server, string name) {
+		this.server = server;
+		this.name = name;
+
+		if (this.server.config.verbose)
+			Console.log("Setup adapter " + name);
+	}
+
+	void load(everything mod, string className) {
+		native javascript {
+			let splits = className.split(".");
+			let cls = mod.pullFromGlobalScope(splits[0]);
+			for (let i = 1; i < splits.length; i++)
+				cls = cls[splits[i]];
+
+			this.adapter = new cls(this.server);
+		}
+
+		native php {
+			$this->adapter = new $className($this->server);
+		}
+		native javascript {
+		console.log(this.adapter.initialize);
+		}
+		this.adapter.initialize();
+	}
+
+	void loadFromConfig() {
+		let adapterName = this.server.configService.getString("adapters", this.name);
+		
+		if (this.server.config.verbose)
+			Console.log("Searching for adapter: " + this.name + ", found: " + adapterName);
+
+		let Websom.Module selectedModule = null;
+		let string selectedClass = "";
+
+		for (let int i in this.server.module.modules) {
+			let mod = this.server.module.modules[i];
+			let map adapters = mod.baseConfig["adapters"];
+
+			if (adapters != null) {
+				let map opts = adapters[adapterName];
+
+				if (opts != null) {
+					let string cls = opts["class"];
+
+					selectedModule = mod;
+					selectedClass = cls;
+				}
+			}
+		}
+
+		this.load(selectedModule, selectedClass);
+	}
+}

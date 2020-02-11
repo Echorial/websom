@@ -1,0 +1,12 @@
+header class Websom.Adapter {
+	Websom.Server server = null;
+
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	[ForceAsync]
+	void initialize() {
+
+	}
+}
