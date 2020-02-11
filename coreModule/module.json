@@ -1,0 +1,39 @@
+{
+	"name": "coreModule",
+	"id": "coreModule",
+	"version": "1.0",
+	"author": "Websom",
+	"license": "MIT",
+	"repo": "url",
+	"website": "https://echorial.com",
+	"supports": {
+		"javascript": "*",
+		"php": "*"
+	},
+	"resources": [
+		
+	],
+	"adapters": {
+		"loki": {
+			"type": "database",
+			"supports": {
+				"javascript": true,
+				"php": false
+			},
+			"class": "CoreModule.LokiDB"
+		}
+	},
+	"config": {
+		"root": {
+
+		},
+		"adapter.database.loki": {
+			"persistence": {
+				"name": "Database File (Persistence)",
+				"type": "string",
+				"helper": "path",
+				"default": ""
+			}
+		}
+	}
+}
