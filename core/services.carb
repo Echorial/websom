@@ -1,16 +1,17 @@
-#include "services"
-#include "constructs"
-#include "constructs/render"
-#include "constructs/controls"
-#include "util"
-#include "standard/standard.carb"
-#include "databases"
+namespace Websom.Adapters {}
 
 class Websom.Service {
 	Websom.Server server = null;
 
 	void @construct(Websom.Server server) {
 		this.server = server;
+
+		this.preStart();
+	}
+
+	`Called just after construction.`
+	void preStart() {
+		
 	}
 
 	`Called at the start of the websom server(php for each page load)`
@@ -49,3 +50,12 @@ namespace Websom.Services {}
 	});
 	
 #end script
+
+#include "services"
+#include "constructs"
+#include "constructs/render"
+#include "constructs/controls"
+#include "util"
+#include "standard/standard.carb"
+#include "databases"
+#include "constructs/adapters/database"
