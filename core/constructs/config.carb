@@ -52,6 +52,12 @@ class Websom.Config {
 	`If dev mode is on.`
 	bool dev = false;
 
+	`Verbose logging mode.`
+	bool verbose = false;
+
+	`Run websom without any frontend web server`
+	bool headless = false;
+
 	bool devSendMail = false;
 
 	`This will force server-side rendering. Mostly used for testing.`
