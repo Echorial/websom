@@ -82,14 +82,14 @@ header class Websom.StandardData {
 #include "./forum.carb"
 
 #script Carbon
-
+print("Running standard module stuff");
 var register = void (string module) => {
 	if (typeOf(websomRegister) != "null")
 		websomRegister(module);
 };
 
 Carbon.on("inherits.Websom.StandardData", void (Carbon.Class base, Carbon.Class cls) => {
-	Carbon.on("inerhits." + cls.route, void (Carbon.Class base, Carbon.Class cls2) => {
+	Carbon.on("inherits." + cls.route, void (Carbon.Class base, Carbon.Class cls2) => {
 		cls2.reroute = cls.route;
 	});
 });
@@ -102,6 +102,7 @@ Carbon.on("inherits.Websom.StandardModule", bool (Carbonite.Class base, Carbonit
 });
 
 Carbon.on("inherits.Websom.Module", bool (Carbonite.Class base, Carbonite.Class module) => {
+	print("Inherits from module " + module.route);
 	if (module.route != "Websom.StandardModule")
 		register(module);
 });
