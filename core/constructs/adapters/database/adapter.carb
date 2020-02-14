@@ -1,30 +1,285 @@
 namespace Websom.Adapters.Database {}
 
 header class Websom.Adapters.Database.Adapter extends Websom.Adapter {
-	Websom.Adapters.Database.Collection collection(string name) {}
+	Websom.Adapters.Database.Collection collection(string name) {
+		return new Websom.Adapters.Database.Collection(this, name);
+	}
 }
 
 header class Websom.Adapters.Database.Collection {
-	void @construct() {
+	Websom.Adapters.Database.Adapter database = null;
+	Websom.Adapters.Database.Schema appliedSchema = null;
+	string name = "";
+
+	void @construct(Websom.Adapters.Database.Adapter database, string name) {
+		this.database = database;
+		this.name = name;
+	}
+
+	Websom.Adapters.Database.Schema schema() {
+		this.appliedSchema = new Websom.Adapters.Database.Schema(this);
+		
+		return this.appliedSchema;
+	}
+
+	Websom.Adapters.Database.InsertQuery insert() {
+		return new Websom.Adapters.Database.InsertQuery(this);
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Database.InsertQueryResult executeInsert(Websom.Adapters.Database.InsertQuery query) {
+		
+	}
+
+	Websom.Adapters.Database.SelectQuery select() {
+		return new Websom.Adapters.Database.SelectQuery(this);
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Database.SelectQueryResult executeSelect(Websom.Adapters.Database.SelectQuery query) {
+		
+	}
+
+	Websom.Adapters.Database.SelectQuery where(string field, string operator, primitive value) {
+		let q = this.select();
+		q.where(field, operator, value);
+
+		return q;
+	}
+
+	Websom.Adapters.Database.UpdateQuery update() {
+		return new Websom.Adapters.Database.UpdateQuery(this);
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Database.UpdateQueryResult executeUpdate(Websom.Adapters.Database.UpdateQuery query) {
+		
+	}
+
+	Websom.Adapters.Database.DeleteQuery delete() {
+		return new Websom.Adapters.Database.DeleteQuery(this);
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Database.DeleteQueryResult executeDelete(Websom.Adapters.Database.DeleteQuery query) {
+		
+	}
+	
+	[ForceAsync]
+	void registerSchema(Websom.Adapters.Database.Schema schema) {
+		
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Database.Document document(string id) {}
+
+	[ForceAsync]
+	Websom.Adapters.Database.MetaDocument meta(string key) {}
+}
+
+header class Websom.Adapters.Database.MetaDocument {
+	string id = "";
+
+	void @construct(string id) {
+		this.id = id;
+	}
+
+	void incrementNumberField(int index, float value) {
 
 	}
 
-	Websom.Adapters.Database.InsertQuery insert() {}
+	void setNumberField(int index, float value) {
 
-	Websom.Adapters.Database.SelectQuery select() {}
+	}
 
-	Websom.Adapters.Database.SelectQuery where(string field, string operator, primitive val) {}
+	float numberField(int index) {
 
-	Websom.Adapters.Database.UpdateQuery update() {}
+	}
+
+	void setStringField(int index, string value) {
+
+	}
+
+	string stringField(int index) {
+
+	}
+
+	void setArrayField(int index, <primitive>array value) {
+
+	}
+
+	<primitive>array arrayField(int index) {
+
+	}
+
+	[ForceAsync]
+	void update() {
+
+	}
+}
+
+header class Websom.Adapters.Database.FieldType {
+	fixed string string = "string";
+	fixed string integer = "integer";
+	fixed string float = "float";
+	fixed string time = "time";
+	fixed string boolean = "boolean";
+	fixed string reference = "reference";
+	fixed string geopoint = "geopoint";
+	fixed string array = "array";
+}
+
+header class Websom.Adapters.Database.Field {
+	string name = "";
+	string type = "";
+
+	void @construct(string name, string type) {
+		this.name = name;
+		this.type = type;
+	}
+}
+
+namespace Websom.Calculators {}
+
+header class Websom.Calculator {
+	string getterName = "";
+
+	[ForceAsync]
+	void insert(Websom.Adapters.Database.Document doc, Websom.Adapters.Database.Collection collection) {
+
+	}
+
+	[ForceAsync]
+	void delete(Websom.Adapters.Database.Document doc, Websom.Adapters.Database.Collection collection) {
+		
+	}
+
+	[ForceAsync]
+	void update(Websom.Adapters.Database.Document oldDoc, Websom.Adapters.Database.Document newDoc, Websom.Adapters.Database.Collection collection) {
+
+	}
+
+	[ForceAsync]
+	primitive get(Websom.Adapters.Database.Collection collection) {
+		
+	}
+}
+
+header class Websom.Calculators.Average inherits Websom.Calculator {
+	string fieldName = "";
+
+	void @construct(string fieldName) {
+		this.fieldName = fieldName;
+	}
+
+	trust override void insert(Websom.Adapters.Database.Document doc, Websom.Adapters.Database.Collection collection) {
+		let metaDoc = collection.meta("avg_calc");
+		metaDoc.incrementNumberField(1, 1);
+
+		metaDoc.incrementNumberField(2, doc.get(this.fieldName));
+
+		metaDoc.update();
+	}
+
+	trust override void update(Websom.Adapters.Database.Document oldDoc, Websom.Adapters.Database.Document newDoc, Websom.Adapters.Database.Collection collection) {
+		if (newDoc.get(this.fieldName) != oldDoc.get(this.fieldName)) {
+			let metaDoc = collection.meta("avg_calc");
+
+			let float oldVal = oldDoc.get(this.fieldName);
+			let float newVal = newDoc.get(this.fieldName);
+
+			metaDoc.incrementNumberField(2, newVal - oldVal);
+
+			metaDoc.update();
+		}
+	}
+
+	trust override void delete(Websom.Adapters.Database.Document doc, Websom.Adapters.Database.Collection collection) {
+		let metaDoc = collection.meta("avg_calc");
+		metaDoc.incrementNumberField(1, -1);
+
+		let float value = doc.get(this.fieldName);
+		metaDoc.incrementNumberField(2, -value);
+
+		metaDoc.update();
+	}
+
+	trust override primitive get(Websom.Adapters.Database.Collection collection) {
+		let metaDoc = collection.meta("avg_calc");
+
+		let float total = metaDoc.numberField(2);
+		let float count = metaDoc.numberField(1);
+
+		return total / count;
+	}
+}
+
+header class Websom.Adapters.Database.Index {
+	<Websom.Adapters.Database.Field>array fields = new <Websom.Adapters.Database.Field>array();
+
+	void @construct() {
+
+	}
+}
+
+header class Websom.Adapters.Database.Schema {
+	Websom.Adapters.Database.Collection collection = null;
+
+	<Websom.Adapters.Database.Field>array fields = new <Websom.Adapters.Database.Field>array();
+	<Websom.Adapters.Database.Index>array indexes = new <Websom.Adapters.Database.Index>array();
+
+	<Websom.Calculator>array calculators = new <Websom.Calculator>array();
+
+	trust void @construct(Websom.Adapters.Database.Collection collection) {
+		this.collection = collection;
+	}
+
+	Websom.Adapters.Database.Schema field(string name, string type) {
+		let fields = this.fields;
+
+		if (this.indexes.length > 0)
+			this.fields = this.indexes[this.indexes.length - 1].fields;
+
+		fields.push(new Websom.Adapters.Database.Field(name, type));
+
+		return this;
+	}
+
+	Websom.Adapters.Database.Schema calc(string getterName, Websom.Calculator calculator) {
+		calculator.getterName = getterName;
+		this.calculators.push(calculator);
+
+		return this;
+	}
+
+	Websom.Adapters.Database.Schema index() {
+		this.indexes.push(new Websom.Adapters.Database.Index());
+
+		return this;
+	}
+
+	void register() {
+		this.collection.registerSchema(this);
+	}
 }
 
 header class Websom.Adapters.Database.InsertQuery {
-	void @construct() {
+	Websom.Adapters.Database.Collection collection = null;
+	map sets = new map();
 
+	trust void @construct(Websom.Adapters.Database.Collection collection) {
+		this.collection = collection;
 	}
 
-	Websom.Adapters.Database.InsertQuery set(string field, primitive value) {}
-	Websom.Adapters.Database.InsertQueryResult run() {}
+	Websom.Adapters.Database.InsertQuery set(string field, primitive value) {
+		this.sets[field] = value;
+
+		return this;
+	}
+
+	Websom.Adapters.Database.InsertQueryResult run() {
+		return this.collection.executeInsert(this);
+	}
 }
 
 header class Websom.Adapters.Database.InsertQueryResult {
@@ -39,19 +294,49 @@ header class Websom.Adapters.Database.InsertQueryResult {
 	}
 }
 
-header class Websom.Adapters.Database.SelectQuery {
-	void @construct() {
+header class Websom.Adapters.Database.SelectCondition {
+	string field = "";
+	string operator = "";
+	primitive value = null;
+	string type = "";
 
+	void @construct(string field, string operator, primitive value, string type) {
+		this.field = field;
+		this.operator = operator;
+		this.value = value;
+		this.type = type;
+	}
+}
+
+header class Websom.Adapters.Database.SelectQuery {
+	<Websom.Adapters.Database.SelectCondition>array conditions = new <Websom.Adapters.Database.SelectCondition>array();
+	Websom.Adapters.Database.Collection collection = null;
+	
+	trust void @construct(Websom.Adapters.Database.Collection collection) {
+		this.collection = collection;
 	}
 
-	Websom.Adapters.Database.SelectQuery where(string field, string operator, primitive value) {}
-	async Websom.Adapters.Database.SelectQueryResult get() {}
+	Websom.Adapters.Database.SelectQuery where(string field, string operator, primitive value) {
+		this.conditions.push(new Websom.Adapters.Database.SelectCondition(field, operator, value, "where"));
+
+		return this;
+	}
+
+	Websom.Adapters.Database.SelectQuery orderBy(string field, string order) {
+		this.conditions.push(new Websom.Adapters.Database.SelectCondition(field, order, "", "order"));
+
+		return this;
+	}
+
+	Websom.Adapters.Database.SelectQueryResult get() {
+		return this.collection.executeSelect(this);
+	}
 }
 
 header class Websom.Adapters.Database.SelectQueryResult {
 	bool success = false;
 	string message = "";
-	<Websom.Adapters.Database.Document>array results = new <Websom.Adapters.Database.Document>array();
+	<Websom.Adapters.Database.Document>array documents = new <Websom.Adapters.Database.Document>array();
 
 	void @construct(bool success, string message) {
 		this.success = success;
@@ -60,12 +345,30 @@ header class Websom.Adapters.Database.SelectQueryResult {
 }
 
 header class Websom.Adapters.Database.UpdateQuery extends Websom.Adapters.Database.SelectQuery {
-	void @construct() {
+	map sets = new map();
+	map increments = new map();
 
+	Websom.Adapters.Database.Collection collection = null;
+
+	trust void @construct(Websom.Adapters.Database.Collection collection) {
+		this.collection = collection;
 	}
 
-	Websom.Adapters.Database.UpdateQuery set(string field, primitive value) {}
-	async Websom.Adapters.Database.UpdateQueryResult run() {}
+	Websom.Adapters.Database.UpdateQuery set(string field, primitive value) {
+		this.sets[field] = value;
+
+		return this;
+	}
+
+	Websom.Adapters.Database.UpdateQuery increment(string field, float value) {
+		this.increments[field] = value;
+
+		return this;
+	}
+
+	async Websom.Adapters.Database.UpdateQueryResult run() {
+		this.collection.executeUpdate(this);
+	}
 }
 
 header class Websom.Adapters.Database.UpdateQueryResult {
@@ -79,11 +382,51 @@ header class Websom.Adapters.Database.UpdateQueryResult {
 	}
 }
 
+header class Websom.Adapters.Database.DeleteQuery extends Websom.Adapters.Database.SelectQuery {
+	Websom.Adapters.Database.Collection collection = null;
+
+	trust void @construct(Websom.Adapters.Database.Collection collection) {
+		this.collection = collection;
+	}
+
+	async Websom.Adapters.Database.DeleteQueryResult run() {
+		this.collection.executeDelete(this);
+	}
+}
+
+header class Websom.Adapters.Database.DeleteQueryResult {
+	bool success = false;
+	string message = "";
+
+	void @construct(bool success, string message) {
+		this.success = success;
+		this.message = message;
+	}
+}
+
 header class Websom.Adapters.Database.Document {
+	Websom.Adapters.Database.Collection collection = null;
 	string id = "";
 
-	void @construct(string id) {
+	trust void @construct(Websom.Adapters.Database.Collection collection, string id) {
+		this.collection = collection;
 		this.id = id;
+	}
+
+	primitive calc(string field) {
+		if (this.collection.appliedSchema == null) {
+			throw "No schema on collection";
+
+			return null;
+		}
+
+		for (let int i in this.collection.appliedSchema.calculators) {
+			let calc = this.collection.appliedSchema.calculators[i];
+
+			if (calc.getterName == field) {
+				return calc.get(this.collection);
+			}
+		}
 	}
 
 	primitive get(string field) {}
