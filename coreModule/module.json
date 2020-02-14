@@ -10,6 +10,9 @@
 		"javascript": "*",
 		"php": "*"
 	},
+	"npm": {
+		"lokijs": "1.5.8"
+	},
 	"resources": [
 		
 	],

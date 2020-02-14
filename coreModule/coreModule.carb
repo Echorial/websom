@@ -5,13 +5,56 @@ namespace CoreModule {}
 #end script
 
 class CoreModule.Module inherits Websom.Module {
-	override Websom.Status start() {
+	Websom.Adapters.Database.Collection test = null;
 
+	override Websom.Status start() {
+		let db = this.server.database.central;
+
+		Console.log("Before test");
+
+		this.test = db.collection("test");
+
+		let schema = this.test.schema()
+			.field("name", "string")
+			.field("balance", "float")
+			.calc("averageBalance", new Websom.Calculators.Average("balance"))
+			.index()
+				.field("name", "==")
+				.field("balance", "dsc");
+
+		this.registerCollection(schema);
+		
+
+		this.test.insert()
+			.set("name", "Hello")
+			.set("balance", 2.0)
+			.run();
+
+		let res = this.test.where("name", "==", "Hello").get();
+
+		for (let int i in res.documents) {
+			let doc = res.documents[i];
+
+			Console.log("Found document " + doc.calc("averageBalance"));
+		}
 	}
 }
 
-class test {
-	
+class Person { //extends Websom.Entity {
+	field string firstName = "";
+	field string lastName = "";
+	field int age = 0;
+
+	override Websom.Adapters.Database.Schema getSchema() {
+		let s = new Websom.Adapters.Database.Schema(null);
+
+		s
+			.field("firstName", "string")
+			.field("lastName", "string")
+			.field("age", "int");
+
+		return s;
+	}
 }
 
 #include "adapters/loki"
