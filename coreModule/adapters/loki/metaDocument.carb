@@ -1,0 +1,46 @@
+class CoreModule.MetaDocument inherits Websom.Adapters.Database.MetaDocument {
+	map raw = new map();
+	map sets = new map();
+
+	Websom.Adapters.Database.Collection collection = null;
+
+	override void incrementNumberField(int index, float value) {
+		let float curValue = this.raw["number" + index];
+
+		this.sets["number" + index] = curValue + value;
+	}
+
+	override void setNumberField(int index, float value) {
+		this.sets["number" + index] = value;
+	}
+
+	override float numberField(int index) {
+		return this.raw["number" + index];
+	}
+
+	override void setStringField(int index, string value) {
+		this.sets["string" + index] = value;
+	}
+
+	override string stringField(int index) {
+		return this.raw["string" + index];
+	}
+
+	override void setArrayField(int index, <primitive>array value) {
+		this.sets["array" + index] = value;
+	}
+
+	override <primitive>array arrayField(int index) {
+		return this.raw["array" + index];
+	}
+
+	override void update() {
+		native javascript {
+			for (let k in this.sets) {
+				this.raw[k] = this.sets[k];
+			}
+
+			this.collection.lokiCollection.update(this.raw);
+		}
+	}
+}

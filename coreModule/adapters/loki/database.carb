@@ -1,5 +1,43 @@
 class CoreModule.LokiDB inherits Websom.Adapters.Database.Adapter {
+	void loki = null;
+
+	string route = "adapter.database.loki";
+
 	override void initialize() {
-		Console.log("Started LokiDB");
+		if (this.server.config.verbose)
+			Console.log("Starting LokiDB");
+
+		this.loadDB();
+	}
+
+	async void loadDB() {
+		native javascript {
+			const loki = require("lokijs");
+
+			let file = this.server.getConfigString(this.route, "persistence");
+			this.loki = new loki(this.server.config.root + "/" + file, {
+				autosave: true,
+				autosaveInterval: 5000,
+				autoload: true,
+				autoloadCallback: () => {
+					console.log("Loaded loki db");
+					@return();
+				}
+			});
+		}
+	}
+
+	async override void shutdown() {
+		Console.log("Saving loki DB");
+
+		native javascript {
+			this.loki.saveDatabase(() => {
+				@return();
+			});
+		}
+	}
+
+	override Websom.Adapters.Database.Collection collection(string name) {
+		return new CoreModule.LokiCollection(this, name);
 	}
 }

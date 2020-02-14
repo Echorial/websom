@@ -1,0 +1,221 @@
+class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
+	void lokiCollection = null;
+
+	void lazilyGetCollection() {
+		native javascript {
+			if (!this.lokiCollection)
+				this.lokiCollection = this.database.loki.getCollection(this.name);
+		}
+	}
+
+	override Websom.Adapters.Database.Document document(string id) {
+		this.lazilyGetCollection();
+
+		let map doc = null;
+
+		native javascript {
+			doc = this.lokiCollection.get(id);
+		}
+		
+		if (doc == null)
+			return null;
+	
+		return this.documentFromRaw(doc);
+	}
+
+	override Websom.Adapters.Database.MetaDocument meta(string key) {
+		this.lazilyGetCollection();
+
+		let map doc = null;
+
+		native javascript {
+			doc = this.lokiCollection.find({metaKey: key})[0];
+		}
+		
+		if (doc == null) {
+			native javascript {
+				doc = {
+					metaKey: key,
+					number1: 0,
+					number2: 0,
+					number3: 0,
+					string1: "",
+					string2: "",
+					string3: "",
+					array1: [],
+					array2: [],
+					array3: []
+				};
+
+				this.lokiCollection.insert(doc);
+			}
+		}
+	
+		let meta = new CoreModule.MetaDocument(key);
+		meta.raw = doc;
+		meta.collection = this;
+
+		return meta;
+	}
+	
+	CoreModule.LokiDocument documentFromRaw(map raw) {
+		let doc = new CoreModule.LokiDocument(this, raw["$loki"]);
+		doc.rawData = raw;
+
+		return doc;
+	}
+
+	void registerSchema(Websom.Adapters.Database.Schema schema) {
+		native javascript {
+			let col = this.database.loki.getCollection(this.name);
+			if (!col)
+				this.database.loki.addCollection(this.name);
+		}
+	}
+
+	override Websom.Adapters.Database.UpdateQueryResult executeUpdate(Websom.Adapters.Database.UpdateQuery query) {
+		this.lazilyGetCollection();
+
+		let docs = this.executeSelect(query).documents;
+
+		native javascript {
+			for (let doc of docs) {
+				let oldCopy = this.documentFromRaw(Object.assign({}, doc.raw));
+
+				for (let k in query.sets) {
+					if (query.hasOwnProperty(k)) {
+						doc.raw[k] = query.sets[k];
+					}
+				}
+
+				for (let k in query.increments) {
+					if (query.hasOwnProperty(k)) {
+						doc.raw[k] = doc.raw[k] + query.increments[k];
+					}
+				}
+
+				if (this.appliedSchema != null) {
+					for (let i in this.appliedSchema.calculators) {
+						let calc = this.appliedSchema.calculators[i];
+
+						await calc.update(oldCopy, doc, this);
+					}
+				}
+
+				this.lokiCollection.update(doc);
+			}
+
+			this.database.loki.saveDatabase(() => {
+				console.log("Saved db");
+			});
+		}
+
+		let res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
+		res.updateCount = docs.length;
+
+		return res;
+	}
+
+	override Websom.Adapters.Database.DeleteQueryResult executeDelete(Websom.Adapters.Database.DeleteQuery query) {
+		this.lazilyGetCollection();
+
+		let docs = this.executeSelect(query).documents;
+
+		for (let int i in docs) {
+			let doc = docs[i];
+
+			native javascript {
+				this.lokiCollection.remove(doc);
+			}
+
+			if (this.appliedSchema != null) {
+				for (let int j in this.appliedSchema.calculators) {
+					let calc = this.appliedSchema.calculators[j];
+
+					calc.delete(doc, this);
+				}
+			}
+		}
+
+		native javascript {
+			this.database.loki.saveDatabase(() => {
+				console.log("Saved db");
+			});
+		}
+
+		return new Websom.Adapters.Database.DeleteQueryResult(true, "");
+	}
+
+	override Websom.Adapters.Database.InsertQueryResult executeInsert(Websom.Adapters.Database.InsertQuery query) {
+		this.lazilyGetCollection();
+
+		let id = "";
+
+		native javascript {
+			id = this.lokiCollection.insert(query.sets).$loki;
+			this.database.loki.saveDatabase(() => {
+				console.log("Saved db");
+			});
+		}
+
+		if (this.appliedSchema != null) {
+			let doc = this.documentFromRaw(query.sets);
+			for (let int i in this.appliedSchema.calculators) {
+				let calc = this.appliedSchema.calculators[i];
+
+				calc.insert(doc, this);
+			}
+		}
+
+		let res = new Websom.Adapters.Database.InsertQueryResult(true, "", id);
+
+		return res;
+	}
+
+	override Websom.Adapters.Database.SelectQueryResult executeSelect(Websom.Adapters.Database.SelectQuery query) {
+		this.lazilyGetCollection();
+
+		let res = new Websom.Adapters.Database.SelectQueryResult(true, "");
+		
+		native javascript {
+			let ops = {
+				">": "$gt",
+				">=": "$gte",
+				"<": "$lt",
+				"<=": "$lte",
+				"==": "$eq",
+				"in": "$in",
+				"contains": "$contains",
+				"contains-any": "$containsAny"
+			};
+
+			let qMap = {};
+			let orderByField = "";
+			let orderByOrder = "asc";
+
+			for (let condition of query.conditions) {
+				if (condition.type == "where") {
+					if (!qMap[condition.field])
+						qMap[condition.field] = {};
+					
+					qMap[condition.field][ops[condition.operator]] = condition.value;
+				}else if (condition.type == "order") {
+					orderByField = condition.field;
+					orderByOrder = condition.operator;
+				}
+			}
+
+			let lokiQuery = this.lokiCollection.chain().find(qMap);
+
+			if (orderByField != "")
+				lokiQuery.simplesort(orderByField, orderByOrder == "dsc");
+
+			let rawResults = lokiQuery.data();
+
+			for (let raw of rawResults)
+				res.documents.push(this.documentFromRaw(raw));
+		}
+
+		return res;
+	}
+}
