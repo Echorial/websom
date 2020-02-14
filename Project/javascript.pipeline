@@ -11,3 +11,5 @@ javascript.module = "Websom"
 autoCache = true
 
 useOldTemplates = true
+
+asyncAwait = true
