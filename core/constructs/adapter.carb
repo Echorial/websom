@@ -9,4 +9,9 @@ header class Websom.Adapter {
 	void initialize() {
 
 	}
+
+	[ForceAsync]
+	void shutdown() {
+
+	}
 }
