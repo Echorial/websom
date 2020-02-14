@@ -2,8 +2,25 @@ class Websom.Services.Adaptation inherits Websom.Service {
 
 	<Websom.AdapterInterface>array interfaces = new <Websom.AdapterInterface>array();
 
-	Websom.Status start() {
+	override Websom.Status start() {
 		
+	}
+
+	override Websom.Status stop() {
+		this.shutdown();
+	}
+
+	override Websom.Status end() {
+		this.shutdown();
+	}
+
+	void shutdown() {
+		for (let int i in this.interfaces) {
+			let interface = this.interfaces[i];
+
+			if (interface.adapter != null)
+				interface.adapter.shutdown();
+		}
 	}
 
 	Websom.AdapterInterface& adapt(string name) {
@@ -42,9 +59,7 @@ class Websom.AdapterInterface {
 		native php {
 			$this->adapter = new $className($this->server);
 		}
-		native javascript {
-		console.log(this.adapter.initialize);
-		}
+		
 		this.adapter.initialize();
 	}
 
