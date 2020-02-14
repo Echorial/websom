@@ -8,6 +8,7 @@ module.exports = {
 		c.noExports.push("Oxygen");
 		c.noCore = true;
 		c.useOldTemplates = true;
+		c.asyncAwait = true;
 		var moduleName = "Unknown";
 		var moduleClass = null;
 		c.buildScript.setVar("websomRegister", (args) => {
