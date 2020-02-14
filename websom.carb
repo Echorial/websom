@@ -52,7 +52,15 @@ class Websom.Server {
 
 		this.config = config;
 		this.config.legacy = true;
-		this.startServices();
+
+		// Async/await calls in a constructor are not allowed.
+		native javascript {
+			this.startServices();
+		}
+
+		native php {
+			$this->startServices();
+		}
 
 		if (this.config.bucket)
 			if ("reference" in this.config.bucket)
@@ -141,6 +149,10 @@ class Websom.Server {
 
 	Websom.AdapterInterface adapt(string name) {
 		return this.adaptation.adapt(name);
+	}
+
+	string getConfigString(string route, string option) {
+		return this.configService.getString(route, option);
 	}
 
 	void startServices() {
