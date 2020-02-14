@@ -28,6 +28,7 @@
 		"nodemailer": "^4.6.8",
 		"normalize.css": "^8.0.1",
 		"npm": "^6.13.4",
+		"npm-programmatic": "0.0.12",
 		"open": "^7.0.0",
 		"portal-vue": "^2.1.7",
 		"postcss": "^7.0.26",
