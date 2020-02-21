@@ -1,0 +1,89 @@
+class Websom.Services.API inherits Websom.Service {
+	string baseRoute = "/api/v1";
+
+	<Websom.CollectionInterface>array collections = new <Websom.CollectionInterface>array();
+	<Websom.PlainInterface>array interfaces = new <Websom.PlainInterface>array();
+
+	override Websom.Status start() {
+		
+	}
+
+	Websom.CollectionInterfaceRoute resolveEndpoint(string path) {
+		let splits = path.split("/");
+		
+		for (let int i in this.collections) {
+			let collection = this.collections[i];
+			let basePathSplit = collection.baseRoute.split("/");
+
+			if (splits.length < basePathSplit.length)
+				continue;
+
+			let pass = true;
+			for (let int j in basePathSplit)
+				if (basePathSplit[j] != splits[j])
+					pass = false;
+
+			if (pass) {
+				for (let int k in collection.routes) {
+					let route = collection.routes[k];
+					let endpointSplits = route.route.split("/");
+
+					let eBase = 1;
+					let bpBase = splits.length - 1;
+
+					let finalPass = true;
+
+					for (let int bp in endpointSplits) {
+						if (bp + eBase >= endpointSplits.length)
+							break;
+							
+						if (endpointSplits[bp + eBase] != splits[bp + bpBase])
+							finalPass = false;
+					}
+					
+					if (finalPass) {
+						return route;
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	bool request(Websom.Request req) {
+		for (let int i in this.interfaces) {
+			let interface = this.interfaces[i];
+
+			if (interface.route == req.path) {
+				interface.handler(req);
+				return true;
+			}
+		}
+
+		let route = this.resolveEndpoint(req.path);
+		
+		if (route == null)
+			return false;
+
+		let collection = route.collection;
+
+		this.handleRequest(collection, route, req);
+
+		return true;
+	}
+
+	void handleRequest(Websom.CollectionInterface ci, Websom.CollectionInterfaceRoute cir, Websom.Request req) {
+		req.end(ci.baseRoute + cir.route);
+	}
+
+	trust Websom.CollectionInterface interface(Websom.Adapters.Database.Collection collection, string baseRoute) {
+		let ci = new Websom.CollectionInterface(collection, baseRoute);
+		this.collections.push(ci);
+		return ci;
+	}
+
+	void route(string route, <void, Websom.Request>function handler) {
+		this.interfaces.push(new Websom.PlainInterface(route, handler));
+	}
+}
