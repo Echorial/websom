@@ -27,6 +27,11 @@ header class Websom.Adapters.Database.Collection {
 	}
 
 	[ForceAsync]
+	<Websom.Adapters.Database.InsertQueryResult>array commitBatch(Websom.Adapters.Database.BatchQuery query) {
+		
+	}
+
+	[ForceAsync]
 	Websom.Adapters.Database.InsertQueryResult executeInsert(Websom.Adapters.Database.InsertQuery query) {
 		
 	}
@@ -63,6 +68,10 @@ header class Websom.Adapters.Database.Collection {
 	[ForceAsync]
 	Websom.Adapters.Database.DeleteQueryResult executeDelete(Websom.Adapters.Database.DeleteQuery query) {
 		
+	}
+
+	Websom.Adapters.Database.BatchQuery batch() {
+		return new Websom.Adapters.Database.BatchQuery(this);
 	}
 	
 	[ForceAsync]
@@ -350,7 +359,7 @@ header class Websom.Adapters.Database.UpdateQuery extends Websom.Adapters.Databa
 
 	Websom.Adapters.Database.Collection collection = null;
 
-	trust void @construct(Websom.Adapters.Database.Collection collection) {
+	override trust void @construct(Websom.Adapters.Database.Collection collection) {
 		this.collection = collection;
 	}
 
@@ -362,6 +371,18 @@ header class Websom.Adapters.Database.UpdateQuery extends Websom.Adapters.Databa
 
 	Websom.Adapters.Database.UpdateQuery increment(string field, float value) {
 		this.increments[field] = value;
+
+		return this;
+	}
+
+	override Websom.Adapters.Database.UpdateQuery where(string field, string operator, primitive value) {
+		this.conditions.push(new Websom.Adapters.Database.SelectCondition(field, operator, value, "where"));
+
+		return this;
+	}
+
+	override Websom.Adapters.Database.UpdateQuery orderBy(string field, string order) {
+		this.conditions.push(new Websom.Adapters.Database.SelectCondition(field, order, "", "order"));
 
 		return this;
 	}
@@ -432,4 +453,27 @@ header class Websom.Adapters.Database.Document {
 	primitive get(string field) {}
 
 	map data() {}
+}
+
+header class Websom.Adapters.Database.BatchQuery {
+	Websom.Adapters.Database.Collection collection = null;
+
+	<Websom.Adapters.Database.InsertQuery>array inserts = new <Websom.Adapters.Database.InsertQuery>array();
+	<Websom.Adapters.Database.UpdateQuery>array updates = new <Websom.Adapters.Database.UpdateQuery>array();
+
+	trust void @construct(Websom.Adapters.Database.Collection collection) {
+		this.collection = collection;
+	}
+
+	Websom.Adapters.Database.InsertQuery insert() {
+		return new Websom.Adapters.Database.InsertQuery(this.collection);
+	}
+
+	Websom.Adapters.Database.UpdateQuery update() {
+		return new Websom.Adapters.Database.UpdateQuery(this.collection);
+	}
+
+	<Websom.Adapters.Database.InsertQueryResult>array commit() {
+		return this.collection.commitBatch(this);
+	}
 }
