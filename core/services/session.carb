@@ -1,0 +1,62 @@
+class Websom.Services.Session inherits Websom.Service {
+
+	Websom.Adapters.Database.Collection sessions = null;
+
+	override Websom.Status start() {
+		
+	}
+
+	[ForceAsync]
+	void beforeSend(Websom.Request req) {
+		if (req.session.changed) {
+			if (req.session.id.length == 0) {
+				req.session.id = this.generateSessionKey();
+
+				this.sessions.insert()
+					.set("key", req.session.id)
+					.set("created", Websom.Time.now())
+					.set("ip", req.client.address)
+					.set("data", Websom.Json.encode(req.session.data))
+					.run();
+
+				req.cookie("wbsm_session", req.session.id);
+			}else{
+				this.sessions.update()
+					.where("key", "==", req.session.id)
+					.set("data", Websom.Json.encode(req.session.data))
+					.run();
+			}
+		}
+	}
+
+	string generateSessionKey() {
+		return this.server.crypto.getRandomHex(128);
+	}
+
+	[ForceAsync]
+	void loadRequest(Websom.Request req) {
+		if ("wbsm_session" in req.cookies) {
+			let results = this.sessions.where("key", "==", req.cookies["wbsm_session"]).get();
+
+			if (results.documents.length > 0) {
+				let doc = results.documents[0];
+
+				req.session.data = Websom.Json.parse(doc.get("data"));
+				req.session.id = req.cookies["wbsm_session"];
+			}
+		}
+	}
+
+	void collection() {
+		let db = this.server.database.central;
+		this.sessions = db.collection("websom_sessions");
+
+		this.sessions.schema()
+			.field("key", "string")
+			.field("created", "time")
+			.field("ip", "string")
+			.field("data", "string");
+
+		this.server.registerServiceCollection(this.sessions);
+	}
+}
