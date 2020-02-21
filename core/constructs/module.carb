@@ -11,7 +11,8 @@ header class Websom.Module {
 
 	<Websom.Container>array containers = new <Websom.Container>array();
 	<Websom.Bridge>array bridges = new <Websom.Bridge>array();
-	<Websom.Adapters.Database.Collection>array collections = new <Websom.Adapters.Database.Collection>array();
+	<Websom.Adapters.Database.Collection>array registeredCollections = new <Websom.Adapters.Database.Collection>array();
+	<Websom.Permission>array registeredPermissions = new <Websom.Permission>array();
 
 	`Display name of module`
 	string name = "";
@@ -62,12 +63,24 @@ header class Websom.Module {
 
 	}
 
-	void registerCollection(Websom.Adapters.Database.Schema schema) {
-		this.collections.push(schema.collection);
+	void collections() {
 
-		if (this.server.config.dev) {
-			schema.register();
-		}
+	}
+
+	void permissions() {
+
+	}
+
+	void registerCollection(Websom.Adapters.Database.Collection collection) {
+		this.registeredCollections.push(collection);
+
+		if (this.server.config.dev)
+			if (collection.appliedSchema != null)
+				collection.appliedSchema.register();
+	}
+
+	void registerPermission(Websom.Permission permission) {
+		this.registeredPermissions.push(permission);
 	}
 
 	phpNoRef <Websom.Container>array setupData() {
