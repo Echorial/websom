@@ -51,7 +51,7 @@ class Websom.Services.Input inherits Websom.Service {
 					}
 				});
 			}else{
-				Exception.throw("Unkown is restriction with type " + type);
+				Exception.throw("Unknown is restriction with type " + type);
 			}
 		});
 	}
@@ -122,7 +122,7 @@ class Websom.Services.Input inherits Websom.Service {
 		return keys.join(", ");
 	}
 
-	`Regsiters an InputHandler for the input key`
+	`Registers an InputHandler for the input key`
 	Websom.InputHandler register(string key, <void, Websom.Input>function callback) {
 		var handler = new Websom.InputHandler(key, callback);
 		this.inputs.push(handler);
