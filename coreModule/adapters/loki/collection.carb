@@ -73,6 +73,18 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		}
 	}
 
+	override <Websom.Adapters.Database.InsertQueryResult>array commitBatch(Websom.Adapters.Database.BatchQuery query) {
+		for (let int u in query.updates) {
+			this.executeUpdate(query.updates[u]);
+		}
+
+		let inserts = new <Websom.Adapters.Database.InsertQueryResult>array();
+
+		for (let int i in query.inserts) {
+			inserts.push(this.executeInsert(query.inserts[i]));
+		}
+	}
+
 	override Websom.Adapters.Database.UpdateQueryResult executeUpdate(Websom.Adapters.Database.UpdateQuery query) {
 		this.lazilyGetCollection();
 
@@ -80,17 +92,17 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 
 		native javascript {
 			for (let doc of docs) {
-				let oldCopy = this.documentFromRaw(Object.assign({}, doc.raw));
+				let oldCopy = this.documentFromRaw(Object.assign({}, doc.rawData));
 
 				for (let k in query.sets) {
-					if (query.hasOwnProperty(k)) {
-						doc.raw[k] = query.sets[k];
+					if (query.sets.hasOwnProperty(k)) {
+						doc.rawData[k] = query.sets[k];
 					}
 				}
 
 				for (let k in query.increments) {
 					if (query.hasOwnProperty(k)) {
-						doc.raw[k] = doc.raw[k] + query.increments[k];
+						doc.rawData[k] = doc.rawData[k] + query.increments[k];
 					}
 				}
 
@@ -102,7 +114,7 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 					}
 				}
 
-				this.lokiCollection.update(doc);
+				this.lokiCollection.update(doc.rawData);
 			}
 
 			this.database.loki.saveDatabase(() => {
