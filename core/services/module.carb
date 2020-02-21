@@ -275,6 +275,8 @@ class Websom.Services.Module inherits Websom.Service {
 
 			this.checkContainers(module);
 			
+			module.permissions();
+			module.collections();
 			var status = module.start();
 			if (status != null)
 				return status;
