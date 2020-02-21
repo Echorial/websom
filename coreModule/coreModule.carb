@@ -7,10 +7,28 @@ namespace CoreModule {}
 class CoreModule.Module inherits Websom.Module {
 	Websom.Adapters.Database.Collection test = null;
 
-	override Websom.Status start() {
-		let db = this.server.database.central;
+	public Websom.Permission commentEdit = null;
+	public Websom.Permission commentCreate = null;
+	public Websom.Permission commentRead = null;
 
-		Console.log("Before test");
+	override void permissions() {
+		this.commentEdit = new Websom.Permission("Comment.Edit");
+		this.commentEdit.description = "Allows users to edit any comment";
+		
+		this.commentCreate = new Websom.Permission("Comment.Create");
+		this.commentCreate.description = "Allows users to create a comment";
+
+		this.commentRead = new Websom.Permission("Comment.Read");
+		this.commentRead.description = "Read permissions on any comment anywhere";
+		this.commentRead.public = true;
+		
+		this.registerPermission(this.commentEdit);
+		this.registerPermission(this.commentCreate);
+		this.registerPermission(this.commentRead);
+	}
+
+	override void collections() {
+		let db = this.server.database.central;
 
 		this.test = db.collection("test");
 
@@ -21,10 +39,9 @@ class CoreModule.Module inherits Websom.Module {
 			.index()
 				.field("name", "==")
 				.field("balance", "dsc");
-
-		this.registerCollection(schema);
+			
+		this.registerCollection(this.test);
 		
-
 		this.test.insert()
 			.set("name", "Hello")
 			.set("balance", 2.0)
@@ -32,11 +49,34 @@ class CoreModule.Module inherits Websom.Module {
 
 		let res = this.test.where("name", "==", "Hello").get();
 
-		for (let int i in res.documents) {
-			let doc = res.documents[i];
+		this.server.api.interface(this.test, "/testing")
+			.route("/create")
+				.auth(this.commentCreate)
+				.executes("insert")
+					.write("name")
+						.limit(3, 256)
+					.set("balance", 0)
+			.route("/edit")
+				.auth(this.commentEdit)
+				.executes("update")
+					.write("name")
+					.filter("default")
+						.field("id", "==")
+			.route("/find")
+				.auth(this.commentRead)
+				.executes("select")
+					.read("name")
+					.read("balance")
+					.filter("default")
+						.field("name", "==")
+						.force("balance", "<", 100)
+						.order("balance", "dsc");
+	}
 
-			Console.log("Found document " + doc.calc("averageBalance"));
-		}
+	override Websom.Status start() {
+		this.server.api.route("/custom/endpoint", void (Websom.Request req) => {
+			req.end("Hello");
+		});
 	}
 }
 
