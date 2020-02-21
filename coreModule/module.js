@@ -28,6 +28,12 @@ CoreModule = function () {var _c_this = this;
 CoreModule.Module = function () {var _c_this = this;
 	this.test = null;
 
+	this.commentEdit = null;
+
+	this.commentCreate = null;
+
+	this.commentRead = null;
+
 	this.server = null;
 
 	this.baseConfig = null;
@@ -36,7 +42,9 @@ CoreModule.Module = function () {var _c_this = this;
 
 	this.bridges = [];
 
-	this.collections = [];
+	this.registeredCollections = [];
+
+	this.registeredPermissions = [];
 
 	this.name = "";
 
@@ -59,21 +67,39 @@ CoreModule.Module = function () {var _c_this = this;
 
 }
 
-/*i async*/CoreModule.Module.prototype.start = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.commentEdit = new Websom.Permission("Comment.Edit");
+		_c_this.commentEdit.description = "Allows users to edit any comment";
+		_c_this.commentCreate = new Websom.Permission("Comment.Create");
+		_c_this.commentCreate.description = "Allows users to create a comment";
+		_c_this.commentRead = new Websom.Permission("Comment.Read");
+		_c_this.commentRead.description = "Read permissions on any comment anywhere";
+		_c_this.commentRead.public = true;
+		_c_this.registerPermission(_c_this.commentEdit);
+		_c_this.registerPermission(_c_this.commentCreate);
+		_c_this.registerPermission(_c_this.commentRead);
+	}
+}
+
+/*i async*/CoreModule.Module.prototype.collections = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 /*async*/
 		var db = _c_this.server.database.central;
-		console.log("Before test");
 		_c_this.test = db.collection("test");
 		var schema = _c_this.test.schema().field("name", "string").field("balance", "float").calc("averageBalance", new Websom.Calculators.Average("balance")).index().field("name", "==").field("balance", "dsc");
-		(await _c_this.registerCollection/* async call */(schema));
+		(await _c_this.registerCollection/* async call */(_c_this.test));
 		(await _c_this.test.insert().set("name", "Hello").set("balance", 2).run/* async call */());
 		var res = (await _c_this.test.where("name", "==", "Hello").get/* async call */());
-		for (var i = 0; i < res.documents.length; i++) {
-/*async*/
-			var doc = res.documents[i];
-			console.log("Found document " + (await doc.calc/* async call */("averageBalance")));
-			}
+		_c_this.server.api.interface(_c_this.test, "/testing").route("/create").auth(_c_this.commentCreate).executes("insert").write("name").limit(3, 256).set("balance", 0).route("/edit").auth(_c_this.commentEdit).executes("update").write("name").filter("default").field("id", "==").route("/find").auth(_c_this.commentRead).executes("select").read("name").read("balance").filter("default").field("name", "==").force("balance", "<", 100).order("balance", "dsc");
+	}
+}
+
+/*i async*/CoreModule.Module.prototype.start = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.server.api.route("/custom/endpoint", function (req) {
+			req.end("Hello");
+			});
 	}
 }
 
@@ -107,14 +133,24 @@ CoreModule.Module.prototype.configure = function () {var _c_this = this; var _c_
 }
 
 /*i async*/CoreModule.Module.prototype.registerCollection = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
-	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Schema) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
-		var schema = arguments[0];
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Collection || (arguments[0] instanceof CoreModule.LokiCollection)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var collection = arguments[0];
 /*async*/
-		_c_this.collections.push(schema.collection);
+		_c_this.registeredCollections.push(collection);
 		if (_c_this.server.config.dev) {
 /*async*/
-			(await schema.register/* async call */());
+			if (collection.appliedSchema != null) {
+/*async*/
+				(await collection.appliedSchema.register/* async call */());
+				}
 			}
+	}
+}
+
+CoreModule.Module.prototype.registerPermission = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Permission) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var permission = arguments[0];
+		_c_this.registeredPermissions.push(permission);
 	}
 }
 
@@ -297,6 +333,22 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 	}
 }
 
+/*i async*/CoreModule.LokiCollection.prototype.commitBatch = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.BatchQuery) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var query = arguments[0];
+/*async*/
+		for (var u = 0; u < query.updates.length; u++) {
+/*async*/
+			(await _c_this.executeUpdate/* async call */(query.updates[u]));
+			}
+		var inserts = [];
+		for (var i = 0; i < query.inserts.length; i++) {
+/*async*/
+			inserts.push((await _c_this.executeInsert/* async call */(query.inserts[i])));
+			}
+	}
+}
+
 /*i async*/CoreModule.LokiCollection.prototype.executeUpdate = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.UpdateQuery) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var query = arguments[0];
@@ -305,17 +357,17 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 		var docs = (await _c_this.executeSelect/* async call */(query)).documents;
 		
 			for (let doc of docs) {
-				let oldCopy = this.documentFromRaw(Object.assign({}, doc.raw));
+				let oldCopy = this.documentFromRaw(Object.assign({}, doc.rawData));
 
 				for (let k in query.sets) {
-					if (query.hasOwnProperty(k)) {
-						doc.raw[k] = query.sets[k];
+					if (query.sets.hasOwnProperty(k)) {
+						doc.rawData[k] = query.sets[k];
 					}
 				}
 
 				for (let k in query.increments) {
 					if (query.hasOwnProperty(k)) {
-						doc.raw[k] = doc.raw[k] + query.increments[k];
+						doc.rawData[k] = doc.rawData[k] + query.increments[k];
 					}
 				}
 
@@ -327,7 +379,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					}
 				}
 
-				this.lokiCollection.update(doc);
+				this.lokiCollection.update(doc.rawData);
 			}
 
 			this.database.loki.saveDatabase(() => {
@@ -482,6 +534,12 @@ CoreModule.LokiCollection.prototype.update = function () {var _c_this = this; va
 CoreModule.LokiCollection.prototype.delete = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 		return new Websom.Adapters.Database.DeleteQuery(_c_this);
+	}
+}
+
+CoreModule.LokiCollection.prototype.batch = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		return new Websom.Adapters.Database.BatchQuery(_c_this);
 	}
 }
 
