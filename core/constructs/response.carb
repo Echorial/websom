@@ -1,7 +1,11 @@
 class Websom.Response {
-	int code = 0;
+	int code = 200;
 	string body = "";
 	string message = "";
+
+	map headers = new map();
+
+	<Websom.Cookie>array cookies = new <Websom.Cookie>array();
 
 	#if platform.javascript
 		void jsResponse = null;
@@ -9,5 +13,72 @@ class Websom.Response {
 
 	void @construct() {
 		
+	}
+
+	void bakeCookies() {
+		for (let int i in this.cookies) {
+			let cookie = this.cookies[i];
+
+			if ("Set-Cookie" in this.headers) {
+				let val = this.headers["Set-Cookie"];
+
+				if (val.typeAsString() == "array") {
+					let <string>array valCast = val;
+					valCast.push(cookie.bake());
+				}else{
+					let newVal = new <string>array();
+					newVal.push(val);
+					newVal.push(cookie.bake());
+					this.headers["Set-Cookie"] = newVal;
+				}
+			}else{
+				this.headers["Set-Cookie"] = cookie.bake();
+			}
+		}
+	}
+}
+
+class Websom.Cookie {
+	string name = "";
+	string value = "";
+
+	string expires = "Session";
+	string sameSite = "";
+	int maxAge = 0;
+	string domain = "";
+	string path = "";
+	bool secure = false;
+	bool httpOnly = false;
+
+	void @construct(string name, string value) {
+		this.name = name;
+		this.value = value;
+	}
+
+	string bake() {
+		let opts = "";
+
+		if (this.expires != "Session")
+			opts += "; Expires=" + this.expires;
+
+		if (this.maxAge != 0)
+			opts += "; Max-Age=" + this.maxAge;
+
+		if (this.domain != "")
+			opts += "; Domain=" + this.domain;
+
+		if (this.path != "")
+			opts += "; Path=" + this.path;
+
+		if (this.secure != false)
+			opts += "; Secure";
+
+		if (this.httpOnly != false)
+			opts += "; HttpOnly";
+
+		if (this.sameSite != "")
+			opts += "; SameSite=" + this.sameSite;
+
+		return this.name + "=" + this.value + opts;
 	}
 }
