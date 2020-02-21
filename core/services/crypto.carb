@@ -54,6 +54,24 @@ class Websom.Services.Crypto inherits Websom.Service {
 		}
 	}
 
+	async string getRandomHex(int length) {
+		native javascript {
+			const crypto = require("crypto");
+			crypto.randomBytes(length, (err, buffer) => {
+				if (err)
+					throw err;
+				else {
+					let hex = buffer.toString("hex");
+					@return(hex);
+				}
+			});
+		}
+
+		native php {
+			return bin2hex(random_bytes($length));
+		}
+	}
+
 	void smallId(<void, string>function done) {
 		native javascript {
 			const crypto = require("crypto");
