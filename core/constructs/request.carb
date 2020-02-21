@@ -3,8 +3,15 @@ class Websom.Request {
 	Websom.Client client = null;
 	bool sent = false;
 	string path = "";
+	map query = new map();
+	map headers = new map();
+	map cookies = new map();
+
+	map body = new map();
 
 	Websom.Standard.UserSystem.User userCache = null;
+
+	bool external = false;
 
 	`Stored for javascript context, and php response codes`
 	Websom.Response response = null;
@@ -21,31 +28,66 @@ class Websom.Request {
 	}
 
 	void header(string name, primitive value) {
-		native javascript {
-			this.response.jsResponse.setHeader(name, value);
-		}
+		if (this.external) {
+			this.response.headers[name] = value;
+		}else{
+			native javascript {
+				this.response.jsResponse.setHeader(name, value);
+			}
 
-		native php {
-			header($name . ": " . $value);
+			native php {
+				header($name . ": " . $value);
+			}
 		}
+	}
+
+	Websom.Cookie& cookie(string name, string value) {
+		let cookie = new Websom.Cookie(name, value);
+		this.response.cookies.push(cookie);
+
+		return cookie;
 	}
 
 	`Sets the response code`
 	void code(int code) {
 		this.response.code = code;
 
-		native javascript {
-			this.response.jsResponse.status(code);
-		}
+		if (this.external == false) {
+			native javascript {
+				this.response.jsResponse.status(code);
+			}
 
-		native php {
-			http_response_code($code);
+			native php {
+				http_response_code($code);
+			}
 		}
 	}
 
-	void end() {
-		native javascript {
-			this.response.jsResponse.end();
+	void end(string content) {
+		if (this.sent)
+			return null; //TODO: Setup throw
+		
+		this.sent = true;
+
+		this.server.session.beforeSend(this);
+
+		this.response.bakeCookies();
+
+		if (this.external) {
+			this.response.body = content;
+			this.server.sendResponse(this.response);
+		}else{
+			native javascript {
+				for (let header in this.response.headers) {
+					this.response.jsResponse.header(header, this.response.headers[header]);
+				}
+
+				this.response.jsResponse.send(content);
+			}
+
+			native php {
+				echo $content;
+			}
 		}
 	}
 
@@ -65,10 +107,13 @@ class Websom.Request {
 		}
 	}
 
-	`Sends the content over to the client`
+	`Sends the content over to the client.
+	@warning LEGACY! This is a legacy method, use end instead.`
 	void send(string content) {
 		if (this.sent)
 			return null; //TODO: Setup throw
+		
+		this.sent = true;
 
 		native javascript {
 			this.response.jsResponse.send(content);
@@ -77,8 +122,6 @@ class Websom.Request {
 		native php {
 			echo $content;
 		}
-
-		this.sent = true;
 	}
 
 	void redirect(string route) {
@@ -118,39 +161,53 @@ class Websom.Request {
 }
 
 class Websom.Session {
+	map data = new map();
+	bool changed = false;
+	bool loaded = false;
+	string id = "";
+
 	Websom.Request request = null;
 
 	void @construct(Websom.Request req) {
 		this.request = req;
 	}
 
-
 	void set(string key, primitive value) {
-		native javascript {
-			this.request.jsRequest.session[key] = value;
-			if (this.request.jsRequest.method == "POST") {
-				this.request.jsRequest.session.save();
+		if (this.request.server.config.legacy) {
+			native javascript {
+				this.request.jsRequest.session[key] = value;
+				if (this.request.jsRequest.method == "POST") {
+					this.request.jsRequest.session.save();
+				}
 			}
-		}
 
-		native php {
-			if (!isset($_SESSION)) session_start();
-			$_SESSION[$key] = $value;
+			native php {
+				if (!isset($_SESSION)) session_start();
+				$_SESSION[$key] = $value;
+			}
+		}else{
+			this.changed = true;
+			this.data[key] = value;
 		}
 	}
 
 	void delete(string key) {
-		native javascript {
-			delete this.request.jsRequest.session[key];
-		}
+		if (this.request.server.config.legacy) {
+			native javascript {
+				delete this.request.jsRequest.session[key];
+			}
 
-		native php {
-			if (!isset($_SESSION)) session_start();
-			unset($_SESSION[$key]);
+			native php {
+				if (!isset($_SESSION)) session_start();
+				unset($_SESSION[$key]);
+			}
+		}else{
+			this.changed = true;
+			this.data[key] = null;
 		}
 	}
 
-	primitive get(string key) {
+	primitive getLegacy(string key) {
 		native javascript {
 			return this.request.jsRequest.session[key] || null;
 		}
@@ -161,6 +218,29 @@ class Websom.Session {
 				return $_SESSION[$key];
 			else
 				return NULL;
+		}
+	}
+
+	primitive get(string key) {
+		if (this.request.server.config.legacy) {
+			native javascript {
+				return this.request.jsRequest.session[key] || null;
+			}
+
+			native php {
+				if (!isset($_SESSION)) session_start();
+				if (isset($_SESSION[$key]))
+					return $_SESSION[$key];
+				else
+					return NULL;
+			}
+		}else{
+			if (this.loaded == false) {
+				this.loaded = true;
+				this.request.server.session.loadRequest(this.request);
+			}
+			
+			return this.data[key];
 		}
 	}
 }
