@@ -48,7 +48,7 @@ class Websom.Services.Security inherits Websom.Service {
 	void countRequest(string type, Websom.InterfaceOptions opts, Websom.Input input) {
 		this.load();
 
-		var history = input.request.session.get("_w_history_" + type);
+		var history = input.request.session.getLegacy("_w_history_" + type);
 		if (history == null) {
 			var nHistory = new map();
 			nHistory["a"] = 1;
@@ -65,7 +65,7 @@ class Websom.Services.Security inherits Websom.Service {
 	void request(string type, Websom.InterfaceOptions opts, Websom.Input input, <void>function callback) {
 		this.load();
 
-		var history = input.request.session.get("_w_history_" + type);
+		var history = input.request.session.getLegacy("_w_history_" + type);
 		if (history == null) {
 			callback();
 		}else{
