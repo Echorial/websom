@@ -1,0 +1,14 @@
+class Websom.Permission {
+	`A route name pattern. e.g. Blog.Post.Create`
+	string name = "";
+
+	`This description is displayed to admins for configuration information.`
+	string description = "";
+	
+	`Should this permission be automatically applied to all users, including anonymous public readers.`
+	bool public = false;
+
+	void @construct(string name) {
+		this.name = name;
+	}
+}
