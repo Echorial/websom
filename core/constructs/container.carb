@@ -475,7 +475,7 @@ class Websom.Container {
 				perms = opts.selectPermission;
 			}
 			if (perms.length > 0) {
-				if (input.request.session.get("dashboard") != null) {
+				if (input.request.session.getLegacy("dashboard") != null) {
 					callback(true); //WARN:
 				}else if (input.server.userSystem.isLoggedIn(input.request)) {
 					input.server.userSystem.getLoggedIn(input.request, void (Websom.Standard.UserSystem.User user) => {
