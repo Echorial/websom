@@ -1,0 +1,9 @@
+class Websom.PlainInterface {
+	string route = "";
+	<void, Websom.Request>function handler = null;
+
+	void @construct(string route, <void, Websom.Request>function func) {
+		this.route = route;
+		this.handler = func;
+	}
+}
