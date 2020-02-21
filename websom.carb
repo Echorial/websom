@@ -25,6 +25,8 @@ class Websom.Server {
 	Websom.Services.Pack pack = null;
 	Websom.Services.Micro micro = null;
 	Websom.Services.Adaptation adaptation = null;
+	Websom.Services.API api = null;
+	Websom.Services.Session session = null;
 	
 	Websom.Standard.Dashboard.Module dashboard = null;
 	Websom.Standard.UserSystem.Module userSystem = null;
@@ -147,6 +149,12 @@ class Websom.Server {
 		}
 	}
 
+	trust void registerServiceCollection(Websom.Adapters.Database.Collection collection) {
+		if (this.config.dev)
+			if (collection.appliedSchema != null)
+				collection.appliedSchema.register();
+	}
+
 	Websom.AdapterInterface adapt(string name) {
 		return this.adaptation.adapt(name);
 	}
@@ -159,10 +167,13 @@ class Websom.Server {
 		this.configService = new Websom.Services.Config(this);
 		this.status.inherit(this.configService.start());
 
+		this.api = new Websom.Services.API(this);
+
 		this.adaptation = new Websom.Services.Adaptation(this);
 		this.status.inherit(this.adaptation.start());
 
 		this.database = new Websom.Services.Database(this);
+		this.session = new Websom.Services.Session(this);
 		this.security = new Websom.Services.Security(this);
 		this.module = new Websom.Services.Module(this);
 		this.theme = new Websom.Services.Theme(this);
@@ -176,6 +187,7 @@ class Websom.Server {
 		this.micro = new Websom.Services.Micro(this);
 		this.render = new Websom.Services.Render(this);
 
+		this.status.inherit(this.session.start());
 		this.status.inherit(this.module.start());
 
 		this.database.loadAdapter();
@@ -192,6 +204,8 @@ class Websom.Server {
 			this.module.startModules();
 		}
 
+		this.session.collection();
+
 		this.status.inherit(this.router.start());
 		this.status.inherit(this.pack.start());
 		this.status.inherit(this.input.start());
@@ -199,6 +213,8 @@ class Websom.Server {
 		this.status.inherit(this.email.start());
 		this.status.inherit(this.micro.start());
 		this.status.inherit(this.render.start());
+
+		this.status.inherit(this.api.start());
 	}
 
 	Websom.Command command(string name) {
@@ -244,10 +260,58 @@ class Websom.Server {
 	}
 
 	void start() {
-		this.start(8970);
+		this.start(8080, 8970);
 	}
 
-	void start(int port) {
+	void sendResponse(Websom.Response response) {
+
+	}
+
+	void startAPI(int port) {
+		native javascript {
+			const express = require("express");
+			const bodyParser = require("body-parser");
+			const cookieParser = require("cookie-parser");
+			const crypto = require("crypto");
+
+			let server = express();
+			
+			server.use(bodyParser.json());
+			server.use(cookieParser());
+
+			server.post(/.*/, (req, res) => {
+				var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+				
+				client.family = req.socket.remoteFamily;
+				client.localAddress = req.socket.localAddress;
+				client.localPort = req.socket.localPort;
+
+				var websomRequest = new Websom.Request(this, client);
+				websomRequest.path = req.path;
+				websomRequest.cookies = req.cookies;
+				websomRequest.headers = req.headers;
+				websomRequest.body = req.body;
+				websomRequest.response.jsResponse = res;
+				websomRequest.jsRequest = req;
+
+				this.processAPIRequest(websomRequest);
+			});
+
+			server.listen(port);
+
+			console.log("API server listening on port " + port);
+		}
+	}
+
+	void processAPIRequest(Websom.Request req) {
+		let apiPass = this.api.request(req);
+
+		if (apiPass == false) {
+			// Handle routes
+		}
+	}
+
+	void start(int uiPort, int apiPort) {
 		this.startServices();
 
 		if (this.config.dev) {
@@ -255,7 +319,9 @@ class Websom.Server {
 				const nodeDevPlatform = require(_c_this.websomRoot + "/platform/node/index.js");
 				
 				if (!_c_this.config.headless)
-					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, port);
+					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, uiPort);
+				
+				this.startAPI(apiPort);
 			}
 
 			native php {
