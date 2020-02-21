@@ -1,0 +1,239 @@
+class Websom.CollectionInterface {
+	<Websom.CollectionInterfaceRoute>array routes = new <Websom.CollectionInterfaceRoute>array();
+
+	string baseRoute = "";
+	Websom.Adapters.Database.Collection collection = null;
+
+	trust void @construct(Websom.Adapters.Database.Collection collection, string route) {
+		this.baseRoute = route;
+		this.collection = collection;
+	}
+
+	Websom.CollectionInterface route(string route) {
+		this.routes.push(new Websom.CollectionInterfaceRoute(this, route));
+		return this;
+	}
+
+	Websom.CollectionInterface auth(Websom.Permission permission) {
+		this.routes[this.routes.length - 1].authenticators.push(new Websom.PermissionAuthenticator(permission));
+		return this;
+	}
+
+	Websom.CollectionInterface auth(<bool, Websom.Request>function func) {
+		this.routes[this.routes.length - 1].authenticators.push(new Websom.FunctionAuthenticator(func));
+		return this;
+	}
+
+	Websom.CollectionInterface executes(string executes) {
+		this.routes[this.routes.length - 1].executes = executes;
+		return this;
+	}
+
+	Websom.CollectionInterface write(string field) {
+		this.routes[this.routes.length - 1].writes.push(new Websom.CollectionInterfaceWrite(field, null));
+		return this;
+	}
+
+	Websom.CollectionInterface write(string field, primitive defaultValue) {
+		this.routes[this.routes.length - 1].writes.push(new Websom.CollectionInterfaceWrite(field, defaultValue));
+		return this;
+	}
+
+	Websom.CollectionInterface limit(int min, int max) {
+		let writes = this.routes[this.routes.length - 1].writes;
+		writes[writes.length - 1].restrictions.push(new Websom.Restrictions.Limit(min, max));
+		return this;
+	}
+
+	Websom.CollectionInterface set(string field, primitive defaultValue) {
+		this.routes[this.routes.length - 1].sets.push(new Websom.CollectionInterfaceWriteSet(field, defaultValue));
+		return this;
+	}
+
+	Websom.CollectionInterface read(string field) {
+		this.routes[this.routes.length - 1].reads.push(new Websom.CollectionInterfaceRead(field));
+		return this;
+	}
+
+	trust Websom.CollectionInterface transform(Websom.Transformer transformer) {
+		let reads = this.routes[this.routes.length - 1].reads;
+		reads[reads.length - 1].transformers.push(transformer);
+		return this;
+	}
+
+	Websom.CollectionInterface filter(string name) {
+		this.routes[this.routes.length - 1].filters.push(new Websom.CollectionInterfaceFilter(name));
+		return this;
+	}
+
+	Websom.CollectionInterface field(string name, string operator) {
+		return this.field(name, operator, null);
+	}
+
+	Websom.CollectionInterface field(string name, string operator, primitive value) {
+		let filters = this.routes[this.routes.length - 1].filters;
+		filters[filters.length - 1].fields.push(new Websom.CollectionInterfaceFieldSet(name, operator, value));
+		return this;
+	}
+
+	Websom.CollectionInterface force(string name, string operator, primitive value) {
+		let filters = this.routes[this.routes.length - 1].filters;
+		filters[filters.length - 1].forces.push(new Websom.CollectionInterfaceFieldSet(name, operator, value));
+		return this;
+	}
+
+	Websom.CollectionInterface order(string name, string order) {
+		return this.order(name, order, false);
+	}
+
+	Websom.CollectionInterface order(string name, string order, bool clientControlled) {
+		let filters = this.routes[this.routes.length - 1].filters;
+		filters[filters.length - 1].orders.push(new Websom.CollectionInterfaceFieldSet(name, order, clientControlled));
+		return this;
+	}
+}
+
+class Websom.CollectionInterfaceRoute {
+	Websom.CollectionInterface collection = null;
+
+	<Websom.Authenticator>array authenticators = new <Websom.Authenticator>array();
+	<Websom.CollectionInterfaceRead>array reads = new <Websom.CollectionInterfaceRead>array();
+	<Websom.CollectionInterfaceWrite>array writes = new <Websom.CollectionInterfaceWrite>array();
+	<Websom.CollectionInterfaceWriteSet>array sets = new <Websom.CollectionInterfaceWriteSet>array();
+	<Websom.CollectionInterfaceFilter>array filters = new <Websom.CollectionInterfaceFilter>array();
+
+	string route = "";
+
+	string executes = "";
+
+	void @construct(Websom.CollectionInterface collection, string route) {
+		this.collection = collection;
+		this.route = route;
+	}
+}
+
+header class Websom.Restriction {
+	void @construct() {}
+
+	[ForceAsync]
+	bool testServer(Websom.Adapters.Database.Document doc, string field, primitive value) {}
+
+	string testClient() {}
+}
+
+namespace Websom.Restrictions {}
+
+header class Websom.Restrictions.Limit inherits Websom.Restriction {
+	int min = 0;
+	int max = 0;
+
+	void @construct(int min, int max) {
+		this.min = min;
+		this.max = max;
+	}
+
+	[ForceAsync]
+	bool testServer(Websom.Adapters.Database.Document doc, string field, primitive value) {}
+
+	string testClient() {}
+}
+
+header class Websom.Transformer {
+	void @construct() {}
+
+	[ForceAsync]
+	bool transform(Websom.Request req, Websom.Adapters.Database.Document doc, string field, primitive value) {}
+}
+
+header class Websom.Authenticator {
+	void @construct() {}
+
+	[ForceAsync]
+	bool authenticate(Websom.Request req) {}
+}
+
+class Websom.PermissionAuthenticator inherits Websom.Authenticator {
+	Websom.Permission permission = null;
+
+	void @construct(Websom.Permission permission) {
+		this.permission = permission;
+	}
+
+	[ForceAsync]
+	bool authenticate(Websom.Request req) {
+		return true;
+	}
+}
+
+class Websom.FunctionAuthenticator inherits Websom.Authenticator {
+	<bool, Websom.Request>function func = null;
+
+	void @construct(<bool, Websom.Request>function func) {
+		this.func = func;
+	}
+
+	[ForceAsync]
+	bool authenticate(Websom.Request req) {
+		return this.func(req);
+	}
+}
+
+class Websom.CollectionInterfaceRead {
+	<Websom.Transformer>array transformers = new <Websom.Transformer>array();
+	string field = "";
+
+	void @construct(string field) {
+		this.field = field;
+	}
+}
+
+class Websom.CollectionInterfaceWrite {
+	<Websom.Restriction>array restrictions = new <Websom.Restriction>array();
+	string field = "";
+	primitive defaultValue = null;
+
+	void @construct(string field, primitive defaultValue) {
+		this.field = field;
+		this.defaultValue = defaultValue;
+	}
+}
+
+class Websom.CollectionInterfaceWriteSet {
+	string field = "";
+	primitive value = null;
+
+	void @construct(string field, primitive value) {
+		this.field = field;
+		this.value = value;
+	}
+}
+
+class Websom.CollectionInterfaceFieldSet {
+	string name = "";
+	string operator = "";
+	primitive value = null;
+
+	void @construct(string name, string operator, primitive value) {
+		this.name = name;
+		this.operator = operator;
+		this.value = value;
+	}
+}
+
+class Websom.CollectionInterfaceFilter {
+	<Websom.CollectionInterfaceFieldSet>array fields = new <Websom.CollectionInterfaceFieldSet>array();
+	<Websom.CollectionInterfaceFieldSet>array forces = new <Websom.CollectionInterfaceFieldSet>array();
+	<Websom.CollectionInterfaceFieldSet>array orders = new <Websom.CollectionInterfaceFieldSet>array();
+
+	string name = "";
+
+	<int>array limits = new <int>array();
+
+	bool paginate = true;
+
+	void @construct(string name) {
+		this.limits.push(25);
+
+		this.name = name;
+	}
+}
