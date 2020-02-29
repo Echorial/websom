@@ -59,12 +59,15 @@ class Websom.Container {
 			if (opts.overrideInsert != null) {
 				opts.overrideInsert(input);
 			}else{
-				if (opts.mustLogin or opts.mustOwnInsert)
+				if (opts.mustLogin or opts.mustOwnInsert) {
+					/*
 					if (this.server.userSystem.isLoggedIn(input.request) == false) {
 						var msg = Websom.ClientMessage.quickError("Please login.");
 						input.send(msg.stringify());
 						return null;
 					}
+					*/
+				}
 				
 				this.server.security.request("insert", opts, input, void () => {
 					var v = new Websom.DataValidator(that.dataInfo);
@@ -183,12 +186,15 @@ class Websom.Container {
 			if (opts.overrideUpdate != null) {
 				opts.overrideUpdate(input);
 			}else{
-				if (opts.mustLogin or opts.mustOwnUpdate)
+				if (opts.mustLogin or opts.mustOwnUpdate) {
+					/*
 					if (this.server.userSystem.isLoggedIn(input.request) == false) {
 						var cMsg = Websom.ClientMessage.quickError("Please login.");
 						input.send(cMsg.stringify());
 						return null;
 					}
+					*/
+				}
 				
 				if (input.raw.hasKey("publicId") == false or input.raw["publicId"].typeAsString() != "string") {
 					var qMsg = Websom.ClientMessage.quickError("Invalid publicId");
@@ -257,6 +263,7 @@ class Websom.Container {
 								};
 
 								if (opts.mustOwnUpdate) { //TODO: Find the owner key
+									/*
 									that.server.userSystem.getLoggedIn(input.request, void (Websom.Standard.UserSystem.User user) => {
 										native javascript {
 											if (user.id != obj.owner.id) {
@@ -277,6 +284,7 @@ class Websom.Container {
 											doContinue();
 										}
 									});
+									*/
 								}else{
 									doContinue();
 								}
@@ -475,6 +483,7 @@ class Websom.Container {
 				perms = opts.selectPermission;
 			}
 			if (perms.length > 0) {
+				/*
 				if (input.request.session.getLegacy("dashboard") != null) {
 					callback(true); //WARN:
 				}else if (input.server.userSystem.isLoggedIn(input.request)) {
@@ -486,6 +495,7 @@ class Websom.Container {
 				}else{
 					callback(false);
 				}
+				*/
 			}else{
 				callback(true);
 			}
