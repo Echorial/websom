@@ -115,7 +115,13 @@ module.exports = {
 			require("fs").writeFileSync(require("path").dirname(file) + "/module.php", cp.rawOutput + "\n<?php return '" + moduleName.replace(/\./g, "_") + "'; ?>");
 		}
 
-		console.log("JS: " + c.status.stringify() + ", PHP: " + cp.status.stringify());
+		console.log("----- MODULE BUILD -----");
+		console.log("---------- JS -----------");
+		console.log(c.status.stringify());
+		console.log("---------- PHP ----------");
+		console.log(cp.status.stringify());
+		console.log("-------------------------");
+		
 		return "JS: " + c.status.stringify() + ", PHP: " + cp.status.stringify();
 	},
 	buildScript: (platform, name, file) => {
