@@ -121,6 +121,14 @@ header class Websom.Adapters.Database.Collection {
 
 		entity.collection = this;
 	}
+
+	Websom.Entity getEntity(string id) {
+		let doc = this.document(id);
+		if (doc == null)
+			return null;
+
+		return this.makeEntity(doc);
+	}
 }
 
 header class Websom.Adapters.Database.MetaDocument {
