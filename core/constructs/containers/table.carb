@@ -204,6 +204,7 @@ class Websom.Containers.Table inherits Websom.Container {
 			};
 
 			if (opts.mustOwnInsert) {
+				/*
 				that.server.userSystem.getLoggedIn(input.request, void (Websom.Standard.UserSystem.User user) => {
 					if (user != null) {
 						if (user.id == docs[0].getField("id")) {
@@ -215,6 +216,7 @@ class Websom.Containers.Table inherits Websom.Container {
 						input.sendError("Please login.");
 					}
 				});
+				*/
 			}else{
 				doCall();
 			}
