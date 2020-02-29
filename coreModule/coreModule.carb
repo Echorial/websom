@@ -6,10 +6,15 @@ namespace CoreModule {}
 
 class CoreModule.Module inherits Websom.Module {
 	Websom.Adapters.Database.Collection test = null;
+	Websom.Adapters.Database.Collection groups = null;
 
 	public Websom.Permission commentEdit = null;
 	public Websom.Permission commentCreate = null;
 	public Websom.Permission commentRead = null;
+
+	Websom.Permission groupRead = null;
+	Websom.Permission groupCreate = null;
+	Websom.Permission groupEdit = null;
 
 	override void permissions() {
 		this.commentEdit = new Websom.Permission("Comment.Edit");
@@ -25,10 +30,49 @@ class CoreModule.Module inherits Websom.Module {
 		this.registerPermission(this.commentEdit);
 		this.registerPermission(this.commentCreate);
 		this.registerPermission(this.commentRead);
+
+		this.groupRead = this.registerPermission("Group.Read")
+			.setDescription("Allows users to read permission group information.");
+		
+		this.groupCreate = this.registerPermission("Group.Create")
+			.setDescription("Allows users to create permission groups. WARNING This is an admin level permission.");
+		
+		this.groupEdit = this.registerPermission("Group.Edit")
+			.setDescription("Allows users to edit permission groups. WARNING This is an admin level permission.");
 	}
 
 	override void collections() {
 		let db = this.server.database.central;
+
+		this.groups = db.collection("groups");
+
+		Websom.Group.applySchema(this.groups);
+
+		this.registerCollection(this.groups);
+
+		this.server.api.interface(this.groups, "/groups")
+			.route("/create")
+				.auth(this.groupCreate)
+				.executes("insert")
+					.write("name")
+					.write("description")
+					.write("permissions")
+					.write("rules")
+					.write("public")
+					.write("user")
+					.setComputed("created", uint64 (Websom.Request req) => { return Websom.Time.now(); })
+			.route("/find")
+				.auth(this.groupRead)
+				.executes("select")
+					.read("*")
+					.filter("default")
+						.order("created", "dsc")
+			.route("/read")
+				.auth(this.groupRead)
+				.executes("select")
+					.read("*")
+					.filter("default")
+						.field("id", "==");
 
 		this.test = db.collection("test");
 
@@ -77,23 +121,6 @@ class CoreModule.Module inherits Websom.Module {
 		this.server.api.route("/custom/endpoint", void (Websom.Request req) => {
 			req.end("Hello");
 		});
-	}
-}
-
-class Person { //extends Websom.Entity {
-	field string firstName = "";
-	field string lastName = "";
-	field int age = 0;
-
-	override Websom.Adapters.Database.Schema getSchema() {
-		let s = new Websom.Adapters.Database.Schema(null);
-
-		s
-			.field("firstName", "string")
-			.field("lastName", "string")
-			.field("age", "int");
-
-		return s;
 	}
 }
 
