@@ -3,9 +3,17 @@ class Websom.Services.API inherits Websom.Service {
 
 	<Websom.CollectionInterface>array collections = new <Websom.CollectionInterface>array();
 	<Websom.PlainInterface>array interfaces = new <Websom.PlainInterface>array();
+	<Websom.APIChain>array chains = new <Websom.APIChain>array();
+
+	<Websom.EndpointHandler>map handlers = new <Websom.EndpointHandler>map();
 
 	override Websom.Status start() {
-		
+		this.registerEndpointHandler("select", new Websom.SelectHandler(this.server));
+		this.registerEndpointHandler("insert", new Websom.InsertHandler(this.server));
+	}
+
+	void registerEndpointHandler(string key, Websom.EndpointHandler handler) {
+		this.handlers[key] = handler;
 	}
 
 	Websom.CollectionInterfaceRoute resolveEndpoint(string path) {
@@ -61,6 +69,15 @@ class Websom.Services.API inherits Websom.Service {
 			}
 		}
 
+		for (let int i in this.chains) {
+			let chain = this.chains[i];
+
+			if (chain.route == req.path) {
+				chain.handle(req);
+				return true;
+			}
+		}
+
 		let route = this.resolveEndpoint(req.path);
 		
 		if (route == null)
@@ -74,7 +91,12 @@ class Websom.Services.API inherits Websom.Service {
 	}
 
 	void handleRequest(Websom.CollectionInterface ci, Websom.CollectionInterfaceRoute cir, Websom.Request req) {
-		req.end(ci.baseRoute + cir.route);
+		if (this.handlers.hasKey(cir.executes)) {
+			let Websom.EndpointHandler handler = this.handlers[cir.executes];
+			handler.fulfill(cir, req);
+		}else{
+			req.endWithError("Non existent endpoint handler " + cir.executes);
+		}
 	}
 
 	trust Websom.CollectionInterface interface(Websom.Adapters.Database.Collection collection, string baseRoute) {
@@ -85,5 +107,154 @@ class Websom.Services.API inherits Websom.Service {
 
 	void route(string route, <void, Websom.Request>function handler) {
 		this.interfaces.push(new Websom.PlainInterface(route, handler));
+	}
+
+	Websom.APIChain route(string route) {
+		let chain = new Websom.APIChain(this.server, route);
+		this.chains.push(chain);
+		return chain;
+	}
+}
+
+class Websom.APIContext {
+	Websom.Request request = null;
+	map inputs = new map();
+
+
+	void @construct(Websom.Request req) {
+		this.request = req;
+	}
+
+	primitive get(string key) {
+		return this.inputs[key];
+	}
+
+	void set(string key, primitive value) {
+		this.inputs[key] = value;
+	}
+}
+
+class Websom.APIChain {
+	<Websom.Authenticator>array authenticators = new <Websom.Authenticator>array();
+	<Websom.CollectionInterfaceWrite>array inputs = new <Websom.CollectionInterfaceWrite>array();
+	string route = "";
+
+	<void, Websom.APIContext>function handler = null;
+
+	Websom.Server server = null;
+
+	void @construct(Websom.Server server, string route) {
+		this.server = server;
+		this.route = route;
+	}
+
+	Websom.APIChain auth(Websom.Permission permission) {
+		this.authenticators.push(new Websom.PermissionAuthenticator(permission));
+		return this;
+	}
+
+	Websom.APIChain auth(<bool, Websom.Request>function func) {
+		this.authenticators.push(new Websom.FunctionAuthenticator(func));
+		return this;
+	}
+
+	Websom.APIChain input(string field) {
+		this.inputs.push(new Websom.CollectionInterfaceWrite(field, null));
+		return this;
+	}
+
+	Websom.APIChain input(string field, primitive defaultValue) {
+		this.inputs.push(new Websom.CollectionInterfaceWrite(field, defaultValue));
+		return this;
+	}
+
+	Websom.APIChain type(string type) {
+		this.inputs[this.inputs.length - 1].type = type;
+		return this;
+	}
+
+	Websom.APIChain limit(int min, int max) {
+		return this.restrict(new Websom.Restrictions.Limit(min, max));
+	}
+
+	Websom.APIChain format(string format) {
+		return this.restrict(new Websom.Restrictions.Format(format));
+	}
+
+	Websom.APIChain regexTest(string reg) {
+		return this.restrict(new Websom.Restrictions.Regex(reg));
+	}
+
+	Websom.APIChain restrict(Websom.Restriction restriction) {
+		this.inputs[this.inputs.length - 1].restrictions.push(restriction);
+		return this;
+	}
+
+	Websom.APIChain restrict(<bool, Websom.Adapters.Database.Collection, Websom.Adapters.Database.Field, primitive>function func) {
+		return this.restrict(new Websom.Restrictions.Function(func));
+	}
+
+	void executes(<void, Websom.APIContext>function func) {
+		this.handler = func;
+	}
+
+	void handle(Websom.Request req) {
+		for (let int i in this.authenticators) {
+			let auth = this.authenticators[i];
+
+			if (auth.authenticate(req) == false) {
+				req.endWithError(auth.errorMessage(req));
+				return null;
+			}
+		}
+
+		let ctx = new Websom.APIContext(req);
+
+		for (let int i in this.inputs) {
+			let input = this.inputs[i];
+
+			if (req.body.hasKey(input.field) == false) {
+				if (input.defaultValue == null) {
+					req.endWithError(input.field + " is required");
+					return null;
+				}else{
+					ctx.set(input.field, input.defaultValue);
+					continue;
+				}
+			}
+
+			let value = req.body[input.field];
+
+			if (this.server.security.typeCheck(value, input.type) == false) {
+				req.endWithError("Invalid type on field " + input.field);
+				return null;
+			}
+
+			for (let int r in input.restrictions) {
+				let restriction = input.restrictions[r];
+
+				try {
+					let field = new Websom.Adapters.Database.Field(input.field, input.type);
+
+					if (restriction.testServer(null, field, value) == false) {
+						req.endWithError(restriction.message(input.field, value));
+						return null;
+					}
+				} catch (Exception e) {
+					this.server.logException(e);
+					req.endWithError("Exception in restriction");
+					return null;
+				}
+			}
+
+			ctx.set(input.field, value);
+		}
+		
+		try {
+			this.handler(ctx);
+		} catch (Exception e) {
+			this.server.logException(e);
+			req.endWithError("Server exception");
+		}
 	}
 }
