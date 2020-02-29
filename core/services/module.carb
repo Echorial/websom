@@ -123,6 +123,7 @@ class Websom.Services.Module inherits Websom.Service {
 							that.reload(require("path").resolve(modDir + slash + ".." + slash) + slash);
 							that.server.resource.buildViews();
 						}else{
+							console.log("Reloading single module");
 							this.close();
 							that.load(modDir, config, single);
 							that.server.resource.buildViews();
@@ -220,9 +221,11 @@ class Websom.Services.Module inherits Websom.Service {
 			this.load(newCore, Websom.Json.parse(FileSystem.readSync(newCore + "/module.json", "utf8")), true);
 		}
 
+		/*
 		for (var int i in this.modules)
 			if (this.modules[i].name == "dashboard")
 				this.server.dashboard = this.modules[i];
+		*/
 		
 		var doLoad = true;
 		
