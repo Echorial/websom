@@ -8,7 +8,41 @@ class Websom.Permission {
 	`Should this permission be automatically applied to all users, including anonymous public readers.`
 	bool public = false;
 
+	`Should this permission be automatically applied to all logged-in users.`
+	bool user = false;
+
+	`Should this permission be automatically applied to all authors.`
+	bool author = false;
+
+	`Should this permission be automatically applied to all moderators.`
+	bool moderator = false;
+
 	void @construct(string name) {
 		this.name = name;
+	}
+
+	Websom.Permission setDescription(string desc) {
+		this.description = desc;
+		return this;
+	}
+
+	Websom.Permission isPublic() {
+		this.public = true;
+		return this;
+	}
+
+	Websom.Permission isUser() {
+		this.user = true;
+		return this;
+	}
+
+	Websom.Permission isAuthor() {
+		this.author = true;
+		return this;
+	}
+
+	Websom.Permission isModerator() {
+		this.moderator = true;
+		return this;
 	}
 }
