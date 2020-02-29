@@ -97,4 +97,43 @@ class Websom.Services.Security inherits Websom.Service {
 			}
 		}
 	}
+
+	bool typeCheck(primitive value, string type) {
+		if (type == "integer") {
+			if (value.typeAsString() == "float") {
+				let float castToFloat = value;
+
+				return castToFloat.isInteger();
+			}
+		}else if (type == "float") {
+			return value.typeAsString() == "float";
+		}else if (type == "string") {
+			return value.typeAsString() == "string";
+		}else if (type == "time") {
+			return value.typeAsString() == "float";
+		}else if (type == "boolean") {
+			return value.typeAsString() == "boolean";
+		}else if (type == "reference") {
+			return value.typeAsString() == "string";
+		}else if (type == "geopoint") {
+			return value.typeAsString() == "string";
+		}else if (type == "array") {
+			if (value.typeAsString() == "array") {
+				let <primitive>array castToArray = value;
+
+				for (let int i in castToArray) {
+					let v = castToArray[i];
+
+					let typeAsString = v.typeAsString();
+
+					if (typeAsString == "map" or typeAsString == "array")
+						return false;
+				}
+
+				return true;
+			}
+		}
+
+		return false;
+	}
 }
