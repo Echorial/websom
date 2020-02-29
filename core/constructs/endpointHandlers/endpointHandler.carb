@@ -1,0 +1,11 @@
+class Websom.EndpointHandler {
+	Websom.Server server = null;
+
+	void @construct(Websom.Server server) {
+		this.server = server;
+	}
+
+	void fulfill(Websom.CollectionInterfaceRoute cir, Websom.Request req) {
+		
+	}
+}
