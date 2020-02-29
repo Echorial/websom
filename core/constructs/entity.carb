@@ -1,0 +1,126 @@
+header class Websom.Entity {
+	Websom.Adapters.Database.Collection collection = null;
+	string id = "";
+	
+	void @construct() {
+
+	}
+
+	// This is implemented in the build script below.
+	// Websom.Adapters.Database.Schema getSchema(Websom.Adapters.Database.Collection collection);
+
+	trust fixed Websom.Adapters.Database.Schema applySchema(Websom.Adapters.Database.Collection collection) {
+		this.linkToCollection(collection);
+
+		native javascript {
+			return this.getSchema(collection);
+		}
+
+		native php {
+			return self::getSchema($collection);
+		}
+	}
+
+	trust fixed void linkToCollection(Websom.Adapters.Database.Collection collection) {
+		native javascript {
+			collection.entityTemplate = this;
+		}
+
+		native php {
+			$collection->entityTemplate = __CLASS__;
+		}
+	}
+
+	[ForceAsync]
+	void loadFromMap(map data) {
+		native javascript {
+			for (let k in data) {
+				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
+					let camel = k[0].toUpperCase() + k.substr(1, k.length);
+
+					if (this["load" + camel]) {
+						await this["load" + camel](data[k]);
+					}else{
+						this[k] = data[k];
+					}
+				}
+			}
+		}
+
+		native php {
+			foreach ($data as $k => $v) {
+				if (isset($this->$k)) {
+					$camel = ucfirst($k);
+					
+					if (method_exists($this, "load" . $camel)) {
+						$this->{"load" . $camel}($data[$k]);
+					}else{
+						$this->{$k} = $data[$k];
+					}
+				}
+			}
+		}
+	}
+}
+
+#script Carbon
+
+let buildFieldForMember = void (Carbon.Class cls, Carbon.Property prop) => {
+	let rawType = "string";
+
+	if (prop.output.reference.descendantOf(Carbon.findClass("primitive"))) {
+		if (prop.output.reference.route == "string") {
+			rawType = "string";
+		}else if (prop.output.reference.route == "float") {
+			rawType = "float";
+		}else if (prop.output.reference.route == "int") {
+			rawType = "integer";
+		}else if (prop.output.reference.route == "array") {
+			rawType = "array";
+		}else if (prop.output.reference.route == "map") {
+			rawType = "string";
+		}else if (prop.output.reference.route == "bool") {
+			rawType = "boolean";
+		}
+	}else if (prop.output.reference.route == "Websom.Time") {
+		rawType = "time";
+
+		let camel = prop.name.substr(0, 1).toUpper() + prop.name.substr(1, prop.name.length);
+
+		Carbon.Method.eval("void load" + camel + "(primitive value) {this." + prop.name + " = new Websom.Time(); this." + prop.name + ".timestamp = value;}", cls);
+	}else{
+		rawType = "reference";
+	}
+
+	return '.field("' + prop.name + '", "' + rawType + '")';
+};
+
+let entities = [];
+
+Carbon.on("inherits.Websom.Entity", void (Carbon.Class base, Carbon.Class cls) => {
+	entities.push(cls);
+});
+
+Carbon.on("classes.end", void () => {
+	for (let int i = 0; i < entities.length; i += 1) {
+		let entity = entities.index(i);
+		let members = entity.members;
+
+		let fields = [];
+		let int m = 0;
+		for (let int m = 0; m < members.length; m += 1) {
+			let member = members.index(m);
+	
+			if (member.hasFlag("field")) {
+				fields.push(buildFieldForMember(entity, member));
+			}
+		}
+
+		let method = "trust fixed Websom.Adapters.Database.Schema getSchema(Websom.Adapters.Database.Collection collection) {return collection.schema()" + fields.join("") + ";}";
+		
+		Carbon.Method.eval(method, entity);
+	}
+});
+
+
+#end script

@@ -11,9 +11,31 @@ header class Websom.Adapters.Database.Collection {
 	Websom.Adapters.Database.Schema appliedSchema = null;
 	string name = "";
 
+	void entityTemplate = null;
+
 	void @construct(Websom.Adapters.Database.Adapter database, string name) {
 		this.database = database;
 		this.name = name;
+	}
+
+	Websom.Entity makeEntity(Websom.Adapters.Database.Document document) {
+		let Websom.Entity entity = null;
+
+		native javascript {
+			entity = new this.entityTemplate();
+		}
+
+		native php {
+			$cls = $this->entityTemplate;
+			$entity = new $cls();
+		}
+
+		entity.collection = this;
+		entity.id = document.id;
+
+		entity.loadFromMap(document.data());
+
+		return entity;
 	}
 
 	Websom.Adapters.Database.Schema schema() {
@@ -84,6 +106,21 @@ header class Websom.Adapters.Database.Collection {
 
 	[ForceAsync]
 	Websom.Adapters.Database.MetaDocument meta(string key) {}
+
+	Websom.Entity entity() {
+		let Websom.Entity entity = null;
+
+		native javascript {
+			entity = this.entityTemplate();
+		}
+
+		native php {
+			$clsName = $this->entityTemplate;
+			$entity = new $clsName();
+		}
+
+		entity.collection = this;
+	}
 }
 
 header class Websom.Adapters.Database.MetaDocument {
@@ -243,11 +280,17 @@ header class Websom.Adapters.Database.Schema {
 		this.collection = collection;
 	}
 
+	Websom.Adapters.Database.Field getField(string name) {
+		return this.fields.find(bool (Websom.Adapters.Database.Field f) => {
+			return f.name == name;
+		});
+	}
+
 	Websom.Adapters.Database.Schema field(string name, string type) {
 		let fields = this.fields;
 
 		if (this.indexes.length > 0)
-			this.fields = this.indexes[this.indexes.length - 1].fields;
+			fields = this.indexes[this.indexes.length - 1].fields;
 
 		fields.push(new Websom.Adapters.Database.Field(name, type));
 
@@ -320,6 +363,9 @@ header class Websom.Adapters.Database.SelectCondition {
 header class Websom.Adapters.Database.SelectQuery {
 	<Websom.Adapters.Database.SelectCondition>array conditions = new <Websom.Adapters.Database.SelectCondition>array();
 	Websom.Adapters.Database.Collection collection = null;
+
+	int documentLimit = 10;
+	int documentStart = 0;
 	
 	trust void @construct(Websom.Adapters.Database.Collection collection) {
 		this.collection = collection;
@@ -333,6 +379,18 @@ header class Websom.Adapters.Database.SelectQuery {
 
 	Websom.Adapters.Database.SelectQuery orderBy(string field, string order) {
 		this.conditions.push(new Websom.Adapters.Database.SelectCondition(field, order, "", "order"));
+
+		return this;
+	}
+
+	Websom.Adapters.Database.SelectQuery limit(int limit) {
+		this.documentLimit = limit;
+
+		return this;
+	}
+
+	Websom.Adapters.Database.SelectQuery startOffset(int amount) {
+		this.documentStart = amount;
 
 		return this;
 	}
