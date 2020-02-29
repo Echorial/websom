@@ -1,0 +1,13 @@
+class Websom.Group extends Websom.Entity {
+	field string name = "";
+	field string description = "";
+
+	field string rules = "";
+
+	field bool public = false;
+	field bool user = false;
+
+	field Websom.Time created = null;
+	
+	field <string>array permissions = new <string>array();
+}
