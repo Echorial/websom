@@ -3,6 +3,27 @@ class Websom.Services.Crypto inherits Websom.Service {
 
 	}
 
+	async string hashPassword(string password) {
+		native javascript {
+			const argon2 = require("argon2-browser");
+			const crypto = require("crypto");
+			crypto.randomBytes(32, async (err, salt) => {
+				let hash = await argon2.hash({pass: password, salt: salt.toString("hex"), time: 5, mem: 1024 * 10, hashLen: 32, type: argon2.ArgonType.Argon2i});
+
+				@return(hash.encoded);
+			});
+		}
+
+		native php {
+			$algo = PASSWORD_DEFAULT; //WARN: Passwords from node js wont verify for php versions less than 7.2
+			
+			if (version_compare(phpversion(), "7.2", ">="))
+				$algo = PASSWORD_ARGON2I;
+			
+			return password_hash($password, $algo);
+		}
+	}
+
 	void hashPassword(string password, <void, string>function done) {
 		native javascript {
 			const argon2 = require("argon2");
@@ -18,6 +39,25 @@ class Websom.Services.Crypto inherits Websom.Service {
 				$algo = PASSWORD_ARGON2I;
 			
 			$done(password_hash($password, $algo));
+		}
+	}
+
+	async bool verifyPassword(string hash, string password) {
+		native javascript {
+			try {
+				const argon2 = require("argon2-browser");
+				argon2.verify({encoded: hash, pass: password}).then(() => {
+					@return(true);
+				}).catch(() => {
+					@return(false);
+				});
+			} catch(e) {
+				@return(false);
+			}
+		}
+
+		native php {
+			return password_verify($password, $hash);
 		}
 	}
 
