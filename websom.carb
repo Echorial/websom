@@ -28,9 +28,9 @@ class Websom.Server {
 	Websom.Services.API api = null;
 	Websom.Services.Session session = null;
 	
-	Websom.Standard.Dashboard.Module dashboard = null;
+	//Websom.Standard.Dashboard.Module dashboard = null;
 	Websom.Standard.UserSystem.Module userSystem = null;
-	Websom.Standard.PaymentSystem.Module paymentSystem = null;
+	//Websom.Standard.PaymentSystem.Module paymentSystem = null;
 
 	Websom.Config config = null;
 	Websom.Services.Config configService = null;
@@ -163,6 +163,12 @@ class Websom.Server {
 		return this.configService.getString(route, option);
 	}
 
+	void logException(Exception e) {
+		if (this.config.dev) {
+			Console.log(e.message);
+		}
+	}
+
 	void startServices() {
 		this.configService = new Websom.Services.Config(this);
 		this.status.inherit(this.configService.start());
@@ -279,6 +285,12 @@ class Websom.Server {
 			server.use(bodyParser.json());
 			server.use(cookieParser());
 
+			server.options(/.*/, (req, res) => {
+				res.header("Access-Control-Origin-Allow", "*");
+				res.setHeader("X-Powered-By", "Websom");
+				res.send("POST");
+			});
+
 			server.post(/.*/, (req, res) => {
 				var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
 				
@@ -293,6 +305,8 @@ class Websom.Server {
 				websomRequest.body = req.body;
 				websomRequest.response.jsResponse = res;
 				websomRequest.jsRequest = req;
+				
+				res.setHeader("X-Powered-By", "Websom");
 
 				this.processAPIRequest(websomRequest);
 			});
@@ -308,6 +322,8 @@ class Websom.Server {
 
 		if (apiPass == false) {
 			// Handle routes
+
+			req.end("No endpoint here...");
 		}
 	}
 
