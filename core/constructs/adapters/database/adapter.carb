@@ -188,6 +188,7 @@ header class Websom.Adapters.Database.Field {
 namespace Websom.Calculators {}
 
 header class Websom.Calculator {
+	Websom.Adapters.Database.Collection collection = null;
 	string getterName = "";
 
 	[ForceAsync]
@@ -260,6 +261,86 @@ header class Websom.Calculators.Average inherits Websom.Calculator {
 	}
 }
 
+header class Websom.Calculators.KeyCount inherits Websom.Calculator {
+	string fieldName = "";
+	string clusterType = "value";
+
+	void @construct(string fieldName, string clusterType) {
+		this.fieldName = fieldName;
+		this.clusterType = clusterType;
+	}
+
+	trust void trackGroup(string key, int change) {
+		let metaDoc = this.collection.meta("key_count_" + key);
+
+		metaDoc.incrementNumberField(1, change);
+
+		metaDoc.update();
+	}
+
+	trust override void insert(Websom.Adapters.Database.Document doc, Websom.Adapters.Database.Collection collection) {
+		if (this.clusterType == "array") {
+			let <string>array arr = doc.get(this.fieldName);
+			
+			for (let int i in arr) {
+				this.trackGroup(arr[i], 1);
+			}
+		}else{
+			this.trackGroup(doc.get(this.fieldName), 1);
+		}
+	}
+
+	trust override void update(Websom.Adapters.Database.Document oldDoc, Websom.Adapters.Database.Document newDoc, Websom.Adapters.Database.Collection collection) {
+		if (this.clusterType == "array") {
+			let <string>array oldArr = oldDoc.get(this.fieldName);
+			let <string>array arr = newDoc.get(this.fieldName);
+			
+			for (let int i in oldArr) {
+				let curKey = oldArr[i];
+
+				if (arr.find(bool (string v) => { return curKey == v; }) == null) {
+					this.trackGroup(curKey, -1);
+				}
+			}
+
+			for (let int i in arr) {
+				let curKey = arr[i];
+
+				if (oldArr.find(bool (string v) => { return curKey == v; }) == null) {
+					this.trackGroup(curKey, 1);
+				}
+			}
+		}else{
+			if (oldDoc.get(this.fieldName) != newDoc.get(this.fieldName)) {
+				this.trackGroup(oldDoc.get(this.fieldName), -1);
+				this.trackGroup(newDoc.get(this.fieldName), 1);
+			}
+		}
+	}
+
+	trust override void delete(Websom.Adapters.Database.Document doc, Websom.Adapters.Database.Collection collection) {
+		if (this.clusterType == "array") {
+			let <string>array arr = doc.get(this.fieldName);
+			
+			for (let int i in arr) {
+				this.trackGroup(arr[i], -1);
+			}
+		}else{
+			this.trackGroup(doc.get(this.fieldName), -1);
+		}
+	}
+
+	trust override primitive get(Websom.Adapters.Database.Collection collection) {
+		return null;
+	}
+
+	int getCountOfKey(string key) {
+		let meta = this.collection.meta("key_count_" + key);
+
+		return meta.numberField(1);
+	}
+}
+
 header class Websom.Adapters.Database.Index {
 	<Websom.Adapters.Database.Field>array fields = new <Websom.Adapters.Database.Field>array();
 
@@ -299,6 +380,7 @@ header class Websom.Adapters.Database.Schema {
 
 	Websom.Adapters.Database.Schema calc(string getterName, Websom.Calculator calculator) {
 		calculator.getterName = getterName;
+		calculator.collection = this.collection;
 		this.calculators.push(calculator);
 
 		return this;
