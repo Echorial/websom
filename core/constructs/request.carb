@@ -9,7 +9,7 @@ class Websom.Request {
 
 	map body = new map();
 
-	Websom.Standard.UserSystem.User userCache = null;
+	//Websom.Standard.UserSystem.User userCache = null;
 
 	bool external = false;
 
@@ -61,6 +61,26 @@ class Websom.Request {
 				http_response_code($code);
 			}
 		}
+	}
+
+	void endWithSuccess(string successMessage) {
+		let res = new map();
+		res["status"] = "success";
+		res["message"] = successMessage;
+
+		this.header("Content-Type", "application/json");
+
+		this.end(Websom.Json.encode(res));
+	}
+
+	void endWithError(string errorMessage) {
+		let res = new map();
+		res["status"] = "error";
+		res["message"] = errorMessage;
+
+		this.header("Content-Type", "application/json");
+
+		this.end(Websom.Json.encode(res));
 	}
 
 	void end(string content) {
@@ -151,13 +171,16 @@ class Websom.Request {
 		}
 	}
 
-	void getUser(<void, Websom.Standard.UserSystem.User>function callback) {
+	void getUser(<void, void>function callback) {
+		/*
 		if (this.server.userSystem != null) {
 			this.server.userSystem.getLoggedIn(this, callback);
 		}else{
 			callback(null);
 		}
+		*/
 	}
+	
 }
 
 class Websom.Session {
