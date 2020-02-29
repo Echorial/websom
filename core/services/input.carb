@@ -9,6 +9,7 @@ class Websom.Services.Input inherits Websom.Service {
 	Websom.Status start() { //TODO: Most of this code should passed off to a container //WARN: Input needs to be started after module
 		this.clientValidate = this.buildClientValidation();
 
+		/*
 		this.restriction("permission", void (string perm, Websom.Request req, <void, bool>function callback) => {
 			req.getUser(void (Websom.Standard.UserSystem.User user) => {
 				if (user != null)
@@ -54,6 +55,7 @@ class Websom.Services.Input inherits Websom.Service {
 				Exception.throw("Unknown is restriction with type " + type);
 			}
 		});
+		*/
 	}
 
 	`Used with buildDataValidation to generate a string that is sent to the client every page load. It needs some optimizing.`
