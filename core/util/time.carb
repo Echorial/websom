@@ -1,4 +1,10 @@
 class Websom.Time {
+	uint64 timestamp = 0;
+
+	void @construct() {
+		this.timestamp = Websom.Time.now();
+	}
+	
 	fixed uint64 now() {
 		native php {
 			return time();
