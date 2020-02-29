@@ -40,13 +40,38 @@ class Websom.CollectionInterface {
 	}
 
 	Websom.CollectionInterface limit(int min, int max) {
+		return this.restrict(new Websom.Restrictions.Limit(min, max));
+	}
+
+	Websom.CollectionInterface format(string format) {
+		return this.restrict(new Websom.Restrictions.Format(format));
+	}
+
+	Websom.CollectionInterface regexTest(string reg) {
+		return this.restrict(new Websom.Restrictions.Regex(reg));
+	}
+
+	Websom.CollectionInterface unique() {
+		return this.restrict(new Websom.Restrictions.Unique());
+	}
+
+	Websom.CollectionInterface restrict(Websom.Restriction restriction) {
 		let writes = this.routes[this.routes.length - 1].writes;
-		writes[writes.length - 1].restrictions.push(new Websom.Restrictions.Limit(min, max));
+		writes[writes.length - 1].restrictions.push(restriction);
 		return this;
+	}
+
+	Websom.CollectionInterface restrict(<bool, Websom.Adapters.Database.Collection, Websom.Adapters.Database.Field, primitive>function func) {
+		return this.restrict(new Websom.Restrictions.Function(func));
 	}
 
 	Websom.CollectionInterface set(string field, primitive defaultValue) {
 		this.routes[this.routes.length - 1].sets.push(new Websom.CollectionInterfaceWriteSet(field, defaultValue));
+		return this;
+	}
+
+	Websom.CollectionInterface setComputed(string field, <primitive, Websom.Request>function func) {
+		this.routes[this.routes.length - 1].computedSets.push(new Websom.CollectionInterfaceWriteSetComputed(field, func));
 		return this;
 	}
 
@@ -58,6 +83,12 @@ class Websom.CollectionInterface {
 	trust Websom.CollectionInterface transform(Websom.Transformer transformer) {
 		let reads = this.routes[this.routes.length - 1].reads;
 		reads[reads.length - 1].transformers.push(transformer);
+		return this;
+	}
+
+	Websom.CollectionInterface mutate(<primitive, Websom.Adapters.Database.Collection, Websom.Request, primitive>function func) {
+		let writes = this.routes[this.routes.length - 1].writes;
+		writes[writes.length - 1].mutators.push(new Websom.Mutators.Function(func));
 		return this;
 	}
 
@@ -100,6 +131,7 @@ class Websom.CollectionInterfaceRoute {
 	<Websom.CollectionInterfaceRead>array reads = new <Websom.CollectionInterfaceRead>array();
 	<Websom.CollectionInterfaceWrite>array writes = new <Websom.CollectionInterfaceWrite>array();
 	<Websom.CollectionInterfaceWriteSet>array sets = new <Websom.CollectionInterfaceWriteSet>array();
+	<Websom.CollectionInterfaceWriteSetComputed>array computedSets = new <Websom.CollectionInterfaceWriteSetComputed>array();
 	<Websom.CollectionInterfaceFilter>array filters = new <Websom.CollectionInterfaceFilter>array();
 
 	string route = "";
@@ -110,15 +142,30 @@ class Websom.CollectionInterfaceRoute {
 		this.collection = collection;
 		this.route = route;
 	}
+
+	Websom.CollectionInterfaceFilter findFilter(string name) {
+		return this.filters.find(bool (Websom.CollectionInterfaceFilter filter) => {
+			return filter.name == name;
+		});
+		
+	}
 }
 
 header class Websom.Restriction {
 	void @construct() {}
 
 	[ForceAsync]
-	bool testServer(Websom.Adapters.Database.Document doc, string field, primitive value) {}
+	trust bool testServer(Websom.Adapters.Database.Collection collection, Websom.Adapters.Database.Field field, primitive value) {}
 
 	string testClient() {}
+
+	string message(string fieldName, primitive value) {
+		return this.name() + " failed on field " + fieldName + ".";
+	}
+
+	string name() {
+		return "Restriction";
+	}
 }
 
 namespace Websom.Restrictions {}
@@ -133,16 +180,142 @@ header class Websom.Restrictions.Limit inherits Websom.Restriction {
 	}
 
 	[ForceAsync]
-	bool testServer(Websom.Adapters.Database.Document doc, string field, primitive value) {}
+	override trust bool testServer(Websom.Adapters.Database.Collection collection, Websom.Adapters.Database.Field field, primitive value) {
+		if (field.type == "string") {
+			let string castToString = value;
 
-	string testClient() {}
+			return castToString.length >= this.min and castToString.length <= this.max;
+		}else if (field.type == "integer" or field.type == "float") {
+			let float castToFloat = value;
+
+			return castToFloat >= this.min and castToFloat <= this.max;
+		}else if (field.type == "array") {
+			let <primitive>array castToArray = value;
+			
+			return castToArray.length >= this.min and castToArray.length <= this.max;
+		}else{
+			throw "Limit restriction only works on fields of type: string, integer, float, and array";
+		}
+	}
+
+	override string name() {
+		return "Limit";
+	}
+}
+
+header class Websom.Restrictions.Unique inherits Websom.Restriction {
+	[ForceAsync]
+	override trust bool testServer(Websom.Adapters.Database.Collection collection, Websom.Adapters.Database.Field field, primitive value) {
+		return collection.where(field.name, "==", value).limit(1).get().documents.length == 0;
+	}
+
+	override string name() {
+		return "Unique";
+	}
+}
+
+header class Websom.Restrictions.Format inherits Websom.Restriction {
+	string format = "";
+
+	void @construct(string format) {
+		this.format = format;
+	}
+
+	[ForceAsync]
+	override trust bool testServer(Websom.Adapters.Database.Collection collection, Websom.Adapters.Database.Field field, primitive value) {
+		let string valueAsString = value;
+
+		if (this.format == "email") {
+			// return valueAsString.test("^([^@]+)(@)(.+)(\\.)([^.]{2,})$");
+			// A better version of the above is now used:
+			return valueAsString.test("^(([^<>()\\[\\]\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\.,;:\\s@\"]+)*)|(\".+\"))@(([^<>()[\\]\\.,;:\\s@\"]+\\.)+[^<>()[\\]\\.,;:\\s@\"]{2,})");
+		}else if (this.format == "single-line") {
+			return valueAsString.test("^([^\\n]*)$");
+		}else if (this.format == "number") {
+			return valueAsString.test("^(-)?([\d.,]*)$");
+		}
+	}
+
+	override string name() {
+		return "Format";
+	}
+}
+
+header class Websom.Restrictions.Regex inherits Websom.Restriction {
+	string regex = "";
+
+	void @construct(string regex) {
+		this.regex = regex;
+	}
+
+	[ForceAsync]
+	override trust bool testServer(Websom.Adapters.Database.Collection collection, Websom.Adapters.Database.Field field, primitive value) {
+		let string valueAsString = value;
+		
+		return valueAsString.test(this.regex);
+	}
+
+	override string name() {
+		return "Regex";
+	}
+}
+
+header class Websom.Restrictions.Function inherits Websom.Restriction {
+	<bool, Websom.Adapters.Database.Collection, Websom.Adapters.Database.Field, primitive>function tester = null;
+
+	void @construct(<bool, Websom.Adapters.Database.Collection, Websom.Adapters.Database.Field, primitive>function func) {
+		this.tester = func;
+	}
+
+	[ForceAsync]
+	override trust bool testServer(Websom.Adapters.Database.Collection collection, Websom.Adapters.Database.Field field, primitive value) {
+		native javascript {
+			return await this.tester(collection, field, value);
+		}
+		
+		native php {
+			return $this->tester($collection, $field, $value);
+		}
+	}
+
+	override string name() {
+		return "Function";
+	}
 }
 
 header class Websom.Transformer {
 	void @construct() {}
 
 	[ForceAsync]
-	bool transform(Websom.Request req, Websom.Adapters.Database.Document doc, string field, primitive value) {}
+	primitive transform(Websom.Request req, Websom.Adapters.Database.Document doc, string field, primitive value) {}
+}
+
+namespace Websom.Mutators {}
+
+header class Websom.Mutator {
+	void @construct() {}
+
+	[ForceAsync]
+	trust primitive mutate(Websom.Adapters.Database.Collection collection, Websom.Request req, primitive value) {}
+}
+
+header class Websom.Mutators.Function inherits Websom.Mutator {
+	<primitive, Websom.Adapters.Database.Collection, Websom.Request, primitive>function mutator = null;
+
+	void @construct(<primitive, Websom.Adapters.Database.Collection, Websom.Request, primitive>function func) {
+		this.mutator = func;
+	}
+
+	[ForceAsync]
+	override trust primitive mutate(Websom.Adapters.Database.Collection collection, Websom.Request req, primitive value) {
+		native javascript {
+			return await this.mutator(collection, req, value);
+		}
+		
+		native php {
+			return $this->mutator($collection, $req, $value);
+		}
+	}
 }
 
 header class Websom.Authenticator {
@@ -150,6 +323,10 @@ header class Websom.Authenticator {
 
 	[ForceAsync]
 	bool authenticate(Websom.Request req) {}
+
+	string errorMessage(Websom.Request req) {
+		return "Authentication failed";
+	}
 }
 
 class Websom.PermissionAuthenticator inherits Websom.Authenticator {
@@ -189,8 +366,10 @@ class Websom.CollectionInterfaceRead {
 
 class Websom.CollectionInterfaceWrite {
 	<Websom.Restriction>array restrictions = new <Websom.Restriction>array();
+	<Websom.Mutator>array mutators = new <Websom.Mutator>array();
 	string field = "";
 	primitive defaultValue = null;
+	string type = "";
 
 	void @construct(string field, primitive defaultValue) {
 		this.field = field;
@@ -205,6 +384,27 @@ class Websom.CollectionInterfaceWriteSet {
 	void @construct(string field, primitive value) {
 		this.field = field;
 		this.value = value;
+	}
+}
+
+class Websom.CollectionInterfaceWriteSetComputed {
+	string field = "";
+	<primitive, Websom.Request>function computer = null;
+
+	void @construct(string field, <primitive, Websom.Request>function func) {
+		this.field = field;
+		this.computer = func;
+	}
+
+	[ForceAsync]
+	primitive compute(Websom.Request req) {
+		native javascript {
+			return await this.computer(req);
+		}
+
+		native php {
+			return $this->computer($req);
+		}
 	}
 }
 
