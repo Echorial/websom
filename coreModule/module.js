@@ -1,25 +1,7 @@
 //Relative Module
-//Relative Tab
-//Relative Module
 //Relative User
-//Relative Confirmation
-//Relative UserControl
-//Relative Group
-//Relative Admission
-//Relative Module
-//Relative Charge
-//Relative Item
-//Relative Payment
-//Relative RichText
-//Relative RichTextControl
-//Relative Likes
-//Relative Comments
-//Relative Comment
-//Relative Image
-//Relative ImageControl
-//Relative Forum
-//Relative ForumThread
-//Relative ForumReply
+//Relative Login
+//Relative Connection
 CoreModule = function () {var _c_this = this;
 
 
@@ -89,7 +71,8 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		_c_this.test = db.collection("test");
 		var schema = _c_this.test.schema().field("name", "string").field("balance", "float").calc("averageBalance", new Websom.Calculators.Average("balance")).index().field("name", "==").field("balance", "dsc");
 		(await _c_this.registerCollection/* async call */(_c_this.test));
-		(await _c_this.test.insert().set("name", "Hello").set("balance", 2).run/* async call */());
+		var x = Websom.Time.now();
+		(await _c_this.test.insert().set("name", "Hello").set("balance", Math.sin(x)).run/* async call */());
 		var res = (await _c_this.test.where("name", "==", "Hello").get/* async call */());
 		_c_this.server.api.interface(_c_this.test, "/testing").route("/create").auth(_c_this.commentCreate).executes("insert").write("name").limit(3, 256).set("balance", 0).route("/edit").auth(_c_this.commentEdit).executes("update").write("name").filter("default").field("id", "==").route("/find").auth(_c_this.commentRead).executes("select").read("name").read("balance").filter("default").field("name", "==").force("balance", "<", 100).order("balance", "dsc");
 	}
@@ -132,9 +115,7 @@ CoreModule.Module.prototype.configure = function () {var _c_this = this; var _c_
 	}
 }
 
-/*i async*/CoreModule.Module.prototype.registerCollection = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
-	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Collection || (arguments[0] instanceof CoreModule.LokiCollection)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
-		var collection = arguments[0];
+/*i async*/CoreModule.Module.prototype.registerCollection = async function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		_c_this.registeredCollections.push(collection);
 		if (_c_this.server.config.dev) {
@@ -143,9 +124,7 @@ CoreModule.Module.prototype.configure = function () {var _c_this = this; var _c_
 /*async*/
 				(await collection.appliedSchema.register/* async call */());
 				}
-			}
-	}
-}
+			}}
 
 CoreModule.Module.prototype.registerPermission = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Permission) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
@@ -242,6 +221,8 @@ CoreModule.LokiCollection = function () {var _c_this = this;
 	this.appliedSchema = null;
 
 	this.name = "";
+
+	this.entityTemplate = null;
 
 	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Adapters.Database.Adapter || (arguments[0] instanceof CoreModule.LokiDB)) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
 		var database = arguments[0];
@@ -486,12 +467,28 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			if (orderByField != "")
 				lokiQuery.simplesort(orderByField, orderByOrder == "dsc");
 
-			let rawResults = lokiQuery.data();
+			let rawResults = lokiQuery.offset(query.documentStart).limit(query.documentLimit).data();
 
 			for (let raw of rawResults)
 				res.documents.push(this.documentFromRaw(raw));
 		
 		return res;
+	}
+}
+
+/*i async*/CoreModule.LokiCollection.prototype.makeEntity = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Document || (arguments[0] instanceof CoreModule.LokiDocument)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var document = arguments[0];
+/*async*/
+		var entity = null;
+		
+			entity = new this.entityTemplate();
+		
+		
+		entity.collection = _c_this;
+		entity.id = document.id;
+		(await entity.loadFromMap/* async call */(document.data()));
+		return entity;
 	}
 }
 
@@ -540,6 +537,17 @@ CoreModule.LokiCollection.prototype.delete = function () {var _c_this = this; va
 CoreModule.LokiCollection.prototype.batch = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 		return new Websom.Adapters.Database.BatchQuery(_c_this);
+	}
+}
+
+CoreModule.LokiCollection.prototype.entity = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var entity = null;
+		
+			entity = this.entityTemplate();
+		
+		
+		entity.collection = _c_this;
 	}
 }
 
