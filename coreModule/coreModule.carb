@@ -41,10 +41,10 @@ class CoreModule.Module inherits Websom.Module {
 				.field("balance", "dsc");
 			
 		this.registerCollection(this.test);
-		
+		let int x = Websom.Time.now();
 		this.test.insert()
 			.set("name", "Hello")
-			.set("balance", 2.0)
+			.set("balance", Math.sin(x))
 			.run();
 
 		let res = this.test.where("name", "==", "Hello").get();
