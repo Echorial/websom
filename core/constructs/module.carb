@@ -83,6 +83,13 @@ header class Websom.Module {
 		this.registeredPermissions.push(permission);
 	}
 
+	Websom.Permission registerPermission(string permission) {
+		let perm = new Websom.Permission(permission);
+		this.registeredPermissions.push(perm);
+
+		return perm;
+	}
+
 	phpNoRef <Websom.Container>array setupData() {
 
 	}
