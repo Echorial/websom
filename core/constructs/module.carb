@@ -71,7 +71,7 @@ header class Websom.Module {
 
 	}
 
-	void registerCollection(Websom.Adapters.Database.Collection collection) {
+	trust void registerCollection(Websom.Adapters.Database.Collection collection) {
 		this.registeredCollections.push(collection);
 
 		if (this.server.config.dev)
