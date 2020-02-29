@@ -8295,6 +8295,67 @@ Websom.Entity.linkToCollection = function (collection) {var _c_this = this; var 
 	}
 }
 
+Websom.Group = function () {var _c_this = this;
+	this.name = "";
+
+	this.description = "";
+
+	this.rules = "";
+
+	this.public = false;
+
+	this.user = false;
+
+	this.created = null;
+
+	this.permissions = [];
+
+	this.collection = null;
+
+	this.id = "";
+
+	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Group.applySchema = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.linkToCollection(collection);
+		
+			return this.getSchema(collection);
+		
+		}
+
+Websom.Group.linkToCollection = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			collection.entityTemplate = this;
+		
+		}
+
+/*i async*/Websom.Group.prototype.loadFromMap = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var data = arguments[0];
+		
+			for (let k in data) {
+				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
+					let camel = k[0].toUpperCase() + k.substr(1, k.length);
+
+					if (this["load" + camel]) {
+						await this["load" + camel](data[k]);
+					}else{
+						this[k] = data[k];
+					}
+				}
+			}
+		
+		
+	}
+}
+
+Websom.Group.getSchema = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return collection.schema().field("name", "string").field("description", "string").field("rules", "string").field("public", "string").field("user", "string").field("created", "string").field("permissions", "string");}
+
 Websom.InputChain = function () {var _c_this = this;
 	this.handler = null;
 
@@ -9169,6 +9230,12 @@ Websom.Module.prototype.registerPermission = function () {var _c_this = this; va
 		var permission = arguments[0];
 		_c_this.registeredPermissions.push(permission);
 	}
+else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var permission = arguments[0];
+		var perm = new Websom.Permission(permission);
+		_c_this.registeredPermissions.push(perm);
+		return perm;
+	}
 }
 
 Websom.Module.prototype.setupData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -9337,11 +9404,53 @@ Websom.Permission = function () {var _c_this = this;
 
 	this.public = false;
 
+	this.user = false;
+
+	this.author = false;
+
+	this.moderator = false;
+
 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var name = arguments[0];
 		_c_this.name = name;
 	}
 
+}
+
+Websom.Permission.prototype.setDescription = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var desc = arguments[0];
+		_c_this.description = desc;
+		return _c_this;
+	}
+}
+
+Websom.Permission.prototype.isPublic = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.public = true;
+		return _c_this;
+	}
+}
+
+Websom.Permission.prototype.isUser = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.user = true;
+		return _c_this;
+	}
+}
+
+Websom.Permission.prototype.isAuthor = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.author = true;
+		return _c_this;
+	}
+}
+
+Websom.Permission.prototype.isModerator = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.moderator = true;
+		return _c_this;
+	}
 }
 
 Websom.PlainInterface = function () {var _c_this = this;
@@ -13314,10 +13423,26 @@ Websom.SelectHandler = function () {var _c_this = this;
 /*async*/
 			var doc = results.documents[i];
 			var mp = {};
+			if (cir.reads.length > 0) {
+/*async*/
+				if (cir.reads[0].field == "*") {
+/*async*/
+					if (collection.appliedSchema == null) {
+/*async*/
+						(await req.endWithError/* async call */("This collection has no schema applied"));
+						return null;
+						}
+					var schema = collection.appliedSchema;
+					for (var f = 0; f < schema.fields.length; f++) {
+						var field = schema.fields[f];
+						mp[field.name] = doc.get(field.name);
+						}
+					}
+				}
 			for (var j = 0; j < cir.reads.length; j++) {
 /*async*/
 				var read = cir.reads[j];
-				if (read.field in returnFields) {
+				if (read.field in returnFields || "*" in returnFields) {
 /*async*/
 					var val = doc.get(read.field);
 					for (var t = 0; t < read.transformers.length; t++) {
