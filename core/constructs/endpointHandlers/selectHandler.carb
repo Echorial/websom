@@ -95,10 +95,26 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 			let doc = results.documents[i];
 			let mp = new map();
 
+			if (cir.reads.length > 0) {
+				if (cir.reads[0].field == "*") {
+					if (collection.appliedSchema == null) {
+						req.endWithError("This collection has no schema applied");
+						return null;
+					}
+
+					let schema = collection.appliedSchema;
+
+					for (let int f in schema.fields) {
+						let field = schema.fields[f];
+						mp[field.name] = doc.get(field.name);
+					}
+				}
+			}
+
 			for (let int j in cir.reads) {
 				let read = cir.reads[j];
 
-				if (read.field in returnFields) {
+				if (read.field in returnFields or "*" in returnFields) {
 					let val = doc.get(read.field);
 
 					for (let int t in read.transformers) {
