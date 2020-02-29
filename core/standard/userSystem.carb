@@ -1,170 +1,66 @@
 namespace Websom.Standard.UserSystem {}
 
-header relative Websom.Standard.UserSystem.Module inherits Websom.StandardModule {
-	const int ok = 0;
-	const int usernameInUse = 1;
-	const int emailInUse = 2;
-	const int invalidEmail = 3;
-	const int invalidUsername = 4;
-	const int invalidPassword = 5;
-
-	Websom.Container users = null;
-	Websom.Container confirmations = null;
-	Websom.Container admissions = null;
-	Websom.Container groups = null;
-
-	`Creates a new user with email confirmation`
-	void register(string username, string password, string email, <void, int, Websom.Standard.UserSystem.User, string>function done);
-
-	void checkUser(string usernameOrEmail, string password, <void, bool, map>function checked);
-
-	void registerConfirmationRoute(string route, <void, Websom.Request, Websom.Standard.UserSystem.Confirmation, Websom.Standard.UserSystem.User>function listener);
-
-	void getLoggedIn(Websom.Request req, <void, Websom.Standard.UserSystem.User>function callback);
-
-	bool isLoggedIn(Websom.Request req);
-
-	`Reloads the client login info`
-	void refreshClient(Websom.Request req);
-
-	void getGroup(string name, <void, Websom.Standard.UserSystem.Group>function callback);
+header relative Websom.Standard.UserSystem.Module {
+	Websom.Adapters.Database.Collection users = null;
+	Websom.Adapters.Database.Collection logins = null;
 }
 
-[Linked="users", Reroute]
-header interface Websom.Standard.UserSystem.User inherits Websom.StandardData {
-	primary autoIncrement field int id = 0;
-
-	[Length = 12]
-	expose field string publicId = "";
-
-	[Length = 256, Match="^[A-Za-z0-9_.]*$"]
-	expose field string username = "";
-
-	[Length = 512]
+header relative Websom.Standard.UserSystem.User {
+	field string username = "";
+	field string email = "";
 	field string password = "";
 
-	[Length = 256]
-	field string email = "";
+	field string firstName = "";
+	field string lastName = "";
+	field string department = "";
+	field string company = "";
+	field string address = "";
+	field string city = "";
+	field string state = "";
+	field string country = "";
+	field string postCode = "";
 
-	[Length = 256]
-	edit expose field string name = "";
+	field Websom.Time created = null;
+	field Websom.Time lastLogin = null;
+	field Websom.Time lastBan = null;
 
-	[Length = 512]
-	edit expose field string bio = "";
+	field bool banned = false;
+	field bool verified = false;
 
-	[Length = 256]
-	edit expose field string website = "";
+	`Is this account's authentication passed onto an external OAuth system. e.g. Google, Facebook ...`
+	field bool connected = false;
 
-	[Length = 512]
-	edit expose field string location = "";
+	`If locked, login is not allowed.`
+	field bool locked = false;
 
-	[Length = 256]
-	edit expose field string publicEmail = "";
+	[Collection]
+	<Websom.Standard.UserSystem.Login>array loginAttempts = null;
 
-	`Status bytes:
-	a: unconfirmed email
-	b: banned user
-	c: confirmed user
-	e: restricted
-	t: temp banned
-	l: locked`
-	[Length = 1]
-	field string status = "a";
-
-	`Custom type byte`
-	[Length = 1]
-	field string type = "a";
-
-	field uint64 timestamp = 0;
+	[Collection]
+	<Websom.Standard.UserSystem.Connection>array connections = null;
 	
-	void sendConfirmation(string route, string meta, <void, string, string>function sent);
-	
-	void resetPassword(<void, bool, int, string>function sent);
-
-	void inGroup(string name, <void, bool>function callback);
-
-	void hasPermission(string perm, <void, bool>function callback);
-
-	void addToGroup(Websom.Standard.UserSystem.Group group, <void, bool>function callback);
-	void addToGroupFromName(string group, <void, bool>function callback);
-
-	void getGroups(<void, <Websom.Standard.UserSystem.Admission>array>function callback);
 }
 
-[Reroute]
-header interface Websom.Standard.UserSystem.Confirmation inherits Websom.StandardData {
-	void @construct();
+header relative Websom.Standard.UserSystem.Login {
+	field Websom.Standard.UserSystem.User user = null;
+	field Websom.Time created = null;
+	field string ip = "";
 
-	primary autoIncrement field int id = 0;
+	`Usually left blank if no ip tracking service is installed.`
+	field string location = "";
 
-	[Length=256]
-	field string key = "";
-	
-	[Length=256]
-	field string route = "";
+	`Did the user login.`
+	field bool success = false;
 
-	[Length=256]
-	field string meta = "";
-
-	field int user = 0;
-
-	field bool confirmed = false;
-
-	field uint64 timestamp = 0;
+	`Is this login attempt or password suspicious. You should keep a calculated counting field grouped on user for mitigating brute force attacks.`
+	field bool flagged = false;
 }
 
-[Reroute]
-header interface Websom.Standard.UserSystem.UserControl inherits Websom.FieldControl {
-	override void filterField(primitive value, Websom.DatabaseSelect select, <void, Websom.InputValidation>function done) {
-
-	}
-}
-
-//[GROUPS]
-
-[Reroute, Linked="user_groups"]
-header interface Websom.Standard.UserSystem.Group inherits Websom.StandardData {
-	expose primary autoIncrement field int id = 0;
-
-	[Length = 12]
-	expose field string publicId = "";
-
-	[Length = 256]
-	expose edit field string name = "";
-	
-	[Length = 256]
-	expose edit field string description = "";
-
-	expose field int members = 0;
-
-	expose edit field bool hidden = true;
-
-	expose edit field bool automatic = false;
-
-	[Length = 10000]
-	expose edit field string rules = "";
-
-	[Length = 10000]
-	expose edit field string permissions = "";
-
-	void getUsers(<void, <Websom.Standard.UserSystem.User>array>function callback);
-}
-
-[Reroute, Linked="user_admissions"]
-header interface Websom.Standard.UserSystem.Admission inherits Websom.StandardData {
-	primary autoIncrement field int id = 0;
-
-	[Length = 12]
-	expose field string publicId = "";
-
-	expose field Websom.Standard.UserSystem.User owner = null;
-	expose field Websom.Standard.UserSystem.Group group = null;
-	
-	[Length = 1]
-	expose edit field string status = "";
-
-	[Length = 256]
-	expose edit field string role = "";
-
-	expose field uint64 timestamp = 0;
+header relative Websom.Standard.UserSystem.Connection {
+	`kebab-case service name. e.g. google, facebook. All lower case.`
+	field string service = "";
+	field string authorizationCode = "";
+	field bool active = false;
+	field Websom.Time created = null;
+	field Websom.Time disabled = null;
 }
