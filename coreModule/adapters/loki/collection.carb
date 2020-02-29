@@ -222,7 +222,7 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 			if (orderByField != "")
 				lokiQuery.simplesort(orderByField, orderByOrder == "dsc");
 
-			let rawResults = lokiQuery.data();
+			let rawResults = lokiQuery.offset(query.documentStart).limit(query.documentLimit).data();
 
 			for (let raw of rawResults)
 				res.documents.push(this.documentFromRaw(raw));
