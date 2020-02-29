@@ -1,0 +1,123 @@
+class Websom.SelectHandler inherits Websom.EndpointHandler {
+	override void fulfill(Websom.CollectionInterfaceRoute cir, Websom.Request req) {
+		let filterName = req.body["filter"];
+		if (filterName.typeAsString() != "string") {
+			filterName = "default";
+		}
+
+		let filter = cir.findFilter(filterName);
+		
+		if (filter == null) {
+			req.endWithError("Unknown filter provided");
+
+			return null;
+		}
+
+		let query = this.buildQuery(cir, filter, req);
+	}
+
+	override void buildQuery(Websom.CollectionInterfaceRoute cir, Websom.CollectionInterfaceFilter filter, Websom.Request req) {
+		let collection = cir.collection.collection;
+		let query = collection.select();
+
+		let limit = filter.limits[0];
+
+		if ("limit" in req.body) {
+			let reqLimit = req.body["limit"];
+
+			for (let int i in filter.limits) {
+				let l = filter.limits[i];
+
+				if (reqLimit == l)
+					limit = l;
+			}
+		}
+
+		let offset = 0;
+
+		if ("page" in req.body) {
+			let page = req.body["page"];
+			if (page.typeAsString() == "float") {
+				let float pageAsFloat = page;
+				if (pageAsFloat.isInteger())
+					offset = pageAsFloat * limit;
+			}
+		}
+
+		query.startOffset(offset);
+		query.limit(limit);
+
+		for (let int i in filter.forces) {
+			let force = filter.forces[i];
+
+			query.where(force.name, force.operator, force.value);
+		}
+
+		for (let int i in filter.orders) {
+			let order = filter.orders[i];
+			query.orderBy(order.name, order.operator);
+		}
+
+		let map clientQuery = req.body["query"];
+
+		if (clientQuery.typeAsString() != "map") {
+			req.endWithError("Query must be an object. ( e.g. { name: Hello } )");
+			return null;
+		}
+
+		for (let int i in filter.fields) {
+			let field = filter.fields[i];
+
+			if (field.name in clientQuery) {
+				query.where(field.name, field.operator, clientQuery[field.name]);
+			}else{
+				req.endWithError("No query for field '" + field.name + "' was provided.");
+				return null;
+			}
+		}
+
+		let res = new map();
+
+		res["status"] = "success";
+		res["message"] = "Query successful!";
+		let output = new <map>array();
+
+		let results = query.get();
+
+		let returnFields = req.body["fields"];
+
+		if (returnFields.typeAsString() != "map") {
+			req.endWithError("No fields object provided. See the api request docs.");
+			return null;
+		}
+
+		for (let int i in results.documents) {
+			let doc = results.documents[i];
+			let mp = new map();
+
+			for (let int j in cir.reads) {
+				let read = cir.reads[j];
+
+				if (read.field in returnFields) {
+					let val = doc.get(read.field);
+
+					for (let int t in read.transformers) {
+						let transformer = read.transformers[t];
+
+						val = transformer.transform(req, doc, read.field, val);
+					}
+
+					mp[read.field] = val;
+				}
+			}
+
+			output.push(mp);
+		}
+
+		res["documents"] = output;
+
+		req.header("Content-Type", "application/json");
+		req.header("Access-Control-Allow-Origin", "*");
+		req.end(Websom.Json.encode(res));
+	}
+}
