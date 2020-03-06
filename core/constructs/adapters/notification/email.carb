@@ -1,0 +1,225 @@
+namespace Websom.Adapters.Email {}
+
+header class Websom.Adapters.Email.Adapter extends Websom.Adapter {
+	Websom.Adapters.Email.Email email() {
+		return new Websom.Adapters.Email.Email(this);
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Email.SendResults send(Websom.Adapters.Email.Email email) {
+
+	}
+
+	Websom.Adapters.Email.EmailTemplate template(string title) {
+		return new Websom.Adapters.Email.EmailTemplate(this, title);
+	}
+}
+
+header class Websom.Adapters.Email.SendResults {
+	string status = "";
+	string message = "";
+
+	`Number of emails successfully sent`
+	int sent = 0;
+
+	void @construct(string status, string message, int sent) {
+		this.status = status;
+		this.message = message;
+		this.sent = sent;
+	}
+}
+
+
+header class Websom.Adapters.Email.Email {
+	string subject = "";
+	string textBody = "";
+	string htmlBody = "";
+	
+	string fromAddress = "";
+	string fromName = "";
+
+	string replyTo = "";
+
+	<string>array recipients = new <string>array();
+	<string>array cc = new <string>array();
+	<string>array bcc = new <string>array();
+
+	Websom.Adapters.Email.Adapter& adapter = null;
+
+	void @construct(Websom.Adapters.Email.Adapter& adapter) {
+		this.adapter = adapter;
+	}
+
+	Websom.Adapters.Email.Email setSubject(string val) {
+		this.subject = val;
+		return this;
+	}
+
+	Websom.Adapters.Email.Email setReplyTo(string val) {
+		this.replyTo = val;
+		return this;
+	}
+
+	Websom.Adapters.Email.Email setTextBody(string val) {
+		this.textBody = val;
+		return this;
+	}
+
+	Websom.Adapters.Email.Email setHtmlBody(string val) {
+		this.htmlBody = val;
+		return this;
+	}
+
+	Websom.Adapters.Email.Email setFrom(string address, string name) {
+		this.fromAddress = address;
+		this.fromName = name;
+		return this;
+	}
+
+	Websom.Adapters.Email.Email addRecipient(string address) {
+		this.recipients.push(address);
+		return this;
+	}
+
+	Websom.Adapters.Email.Email addCCRecipient(string address) {
+		this.cc.push(address);
+		return this;
+	}
+
+	Websom.Adapters.Email.Email addBCCRecipient(string address) {
+		this.bcc.push(address);
+		return this;
+	}
+
+	Websom.Adapters.Email.SendResults send() {
+		return this.adapter.send(this);
+	}
+}
+
+header class Websom.Adapters.Email.Column {
+	<string>array content = new <string>array();
+
+	void @construct() {
+
+	}
+}
+
+header class Websom.Adapters.Email.Row {
+	<Websom.Adapters.Email.Column>array columns = new <Websom.Adapters.Email.Column>array();
+
+	void @construct() {
+
+	}
+}
+
+header class Websom.Adapters.Email.EmailTemplate {
+	Websom.Adapters.Email.Adapter adapter = null;
+	string title = "";
+	string plainText = "";
+
+	<Websom.Adapters.Email.Row>array rows = new <Websom.Adapters.Email.Row>array();
+
+	void @construct(Websom.Adapters.Email.Adapter adapter, string title) {
+		this.adapter = adapter;
+		this.title = title;
+	}
+
+	Websom.Adapters.Email.Email email() {
+		return this.adapter.email()
+			.setHtmlBody(this.getHtml())
+			.setTextBody(this.getPlain());
+	}
+
+	string getHtml() {
+		let rows = new <string>array();
+
+		for (let int i in this.rows) {
+			let row = this.rows[i];
+
+			let cols = new <string>array();
+
+			for (let int j in row.columns) {
+				cols.push("<td>" + row.columns[j].content.join("") + "</td>");
+			}
+
+			rows.push("<tr>" + cols.join("") + "</tr>");
+		}
+
+		return this.htmlTemplate(this.title, rows.join(""));
+	}
+
+	string getPlain() {
+		return this.plainText;
+	}
+
+	Websom.Adapters.Email.EmailTemplate plain(string content) {
+		this.plainText = content;
+
+		return this;
+	}
+
+	Websom.Adapters.Email.EmailTemplate row() {
+		this.rows.push(new Websom.Adapters.Email.Row());
+
+		return this;
+	}
+
+	Websom.Adapters.Email.EmailTemplate column() {
+		this.rows[this.rows.length - 1].columns.push(new Websom.Adapters.Email.Column());
+
+		return this;
+	}
+
+	Websom.Adapters.Email.EmailTemplate button(string label, string href) {
+		let columns = this.rows[this.rows.length - 1].columns;
+		columns[columns.length - 1].content.push('<p><a href="' + href + '">' + label + '</a></p>');
+
+		return this;
+	}
+
+	Websom.Adapters.Email.EmailTemplate paragraph(string content) {
+		let columns = this.rows[this.rows.length - 1].columns;
+		columns[columns.length - 1].content.push('<p>' + content + '</p>');
+
+		return this;
+	}
+
+	Websom.Adapters.Email.EmailTemplate raw(string html) {
+		let columns = this.rows[this.rows.length - 1].columns;
+		columns[columns.length - 1].content.push(html);
+
+		return this;
+	}
+
+	string htmlTemplate(string title, string rows) {
+		return '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+		<html xmlns="http://www.w3.org/1999/xhtml">
+			<head>
+				<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+				<meta name="format-detection" content="telephone=no"> 
+				<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=no;">
+				<meta http-equiv="X-UA-Compatible" content="IE=9; IE=8; IE=7; IE=EDGE" />
+
+				<title>' + title + '</title>
+
+				<style type="text/css"> 
+					@media screen and (max-width: 630px) {
+
+					}
+				</style>
+			</head>
+
+			<body style="padding:0; margin:0">
+
+			<table border="0" cellpadding="0" cellspacing="0" style="margin: 0; padding: 0" width="100%">
+				<tr>
+					<td align="center" valign="top">
+						' + rows + '
+					</td>
+				</tr>
+			</table>
+
+			</body>
+		</html>';
+	}
+}
