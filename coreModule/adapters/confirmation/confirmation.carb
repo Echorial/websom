@@ -1,0 +1,65 @@
+class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
+	string route = "adapter.confirmation";
+
+	CoreModule.Module module = null;
+
+	override void initialize() {
+		
+	}
+
+	Websom.Adapters.Confirmation.ConfirmationResults dispatch(Websom.Adapters.Confirmation.Confirmation confirmation) {
+		let secret = this.server.crypto.getRandomHex(255);
+		let url = this.server.apiHost + "/confirmations/confirm/" + secret;
+
+		let results = new Websom.Adapters.Confirmation.ConfirmationResults(secret, url, "success", "Confirmation created");
+
+		this.module.confirmations.insert()
+			.set("secret", secret)
+			.set("key", confirmation.key)
+			.set("ip", confirmation.ip)
+			.set("created", Websom.Time.now())
+			.set("storage", Websom.Json.encode(confirmation.storage))
+			.set("expires", Websom.Time.now() + confirmation.ttl)
+			.set("confirmed", false)
+			.set("service", confirmation.notificationService)
+			.set("method", confirmation.method)
+			.set("to", confirmation.recipient);
+
+		if (confirmation.notificationService == "direct") {
+			return results;
+		}else if (confirmation.notificationService == "email") {
+			if (confirmation.method == "link") {
+				this.sendLinkEmail(url, confirmation);
+			}else if (confirmation.method == "code") {
+
+			}
+
+			return results;
+		}else if (confirmation.notificationService == "sms") {
+
+		}
+
+		return new Websom.Adapters.Confirmation.ConfirmationResults("", "", "error", "Invalid notificationService");
+	}
+
+	void sendLinkEmail(string url, Websom.Adapters.Confirmation.Confirmation confirmation) {
+		let from = this.server.getConfigString("adapters.confirmation", "fromEmail");
+		if (from == "") {
+			from = "no-reply@example.com";
+		}
+
+		this.server.notification.email.template("confirmation")
+			.row()
+				.column()
+				.column()
+					.paragraph(confirmation.confirmationMessage)
+					.button("Confirm", url)
+				.column()
+			.email()
+				.addRecipient(confirmation.recipient)
+				.setFrom(from, this.server.websiteName)
+				.setSubject(confirmation.emailSubject)
+				.send();
+				
+	}
+}
