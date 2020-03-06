@@ -6,6 +6,8 @@ module.exports = (data) =>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		{{{ renderResourceHints() }}}
 		{{{ renderStyles() }}}
+		<title>{{title}}</title>
+		{{{ renderHeadElements() }}}
 	</head>
 
 	<body>

@@ -8,11 +8,29 @@ const WebsomVue = {
 	install(Vue, options) {
 		Vue.mixin({
 			created() {
-				this.websom = websom;
+				this.websom = this.$root.$options.websomUtils;
 				this.onGlobal = events.bind(this);
+				if (this.$ssrContext) {
+					let t = this.title();
+					if (t) {
+						this.$ssrContext.title = t;
+					}
+				}
+			},
+			mounted() {
+				let t = this.title();
+				if (t)
+					document.title = t;
 			},
 			unmount() {
 				events.unbind(this);
+			},
+			methods: {
+				title() {
+					if (this.websomView) {
+						return this.websomView.info.title;
+					}
+				}
 			},
 			computed: {
 				$config() {
