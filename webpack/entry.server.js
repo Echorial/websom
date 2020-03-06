@@ -1,12 +1,16 @@
 import { createApp } from "./app.js";
 
 export default context => {
-	return new Promise((resolve, reject) => {
-		const { app, router } = createApp();
+	return new Promise(async (resolve, reject) => {
+		const { app, router, store } = await createApp(context.api, context.server);
 
 		router.push(context.url);
 
 		router.onReady(() => {
+			context.rendered = () => {
+				context.state = store.state;
+			};
+
 			const matchedComponents = router.getMatchedComponents();
 
 			if (!matchedComponents.length) {
