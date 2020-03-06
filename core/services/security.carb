@@ -98,6 +98,53 @@ class Websom.Services.Security inherits Websom.Service {
 		}
 	}
 
+	bool authenticateRequest(Websom.Request req, Websom.Permission permission) {
+		if (permission.public)
+			return true;
+
+		if (this.server.userSystem != null) {
+			let user = this.server.userSystem.getUserFromRequest(req);
+			let permRoute = permission.name.split(".");
+
+			if (user != null) {
+				if (permission.user)
+					return true;
+				
+				if (user.role == "admin")
+					return true;
+
+				if (permission.author and user.role == "author")
+					return true;
+
+				if (permission.moderator and user.role == "moderator")
+					return true;
+
+				user.loadEntityArray(user.groups);
+
+				for (let int i in user.groups) {
+					let group = user.groups[i];
+
+					for (let int p in group.permissions) {
+						let splits = group.permissions[p].split(".");
+						
+						for (let int s in permRoute) {
+							let split = permRoute[s];
+
+							if (splits[s] == "*" or ((s == permRoute.length - 1) and (s == splits.length - 1))) {
+								return true;
+							}else if (s >= splits.length or splits[s] != split) {
+								s = permRoute.length;
+								continue;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
 	bool typeCheck(primitive value, string type) {
 		if (type == "integer") {
 			if (value.typeAsString() == "float") {
