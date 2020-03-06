@@ -23,6 +23,8 @@ class Websom.Server {
 	Websom.Services.Email email = null;
 	Websom.Services.Render render = null;
 	Websom.Services.Pack pack = null;
+	Websom.Services.Notification notification = null;
+	Websom.Services.Confirmation confirmation = null;
 	Websom.Services.Micro micro = null;
 	Websom.Services.Adaptation adaptation = null;
 	Websom.Services.API api = null;
@@ -37,6 +39,10 @@ class Websom.Server {
 
 	string scriptPath = "";
 	string websomRoot = "";
+
+	string apiHost = "https://localhost:8790";
+	string clientHost = "https://localhost:8080";
+	string websiteName = "Websom site";
 
 	Websom.Status status = new Websom.Status();
 
@@ -192,6 +198,10 @@ class Websom.Server {
 		this.email = new Websom.Services.Email(this);
 		this.micro = new Websom.Services.Micro(this);
 		this.render = new Websom.Services.Render(this);
+		this.notification = new Websom.Services.Notification(this);
+		this.confirmation = new Websom.Services.Confirmation(this);
+
+		this.status.inherit(this.confirmation.start());
 
 		this.status.inherit(this.session.start());
 		this.status.inherit(this.module.start());
@@ -219,6 +229,7 @@ class Websom.Server {
 		this.status.inherit(this.email.start());
 		this.status.inherit(this.micro.start());
 		this.status.inherit(this.render.start());
+		this.status.inherit(this.notification.start());
 
 		this.status.inherit(this.api.start());
 	}
@@ -286,7 +297,8 @@ class Websom.Server {
 			server.use(cookieParser());
 
 			server.options(/.*/, (req, res) => {
-				res.header("Access-Control-Origin-Allow", "*");
+				res.header("Access-Control-Allow-Origin", "*");
+				res.setHeader("Access-Control-Allow-Headers", "*");
 				res.setHeader("X-Powered-By", "Websom");
 				res.send("POST");
 			});
@@ -307,6 +319,8 @@ class Websom.Server {
 				websomRequest.jsRequest = req;
 				
 				res.setHeader("X-Powered-By", "Websom");
+				res.setHeader("Access-Control-Allow-Origin", "*");
+				res.setHeader("Access-Control-Allow-Headers", "*");
 
 				this.processAPIRequest(websomRequest);
 			});
@@ -335,7 +349,7 @@ class Websom.Server {
 				const nodeDevPlatform = require(_c_this.websomRoot + "/platform/node/index.js");
 				
 				if (!_c_this.config.headless)
-					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, uiPort);
+					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, uiPort, apiPort);
 				
 				this.startAPI(apiPort);
 			}
