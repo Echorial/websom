@@ -23,6 +23,28 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		return this.documentFromRaw(doc);
 	}
 
+	override <Websom.Adapters.Database.Document>array getAll(<string>array ids) {
+		this.lazilyGetCollection();
+
+		let <map>array docs = null;
+
+		native javascript {
+			docs = this.lokiCollection.find({
+				$loki: {"$in": ids}
+			});
+		}
+		
+		let outputs = new <Websom.Adapters.Database.Document>array();
+
+		for (let int i in docs) {
+			let doc = docs[i];
+			
+			outputs.push(this.documentFromRaw(doc));
+		}
+
+		return outputs;
+	}
+
 	override Websom.Adapters.Database.MetaDocument meta(string key) {
 		this.lazilyGetCollection();
 
