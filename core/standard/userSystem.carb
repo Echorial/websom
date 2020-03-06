@@ -3,9 +3,11 @@ namespace Websom.Standard.UserSystem {}
 header relative Websom.Standard.UserSystem.Module {
 	Websom.Adapters.Database.Collection users = null;
 	Websom.Adapters.Database.Collection logins = null;
+
+	Websom.Standard.UserSystem.User getUserFromRequest(Websom.Request req);
 }
 
-header relative Websom.Standard.UserSystem.User {
+header relative Websom.Standard.UserSystem.User extends Websom.Entity {
 	field string username = "";
 	field string email = "";
 	field string password = "";
@@ -20,6 +22,9 @@ header relative Websom.Standard.UserSystem.User {
 	field string country = "";
 	field string postCode = "";
 
+	`admin, author, moderator`
+	field string role = "";
+
 	field Websom.Time created = null;
 	field Websom.Time lastLogin = null;
 	field Websom.Time lastBan = null;
@@ -32,6 +37,8 @@ header relative Websom.Standard.UserSystem.User {
 
 	`If locked, login is not allowed.`
 	field bool locked = false;
+
+	field <Websom.Group>array groups = new <string>array();
 
 	[Collection]
 	<Websom.Standard.UserSystem.Login>array loginAttempts = null;
