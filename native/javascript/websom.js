@@ -34,6 +34,10 @@ Websom.Server = function () {var _c_this = this;
 
 	this.pack = null;
 
+	this.notification = null;
+
+	this.confirmation = null;
+
 	this.micro = null;
 
 	this.adaptation = null;
@@ -51,6 +55,12 @@ Websom.Server = function () {var _c_this = this;
 	this.scriptPath = "";
 
 	this.websomRoot = "";
+
+	this.apiHost = "https://localhost:8790";
+
+	this.clientHost = "https://localhost:8080";
+
+	this.websiteName = "Websom site";
 
 	this.status = new Websom.Status();
 
@@ -190,11 +200,14 @@ Websom.Server.prototype.logException = function () {var _c_this = this; var _c_r
 		_c_this.email = new Websom.Services.Email(_c_this);
 		_c_this.micro = new Websom.Services.Micro(_c_this);
 		_c_this.render = new Websom.Services.Render(_c_this);
+		_c_this.notification = new Websom.Services.Notification(_c_this);
+		_c_this.confirmation = new Websom.Services.Confirmation(_c_this);
+		_c_this.status.inherit(_c_this.confirmation.start());
 		_c_this.status.inherit(_c_this.session.start());
 		_c_this.status.inherit((await _c_this.module.start/* async call */()));
 		(await _c_this.database.loadAdapter/* async call */());
 		_c_this.status.inherit(_c_this.database.start());
-		_c_this.configService.loadFromDatabase();
+		(await _c_this.configService.loadFromDatabase/* async call */());
 		_c_this.status.inherit(_c_this.security.start());
 		_c_this.status.inherit(_c_this.resource.start());
 		_c_this.status.inherit(_c_this.view.start());
@@ -212,6 +225,7 @@ Websom.Server.prototype.logException = function () {var _c_this = this; var _c_r
 		_c_this.status.inherit(_c_this.email.start());
 		_c_this.status.inherit(_c_this.micro.start());
 		_c_this.status.inherit(_c_this.render.start());
+		_c_this.status.inherit((await _c_this.notification.start/* async call */()));
 		_c_this.status.inherit(_c_this.api.start());
 	}
 }
@@ -293,7 +307,7 @@ else 	if (arguments.length == 2 && (typeof arguments[0] == 'number' || typeof ar
 				const nodeDevPlatform = require(_c_this.websomRoot + "/platform/node/index.js");
 				
 				if (!_c_this.config.headless)
-					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, uiPort);
+					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, uiPort, apiPort);
 				
 				this.startAPI(apiPort);
 			
@@ -326,7 +340,8 @@ Websom.Server.prototype.startAPI = function () {var _c_this = this; var _c_root_
 			server.use(cookieParser());
 
 			server.options(/.*/, (req, res) => {
-				res.header("Access-Control-Origin-Allow", "*");
+				res.header("Access-Control-Allow-Origin", "*");
+				res.setHeader("Access-Control-Allow-Headers", "*");
 				res.setHeader("X-Powered-By", "Websom");
 				res.send("POST");
 			});
@@ -347,6 +362,8 @@ Websom.Server.prototype.startAPI = function () {var _c_this = this; var _c_root_
 				websomRequest.jsRequest = req;
 				
 				res.setHeader("X-Powered-By", "Websom");
+				res.setHeader("Access-Control-Allow-Origin", "*");
+				res.setHeader("Access-Control-Allow-Headers", "*");
 
 				this.processAPIRequest(websomRequest);
 			});
@@ -759,6 +776,10 @@ Websom.AdapterInterface = function () {var _c_this = this;
 					}
 				}
 			}
+		if (selectedClass == "") {
+			console.log("No adapter found for '" + _c_this.name + "'");
+			return null;
+			}
 		(await _c_this.load/* async call */(selectedModule, selectedClass));
 	}
 }
@@ -902,6 +923,27 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof ar
 		var chain = new Websom.APIChain(_c_this.server, route);
 		_c_this.chains.push(chain);
 		return chain;
+	}
+}
+
+Websom.Services.API.prototype.gatherEndpoints = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var mp = {};
+		for (var i = 0; i < _c_this.collections.length; i++) {
+			var collection = _c_this.collections[i];
+			for (var r = 0; r < collection.routes.length; r++) {
+				var route = collection.routes[r];
+				var key = collection.baseRoute + route.route;
+				var writes = {};
+				for (var w = 0; w < route.writes.length; w++) {
+					var write = route.writes[w];
+					writes[write.field] = write.exposeToClient();
+					}
+				mp[key] = {};
+				mp[key]["writes"] = writes;
+				}
+			}
+		return mp;
 	}
 }
 
@@ -1213,9 +1255,13 @@ Websom.Services.Config.prototype.getString = function () {var _c_this = this; va
 	}
 }
 
-Websom.Services.Config.prototype.loadFromDatabase = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Services.Config.prototype.loadFromDatabase = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
-
+		_c_this.server.api.route("/data", async function (req) {
+/*async*/
+			req.header("Content-Type", "application/json");
+			(await req.end/* async call */(Websom.Json.encode(_c_this.computeClientData())));
+			});
 	}
 }
 
@@ -1371,6 +1417,18 @@ Websom.Services.Config.prototype.fillDefaults = function () {var _c_this = this;
 	}
 }
 
+Websom.Services.Config.prototype.computeClientData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var mp = {};
+		mp["config"] = {};
+		mp["routes"] = {};
+		mp["endpoints"] = _c_this.server.api.gatherEndpoints();
+		mp["navigation"] = {};
+		mp["config"]["test"] = true;
+		return mp;
+	}
+}
+
 Websom.Services.Config.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -1384,6 +1442,61 @@ Websom.Services.Config.prototype.stop = function () {var _c_this = this; var _c_
 }
 
 Websom.Services.Config.prototype.end = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Confirmation = function () {var _c_this = this;
+	this.confirmation = null;
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+		_c_this.preStart();
+	}
+
+}
+
+Websom.Services.Confirmation.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+else 	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Confirmation.prototype.confirm = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var key = arguments[0];
+		return _c_this.confirmation.confirm(key);
+	}
+}
+
+Websom.Services.Confirmation.prototype.handleConfirmation = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var key = arguments[0];
+		var handler = arguments[1];
+		_c_this.confirmation.handleConfirmation(key, handler);
+	}
+}
+
+Websom.Services.Confirmation.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Confirmation.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Confirmation.prototype.end = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
 	}
@@ -2533,6 +2646,60 @@ Websom.Services.Module.prototype.stop = function () {var _c_this = this; var _c_
 }
 
 Websom.Services.Module.prototype.end = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Notification = function () {var _c_this = this;
+	this.emailAdapter = null;
+
+	this.email = null;
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+		_c_this.preStart();
+	}
+
+}
+
+Websom.Services.Notification.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.emailAdapter = _c_this.server.adapt("email");
+	}
+else 	if (arguments.length == 0) {
+
+	}
+}
+
+/*i async*/Websom.Services.Notification.prototype.loadAdapters = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+/*async*/
+		(await _c_this.emailAdapter.loadFromConfig/* async call */());
+		_c_this.email = _c_this.emailAdapter.adapter;
+	}
+}
+
+/*i async*/Websom.Services.Notification.prototype.start = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+/*async*/
+		(await _c_this.loadAdapters/* async call */());
+	}
+else 	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Notification.prototype.stop = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Services.Notification.prototype.end = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
 	}
@@ -4546,6 +4713,54 @@ Websom.Services.Security.prototype.request = function () {var _c_this = this; va
 	}
 }
 
+/*i async*/Websom.Services.Security.prototype.authenticateRequest = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Request) || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.Permission) || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var req = arguments[0];
+		var permission = arguments[1];
+/*async*/
+		if (permission.public) {
+			return true;
+			}
+		if (_c_this.server.userSystem != null) {
+/*async*/
+			var user = _c_this.server.userSystem.getUserFromRequest(req);
+			var permRoute = permission.name.split(".");
+			if (user != null) {
+/*async*/
+				if (permission.user) {
+					return true;
+					}
+				if (user.role == "admin") {
+					return true;
+					}
+				if (permission.author && user.role == "author") {
+					return true;
+					}
+				if (permission.moderator && user.role == "moderator") {
+					return true;
+					}
+				(await user.loadEntityArray/* async call */(user.groups));
+				for (var i = 0; i < user.groups.length; i++) {
+					var group = user.groups[i];
+					for (var p = 0; p < group.permissions.length; p++) {
+						var splits = group.permissions[p].split(".");
+						for (var s = 0; s < permRoute.length; s++) {
+							var split = permRoute[s];
+							if (splits[s] == "*" || ((s == permRoute.length - 1) && (s == splits.length - 1))) {
+								return true;
+								}else if (s >= splits.length || splits[s] != split) {
+								s = permRoute.length;
+								continue;
+								}
+							}
+						}
+					}
+				}
+			}
+		return false;
+	}
+}
+
 Websom.Services.Security.prototype.typeCheck = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 2 && ((arguments[0] instanceof Array || typeof arguments[0] == 'boolean' || typeof arguments[0] == 'string' || typeof arguments[0] == 'number' || typeof arguments[0] == 'number' || typeof arguments[0] == 'object' || typeof arguments[0] == 'string') || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
 		var value = arguments[0];
@@ -4895,7 +5110,9 @@ Websom.Services.View.prototype.start = function () {var _c_this = this; var _c_r
 				status.inherit(_c_this.loadViews(_c_this.server.config.root + "/views/"));
 				}
 			_c_this.moduleViews = _c_this.getModuleViews();
-			_c_this.buildCache();
+			if (_c_this.server.config.legacy) {
+				_c_this.buildCache();
+				}
 			}else{
 				_c_this.loadCache();
 			}
@@ -5575,6 +5792,12 @@ Websom.Restriction.prototype.name = function () {var _c_this = this; var _c_root
 	}
 }
 
+Websom.Restriction.prototype.exposeToClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		return {};
+	}
+}
+
 Websom.Restrictions = function () {var _c_this = this;
 
 
@@ -5617,6 +5840,16 @@ Websom.Restrictions.Limit.prototype.name = function () {var _c_this = this; var 
 	}
 }
 
+Websom.Restrictions.Limit.prototype.exposeToClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var mp = {};
+		mp["min"] = _c_this.min;
+		mp["max"] = _c_this.max;
+		mp["type"] = "limit";
+		return mp;
+	}
+}
+
 Websom.Restrictions.Limit.prototype.testClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -5632,6 +5865,7 @@ Websom.Restrictions.Limit.prototype.message = function () {var _c_this = this; v
 }
 
 Websom.Restrictions.Unique = function () {var _c_this = this;
+	this.uniqueRoute = "";
 
 	if (arguments.length == 0) {
 
@@ -5646,6 +5880,15 @@ Websom.Restrictions.Unique = function () {var _c_this = this;
 Websom.Restrictions.Unique.prototype.name = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 		return "Unique";
+	}
+}
+
+Websom.Restrictions.Unique.prototype.exposeToClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var mp = {};
+		mp["route"] = _c_this.uniqueRoute;
+		mp["type"] = "unique";
+		return mp;
 	}
 }
 
@@ -5692,6 +5935,15 @@ Websom.Restrictions.Format.prototype.name = function () {var _c_this = this; var
 	}
 }
 
+Websom.Restrictions.Format.prototype.exposeToClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var mp = {};
+		mp["format"] = _c_this.format;
+		mp["type"] = "format";
+		return mp;
+	}
+}
+
 Websom.Restrictions.Format.prototype.testClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 
@@ -5726,6 +5978,15 @@ else 	if (arguments.length == 0) {
 Websom.Restrictions.Regex.prototype.name = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 		return "Regex";
+	}
+}
+
+Websom.Restrictions.Regex.prototype.exposeToClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var mp = {};
+		mp["regex"] = _c_this.regex;
+		mp["type"] = "regex";
+		return mp;
 	}
 }
 
@@ -5779,6 +6040,12 @@ Websom.Restrictions.Function.prototype.message = function () {var _c_this = this
 		var fieldName = arguments[0];
 		var value = arguments[1];
 		return _c_this.name() + " failed on field " + fieldName + ".";
+	}
+}
+
+Websom.Restrictions.Function.prototype.exposeToClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		return {};
 	}
 }
 
@@ -5949,6 +6216,22 @@ Websom.CollectionInterfaceWrite = function () {var _c_this = this;
 		_c_this.defaultValue = defaultValue;
 	}
 
+}
+
+Websom.CollectionInterfaceWrite.prototype.exposeToClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var mp = {};
+		mp["type"] = _c_this.type;
+		mp["field"] = _c_this.field;
+		mp["default"] = _c_this.defaultValue;
+		var restrictions = [];
+		for (var i = 0; i < _c_this.restrictions.length; i++) {
+			var restriction = _c_this.restrictions[i];
+			restrictions.push(restriction.exposeToClient());
+			}
+		mp["restrictions"] = restrictions;
+		return mp;
+	}
 }
 
 Websom.CollectionInterfaceWriteSet = function () {var _c_this = this;
@@ -8262,6 +8545,38 @@ Websom.Entity = function () {var _c_this = this;
 
 }
 
+/*i async*/Websom.Entity.prototype.load = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+/*async*/
+		var doc = (await _c_this.collection.document/* async call */(_c_this.id));
+		(await _c_this.loadFromMap/* async call */(doc.data()));
+	}
+}
+
+/*i async*/Websom.Entity.prototype.loadEntityArray = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (arguments[0] instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var arr = arguments[0];
+/*async*/
+		if (arr.length > 0) {
+/*async*/
+			var collection = arr[0].collection;
+			var ids = [];
+			for (var i = 0; i < arr.length; i++) {
+				ids.push(arr[i].id);
+				}
+			var docs = (await collection.getAll/* async call */(ids));
+			for (var i = 0; i < docs.length; i++) {
+/*async*/
+				var doc = docs[i];
+				var entity = arr.find(function (ent) {
+					return ent.id == doc.id;
+					});
+				(await entity.loadFromMap/* async call */(doc.data()));
+				}
+			}
+	}
+}
+
 Websom.Entity.applySchema = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.linkToCollection(collection);
 		
@@ -8318,6 +8633,38 @@ Websom.Group = function () {var _c_this = this;
 
 	}
 
+}
+
+/*i async*/Websom.Group.prototype.load = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+/*async*/
+		var doc = (await _c_this.collection.document/* async call */(_c_this.id));
+		(await _c_this.loadFromMap/* async call */(doc.data()));
+	}
+}
+
+/*i async*/Websom.Group.prototype.loadEntityArray = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (arguments[0] instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var arr = arguments[0];
+/*async*/
+		if (arr.length > 0) {
+/*async*/
+			var collection = arr[0].collection;
+			var ids = [];
+			for (var i = 0; i < arr.length; i++) {
+				ids.push(arr[i].id);
+				}
+			var docs = (await collection.getAll/* async call */(ids));
+			for (var i = 0; i < docs.length; i++) {
+/*async*/
+				var doc = docs[i];
+				var entity = arr.find(function (ent) {
+					return ent.id == doc.id;
+					});
+				(await entity.loadFromMap/* async call */(doc.data()));
+				}
+			}
+	}
 }
 
 Websom.Group.applySchema = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -9163,8 +9510,15 @@ Websom.Module = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.registerWithServer();
 	}
 
+}
+
+Websom.Module.prototype.registerWithServer = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
 }
 
 Websom.Module.prototype.clientData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -9560,6 +9914,20 @@ Websom.Request.prototype.code = function () {var _c_this = this; var _c_root_met
 		var res = {};
 		res["status"] = "error";
 		res["message"] = errorMessage;
+		_c_this.header("Content-Type", "application/json");
+		(await _c_this.end/* async call */(Websom.Json.encode(res)));
+	}
+}
+
+/*i async*/Websom.Request.prototype.endWithComponent = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'object' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var component = arguments[0];
+		var context = arguments[1];
+/*async*/
+		var res = {};
+		res["status"] = "component";
+		res["component"] = component;
+		res["context"] = context;
 		_c_this.header("Content-Type", "application/json");
 		(await _c_this.end/* async call */(Websom.Json.encode(res)));
 	}
@@ -12517,6 +12885,13 @@ Websom.Adapters.Database.Collection.prototype.batch = function () {var _c_this =
 	}
 }
 
+/*i async*/Websom.Adapters.Database.Collection.prototype.getAll = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (arguments[0] instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var id = arguments[0];
+
+	}
+}
+
 /*i async*/Websom.Adapters.Database.Collection.prototype.meta = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var key = arguments[0];
@@ -12532,6 +12907,18 @@ Websom.Adapters.Database.Collection.prototype.entity = function () {var _c_this 
 		
 		
 		entity.collection = _c_this;
+	}
+}
+
+/*i async*/Websom.Adapters.Database.Collection.prototype.getEntity = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var id = arguments[0];
+/*async*/
+		var doc = (await _c_this.document/* async call */(id));
+		if (doc == null) {
+			return null;
+			}
+		return (await _c_this.makeEntity/* async call */(doc));
 	}
 }
 
@@ -12644,6 +13031,8 @@ Websom.Calculators = function () {var _c_this = this;
 }
 
 Websom.Calculator = function () {var _c_this = this;
+	this.collection = null;
+
 	this.getterName = "";
 
 
@@ -12683,6 +13072,8 @@ Websom.Calculator = function () {var _c_this = this;
 
 Websom.Calculators.Average = function () {var _c_this = this;
 	this.fieldName = "";
+
+	this.collection = null;
 
 	this.getterName = "";
 
@@ -12725,6 +13116,108 @@ Websom.Calculators.Average = function () {var _c_this = this;
 		var total = metaDoc.numberField(2);
 		var count = metaDoc.numberField(1);
 		return total / count;}
+
+Websom.Calculators.KeyCount = function () {var _c_this = this;
+	this.fieldName = "";
+
+	this.clusterType = "value";
+
+	this.collection = null;
+
+	this.getterName = "";
+
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var fieldName = arguments[0];
+		var clusterType = arguments[1];
+		_c_this.fieldName = fieldName;
+		_c_this.clusterType = clusterType;
+	}
+
+}
+
+/*i async*/Websom.Calculators.KeyCount.prototype.trackGroup = async function (key, change) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var metaDoc = (await _c_this.collection.meta/* async call */("key_count_" + key));
+		metaDoc.incrementNumberField(1, change);
+		(await metaDoc.update/* async call */());}
+
+/*i async*/Websom.Calculators.KeyCount.prototype.insert = async function (doc, collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.clusterType == "array") {
+/*async*/
+			var arr = doc.get(_c_this.fieldName);
+			if (arr != null) {
+/*async*/
+				for (var i = 0; i < arr.length; i++) {
+/*async*/
+					(await _c_this.trackGroup/* async call */(arr[i], 1));
+					}
+				}
+			}else{
+/*async*/
+				(await _c_this.trackGroup/* async call */(doc.get(_c_this.fieldName), 1));
+			}}
+
+/*i async*/Websom.Calculators.KeyCount.prototype.update = async function (oldDoc, newDoc, collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.clusterType == "array") {
+/*async*/
+			var oldArr = oldDoc.get(_c_this.fieldName);
+			var arr = newDoc.get(_c_this.fieldName);
+			for (var i = 0; i < oldArr.length; i++) {
+/*async*/
+				var curKey = oldArr[i];
+				if (arr.find(function (v) {
+					return curKey == v;
+					}) == null) {
+/*async*/
+					(await _c_this.trackGroup/* async call */(curKey, -1));
+					}
+				}
+			for (var i = 0; i < arr.length; i++) {
+/*async*/
+				var curKey = arr[i];
+				if (oldArr.find(function (v) {
+					return curKey == v;
+					}) == null) {
+/*async*/
+					(await _c_this.trackGroup/* async call */(curKey, 1));
+					}
+				}
+			}else{
+/*async*/
+				if (oldDoc.get(_c_this.fieldName) != newDoc.get(_c_this.fieldName)) {
+/*async*/
+					(await _c_this.trackGroup/* async call */(oldDoc.get(_c_this.fieldName), -1));
+					(await _c_this.trackGroup/* async call */(newDoc.get(_c_this.fieldName), 1));
+					}
+			}}
+
+/*i async*/Websom.Calculators.KeyCount.prototype.delete = async function (doc, collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.clusterType == "array") {
+/*async*/
+			var arr = doc.get(_c_this.fieldName);
+			for (var i = 0; i < arr.length; i++) {
+/*async*/
+				(await _c_this.trackGroup/* async call */(arr[i], -1));
+				}
+			}else{
+/*async*/
+				(await _c_this.trackGroup/* async call */(doc.get(_c_this.fieldName), -1));
+			}}
+
+/*i async*/Websom.Calculators.KeyCount.prototype.get = async function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return null;}
+
+/*i async*/Websom.Calculators.KeyCount.prototype.getCountOfKey = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var key = arguments[0];
+/*async*/
+		var meta = (await _c_this.collection.meta/* async call */("key_count_" + key));
+		return meta.numberField(1);
+	}
+}
 
 Websom.Adapters.Database.Index = function () {var _c_this = this;
 	this.fields = [];
@@ -12770,10 +13263,11 @@ Websom.Adapters.Database.Schema.prototype.field = function () {var _c_this = thi
 }
 
 Websom.Adapters.Database.Schema.prototype.calc = function () {var _c_this = this; var _c_root_method_arguments = arguments;
-	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.Calculator || (arguments[1] instanceof Websom.Calculators.Average)) || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.Calculator || (arguments[1] instanceof Websom.Calculators.Average) || (arguments[1] instanceof Websom.Calculators.KeyCount)) || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
 		var getterName = arguments[0];
 		var calculator = arguments[1];
 		calculator.getterName = getterName;
+		calculator.collection = _c_this.collection;
 		_c_this.calculators.push(calculator);
 		return _c_this;
 	}
@@ -13181,6 +13675,499 @@ Websom.Adapters.Database.BatchQuery.prototype.update = function () {var _c_this 
 /*async*/
 		return (await _c_this.collection.commitBatch/* async call */(_c_this));
 	}
+}
+
+Websom.Adapters.Email = function () {var _c_this = this;
+
+
+}
+
+Websom.Adapters.Email.Adapter = function () {var _c_this = this;
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+	}
+
+}
+
+Websom.Adapters.Email.Adapter.prototype.email = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		return new Websom.Adapters.Email.Email(_c_this);
+	}
+}
+
+/*i async*/Websom.Adapters.Email.Adapter.prototype.send = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Email.Email) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var email = arguments[0];
+
+	}
+}
+
+Websom.Adapters.Email.Adapter.prototype.template = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var title = arguments[0];
+		return new Websom.Adapters.Email.EmailTemplate(_c_this, title);
+	}
+}
+
+/*i async*/Websom.Adapters.Email.Adapter.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+/*i async*/Websom.Adapters.Email.Adapter.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Adapters.Email.SendResults = function () {var _c_this = this;
+	this.status = "";
+
+	this.message = "";
+
+	this.sent = 0;
+
+	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'number' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var status = arguments[0];
+		var message = arguments[1];
+		var sent = arguments[2];
+		_c_this.status = status;
+		_c_this.message = message;
+		_c_this.sent = sent;
+	}
+
+}
+
+Websom.Adapters.Email.Email = function () {var _c_this = this;
+	this.subject = "";
+
+	this.textBody = "";
+
+	this.htmlBody = "";
+
+	this.fromAddress = "";
+
+	this.fromName = "";
+
+	this.replyTo = "";
+
+	this.recipients = [];
+
+	this.cc = [];
+
+	this.bcc = [];
+
+	this.adapter = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Email.Adapter) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var adapter = arguments[0];
+		_c_this.adapter = adapter;
+	}
+
+}
+
+Websom.Adapters.Email.Email.prototype.setSubject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.subject = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.Email.prototype.setReplyTo = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.replyTo = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.Email.prototype.setTextBody = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.textBody = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.Email.prototype.setHtmlBody = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.htmlBody = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.Email.prototype.setFrom = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var address = arguments[0];
+		var name = arguments[1];
+		_c_this.fromAddress = address;
+		_c_this.fromName = name;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.Email.prototype.addRecipient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var address = arguments[0];
+		_c_this.recipients.push(address);
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.Email.prototype.addCCRecipient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var address = arguments[0];
+		_c_this.cc.push(address);
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.Email.prototype.addBCCRecipient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var address = arguments[0];
+		_c_this.bcc.push(address);
+		return _c_this;
+	}
+}
+
+/*i async*/Websom.Adapters.Email.Email.prototype.send = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+/*async*/
+		return (await _c_this.adapter.send/* async call */(_c_this));
+	}
+}
+
+Websom.Adapters.Email.Column = function () {var _c_this = this;
+	this.content = [];
+
+	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Adapters.Email.Row = function () {var _c_this = this;
+	this.columns = [];
+
+	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Adapters.Email.EmailTemplate = function () {var _c_this = this;
+	this.adapter = null;
+
+	this.title = "";
+
+	this.plainText = "";
+
+	this.rows = [];
+
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Adapters.Email.Adapter) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var adapter = arguments[0];
+		var title = arguments[1];
+		_c_this.adapter = adapter;
+		_c_this.title = title;
+	}
+
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.email = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		return _c_this.adapter.email().setHtmlBody(_c_this.getHtml()).setTextBody(_c_this.getPlain());
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.getHtml = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var rows = [];
+		for (var i = 0; i < _c_this.rows.length; i++) {
+			var row = _c_this.rows[i];
+			var cols = [];
+			for (var j = 0; j < row.columns.length; j++) {
+				cols.push("<td>" + row.columns[j].content.join("") + "</td>");
+				}
+			rows.push("<tr>" + cols.join("") + "</tr>");
+			}
+		return _c_this.htmlTemplate(_c_this.title, rows.join(""));
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.getPlain = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		return _c_this.plainText;
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.plain = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var content = arguments[0];
+		_c_this.plainText = content;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.row = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.rows.push(new Websom.Adapters.Email.Row());
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.column = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		_c_this.rows[_c_this.rows.length - 1].columns.push(new Websom.Adapters.Email.Column());
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.button = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var label = arguments[0];
+		var href = arguments[1];
+		var columns = _c_this.rows[_c_this.rows.length - 1].columns;
+		columns[columns.length - 1].content.push("<p><a href=\"" + href + "\">" + label + "</a></p>");
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.paragraph = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var content = arguments[0];
+		var columns = _c_this.rows[_c_this.rows.length - 1].columns;
+		columns[columns.length - 1].content.push("<p>" + content + "</p>");
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.raw = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var html = arguments[0];
+		var columns = _c_this.rows[_c_this.rows.length - 1].columns;
+		columns[columns.length - 1].content.push(html);
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Email.EmailTemplate.prototype.htmlTemplate = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var title = arguments[0];
+		var rows = arguments[1];
+		return "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\r\n		<html xmlns=\"http://www.w3.org/1999/xhtml\">\r\n			<head>\r\n				<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>\r\n				<meta name=\"format-detection\" content=\"telephone=no\"> \r\n				<meta name=\"viewport\" content=\"width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=no;\">\r\n				<meta http-equiv=\"X-UA-Compatible\" content=\"IE=9; IE=8; IE=7; IE=EDGE\" />\r\n\r\n				<title>" + title + "</title>\r\n\r\n				<style type=\"text/css\"> \r\n					@media screen and (max-width: 630px) {\r\n\r\n					}\r\n				</style>\r\n			</head>\r\n\r\n			<body style=\"padding:0; margin:0\">\r\n\r\n			<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin: 0; padding: 0\" width=\"100%\">\r\n				<tr>\r\n					<td align=\"center\" valign=\"top\">\r\n						" + rows + "\r\n					</td>\r\n				</tr>\r\n			</table>\r\n\r\n			</body>\r\n		</html>";
+	}
+}
+
+Websom.Adapters.Confirmation = function () {var _c_this = this;
+
+
+}
+
+Websom.Adapters.Confirmation.Adapter = function () {var _c_this = this;
+	this.handlers = [];
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+	}
+
+}
+
+Websom.Adapters.Confirmation.Adapter.prototype.confirm = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var key = arguments[0];
+		return new Websom.Adapters.Confirmation.Confirmation(_c_this, key);
+	}
+}
+
+Websom.Adapters.Confirmation.Adapter.prototype.handleConfirmation = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var key = arguments[0];
+		var handler = arguments[1];
+		_c_this.handlers.push(new Websom.Adapters.Confirmation.Handler(key, handler));
+	}
+}
+
+/*i async*/Websom.Adapters.Confirmation.Adapter.prototype.dispatch = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Confirmation.Confirmation) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var confirmation = arguments[0];
+
+	}
+}
+
+/*i async*/Websom.Adapters.Confirmation.Adapter.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+/*i async*/Websom.Adapters.Confirmation.Adapter.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+Websom.Adapters.Confirmation.Handler = function () {var _c_this = this;
+	this.key = "";
+
+	this.handler = null;
+
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var key = arguments[0];
+		var handler = arguments[1];
+		_c_this.key = key;
+		_c_this.handler = handler;
+	}
+
+}
+
+Websom.Adapters.Confirmation.Execution = function () {var _c_this = this;
+	this.key = "";
+
+	this.storage = null;
+
+	this.request = null;
+
+	if (arguments.length == 3 && ((arguments[0] instanceof Websom.Request) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'object' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var req = arguments[0];
+		var key = arguments[1];
+		var storage = arguments[2];
+		_c_this.request = req;
+		_c_this.key = key;
+		_c_this.storage = storage;
+	}
+
+}
+
+Websom.Adapters.Confirmation.Confirmation = function () {var _c_this = this;
+	this.adapter = null;
+
+	this.key = "";
+
+	this.emailSubject = "";
+
+	this.confirmationMessage = "";
+
+	this.notificationService = "direct";
+
+	this.method = "link";
+
+	this.storage = null;
+
+	this.recipient = "";
+
+	this.ip = "";
+
+	this.ttl = 1000 * 60 * 60;
+
+	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Adapters.Confirmation.Adapter) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var adapter = arguments[0];
+		var key = arguments[1];
+		_c_this.adapter = adapter;
+		_c_this.key = key;
+	}
+
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.subject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.emailSubject = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.message = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.confirmationMessage = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.store = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.storage = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.via = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.notificationService = val;
+		return _c_this;
+	}
+}
+
+/*i async*/Websom.Adapters.Confirmation.Confirmation.prototype.dispatch = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+/*async*/
+		return (await _c_this.adapter.dispatch/* async call */(_c_this));
+	}
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.using = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.method = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.to = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var val = arguments[0];
+		_c_this.recipient = val;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.createdBy = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var ip = arguments[0];
+		_c_this.ip = ip;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Confirmation.Confirmation.prototype.expiresAfter = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'number' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var ms = arguments[0];
+		_c_this.ttl = ms;
+		return _c_this;
+	}
+}
+
+Websom.Adapters.Confirmation.ConfirmationResults = function () {var _c_this = this;
+	this.secret = "";
+
+	this.url = "";
+
+	this.status = "";
+
+	this.message = "";
+
+	if (arguments.length == 4 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'string' || typeof arguments[2] == 'undefined' || arguments[2] === null) && (typeof arguments[3] == 'string' || typeof arguments[3] == 'undefined' || arguments[3] === null)) {
+		var secret = arguments[0];
+		var url = arguments[1];
+		var status = arguments[2];
+		var message = arguments[3];
+		_c_this.secret = secret;
+		_c_this.url = url;
+		_c_this.status = status;
+		_c_this.message = message;
+	}
+
 }
 
 Websom.EndpointHandler = function () {var _c_this = this;
