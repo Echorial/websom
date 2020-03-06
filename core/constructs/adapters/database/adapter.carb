@@ -105,6 +105,9 @@ header class Websom.Adapters.Database.Collection {
 	Websom.Adapters.Database.Document document(string id) {}
 
 	[ForceAsync]
+	<Websom.Adapters.Database.Document>array getAll(<string>array id) {}
+
+	[ForceAsync]
 	Websom.Adapters.Database.MetaDocument meta(string key) {}
 
 	Websom.Entity entity() {
@@ -290,6 +293,7 @@ header class Websom.Calculators.KeyCount inherits Websom.Calculator {
 		if (this.clusterType == "array") {
 			let <string>array arr = doc.get(this.fieldName);
 			
+			if (arr != null)
 			for (let int i in arr) {
 				this.trackGroup(arr[i], 1);
 			}
