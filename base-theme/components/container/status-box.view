@@ -1,0 +1,85 @@
+info {
+	"name": "status-box",
+	"type": "component"
+}
+
+template {
+	<div :class="'status-box status-box-' + visibleStatus + ' ' + visibleStatus">
+		<div class="status-box-icon">
+			<icon :icon="visibleStatus" />
+		</div>
+
+		<div class="status-box-message">{{message}}</div>
+
+		<div v-if="dismissable" class="status-box-dismiss" @click="dismiss()">
+			<icon :icon="dismissIcon" />
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			status: {
+				type: String,
+				default: "info"
+			},
+			message: {
+				type: String,
+				default: "Default Status Box Message"
+			},
+			dismissable: {
+				type: Boolean,
+				default: false
+			},
+			dismissIcon: {
+				type: String,
+				default: "close"
+			}
+		},
+		methods: {
+			dismiss() {
+				
+			}
+		},
+		computed: {
+			visibleStatus() {
+				return this.status == "error" ? "danger" : this.status;
+			}
+		}
+	}
+}
+
+style {
+	.status-box {
+		display: flex;
+		flex-direction: row;
+
+		background: var(--color);
+
+		padding: var(--base-size);
+
+		margin: var(--base-size) 0;
+
+		.status-box-message {
+			flex: 1;
+
+			display: flex;
+			align-items: center;
+
+			color: var(--contrast);
+		}
+
+		.status-box-icon {
+			//min-width: calc(var(--base-size) * 3);
+
+			padding-right: var(--base-size);
+
+			display: flex;
+			align-items: center;
+			justify-content: center;
+
+			color: var(--contrast);
+		}
+	}
+}
