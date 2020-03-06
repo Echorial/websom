@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<div class="input-text" :style="'--line-count: ' + lines" :class="{['text-' + type]: true, focus: focus, placeholder: myValue.length == 0, icon, 'icon-left': side != 'right', 'icon-right': side == 'right'}">
+	<div class="input-text form-field" :style="'--line-count: ' + lines" :class="{'input-text-invalid input-invalid': error, ['text-' + type]: true, focus: focus, placeholder: myValue.length == 0, icon, 'icon-left': side != 'right', 'icon-right': side == 'right', 'input-error': error, 'input-success': success}">
 		<div class="input-text-wrap">
 			<div class="input-text-before"></div>
 			<label class="input-text-placeholder">{{placeholder}}</label>
@@ -14,6 +14,13 @@ template {
 			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
 			<div class="input-text-after"></div>
 		</div>
+
+		<popover v-if="error && errorMessage" :activated="displayingInvalidPopover" :activate-on-hover="!displayingInvalidPopover" edge="left">
+			{{errorMessage}}
+		</popover>
+		<popover v-else-if="error && displayingInvalidPopover" :activated="true" :activate-on-hover="false" edge="left">
+			Invalid
+		</popover>
 	</div>
 }
 
@@ -39,24 +46,93 @@ script {
 			type: {
 				type: String,
 				default: "text"
+			},
+			validate: {
+				type: [String, Function],
+				default: ""
 			}
 		},
 		data() {
 			return {
 				focus: false,
-				myValue: this.value || ""
+				myValue: this.value || "",
+				success: false,
+				error: false,
+				errorMessage: "",
+				displayingInvalidPopover: false
 			};
 		},
 		methods: {
+			async checkValidation() {
+				if (typeof this.validate == "function") {
+					let res = await this.validate(this.myValue);
+					
+					if (res === false || typeof res == "string") {
+						this.error = true;
+						this.success = false;
+
+						if (typeof res == "string")
+							this.errorMessage = res;
+						
+						return false;
+					}else{
+						this.error = false;
+						this.success = true;
+
+						return true;
+					}
+				}
+
+				if (this.validate.length > 0) {
+					let splits = this.validate.split(".");
+					let endpoint = this.$store.state.websom.data.endpoints[splits[0]];
+					let field = splits[1];
+
+					if (endpoint && endpoint.writes[field]) {
+						field = endpoint.writes[field];
+
+						for (let r of field.restrictions) {
+							let res = await this.$store.state.websom.validators[r.type](r, this.myValue);
+
+							if (res === false || typeof res == "string") {
+								this.error = true;
+								this.success = false;
+
+								if (typeof res == "string")
+									this.errorMessage = res;
+
+								return false;
+							}
+								
+						}
+					}
+
+					this.success = true;
+					this.error = false;
+
+					return true;
+				}
+				
+				return true;
+			},
 			input() {
+				this.displayingInvalidPopover = false;
+
+				this.checkValidation();
+
 				if (this.type == "number")
 					this.$emit("input", parseFloat(this.myValue));
 				else
 					this.$emit("input", this.myValue);
+			},
+			showErrorMessage() {
+				this.displayingInvalidPopover = true;
 			}
 		},
 		watch: {
 			value() {
+				this.displayingInvalidPopover = false;
+
 				this.myValue = this.value;
 			}
 		},
@@ -79,6 +155,32 @@ style {
 		&.placeholder {
 			.input-text-placeholder {
 				opacity: 1;
+			}
+		}
+
+		&.input-error {
+			&.icon .input-text-icon {
+				background: var(--danger);
+				color: var(--danger-contrast);
+			}
+
+			.input-text-wrap {
+				input {
+					color: var(--danger);
+				}
+			}
+		}
+
+		&.input-success {
+			&.icon .input-text-icon {
+				background: var(--success);
+				color: var(--success-contrast);
+			}
+
+			.input-text-wrap {
+				input {
+					color: var(--success);
+				}
 			}
 		}
 
