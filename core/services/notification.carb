@@ -1,0 +1,19 @@
+class Websom.Services.Notification inherits Websom.Service {
+	Websom.AdapterInterface emailAdapter = null;
+
+	Websom.Adapters.Email.Adapter email = null;
+
+	void preStart() {
+		this.emailAdapter = this.server.adapt("email");
+	}
+
+	void loadAdapters() {
+		this.emailAdapter.loadFromConfig();
+
+		this.email = this.emailAdapter.adapter;
+	}
+
+	Websom.Status start() {
+		this.loadAdapters();
+	}
+}
