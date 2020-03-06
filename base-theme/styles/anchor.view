@@ -1,0 +1,13 @@
+info {
+	"name": "anchor",
+	"type": "style",
+	"force": true
+}
+
+style {
+	a {
+		text-decoration: none;
+		color: var(--color);
+		cursor: pointer;
+	}
+}
