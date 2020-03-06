@@ -6,10 +6,36 @@ header class Websom.Entity {
 
 	}
 
+	override void load() {
+		let doc = this.collection.document(this.id);
+
+		this.loadFromMap(doc.data());
+	}
+
+	override void loadEntityArray(<Websom.Entity>array arr) {
+		if (arr.length > 0) {
+			let collection = arr[0].collection;
+
+			let ids = new <string>array();
+
+			for (let int i in arr)
+				ids.push(arr[i].id);
+
+			let docs = collection.getAll(ids);
+
+			for (let int i in docs) {
+				let doc = docs[i];
+				let entity = arr.find(bool (Websom.Entity ent) => { return ent.id == doc.id; });
+
+				entity.loadFromMap(doc.data());
+			}
+		}
+	}
+
 	// This is implemented in the build script below.
 	// Websom.Adapters.Database.Schema getSchema(Websom.Adapters.Database.Collection collection);
 
-	trust fixed Websom.Adapters.Database.Schema applySchema(Websom.Adapters.Database.Collection collection) {
+	override trust fixed Websom.Adapters.Database.Schema applySchema(Websom.Adapters.Database.Collection collection) {
 		this.linkToCollection(collection);
 
 		native javascript {
@@ -21,7 +47,7 @@ header class Websom.Entity {
 		}
 	}
 
-	trust fixed void linkToCollection(Websom.Adapters.Database.Collection collection) {
+	override trust fixed void linkToCollection(Websom.Adapters.Database.Collection collection) {
 		native javascript {
 			collection.entityTemplate = this;
 		}
@@ -32,7 +58,7 @@ header class Websom.Entity {
 	}
 
 	[ForceAsync]
-	void loadFromMap(map data) {
+	override void loadFromMap(map data) {
 		native javascript {
 			for (let k in data) {
 				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
@@ -98,7 +124,9 @@ let buildFieldForMember = void (Carbon.Class cls, Carbon.Property prop) => {
 let entities = [];
 
 Carbon.on("inherits.Websom.Entity", void (Carbon.Class base, Carbon.Class cls) => {
-	entities.push(cls);
+	if (Carbon.platform != "header") {
+		entities.push(cls);
+	}
 });
 
 Carbon.on("classes.end", void () => {
@@ -116,7 +144,7 @@ Carbon.on("classes.end", void () => {
 			}
 		}
 
-		let method = "trust fixed Websom.Adapters.Database.Schema getSchema(Websom.Adapters.Database.Collection collection) {return collection.schema()" + fields.join("") + ";}";
+		let method = "trust override fixed Websom.Adapters.Database.Schema getSchema(Websom.Adapters.Database.Collection collection) {return collection.schema()" + fields.join("") + ";}";
 		
 		Carbon.Method.eval(method, entity);
 	}
