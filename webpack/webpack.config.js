@@ -145,7 +145,7 @@ module.exports = (websomServer) => {
 					loader: "url-loader?limit=20000&mimetype=application/font-woff"
 				},
 				{
-					test: /\.(ttf|eot|svg)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
+					test: /\.(ttf|eot|png|svg|jpg|gif|jpeg|webp|webm)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
 					loader: "file-loader"
 				}
 			]
