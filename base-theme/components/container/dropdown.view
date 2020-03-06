@@ -19,6 +19,10 @@ script {
 			edge: {
 				type: String,
 				default: "bottom"
+			},
+			closeOnClick: {
+				type: Boolean,
+				default: true
 			}
 		},
 		data() {
@@ -54,7 +58,7 @@ script {
 				let rect = this.$el.parentElement.getBoundingClientRect();
 
 				this.left = rect.left;
-				this.top = rect.top;
+				this.top = rect.bottom;
 
 				if (this.edge == "right") {
 					this.left += rect.width;
@@ -72,15 +76,23 @@ script {
 					+ styleMap.get("margin-bottom").value
 					+ styleMap.get("padding-top").value
 					+ styleMap.get("padding-bottom").value;
+
+				let width = listRect.width
+					+ styleMap.get("margin-left").value
+					+ styleMap.get("margin-right").value
+					+ styleMap.get("padding-left").value
+					+ styleMap.get("padding-right").value;
 				
 				if (this.top + height > window.innerHeight) {
 					this.top -= height;
 				}
+
+				if (this.left + width > window.innerWidth) {
+					this.left -= ((this.left + width) - rect.right);
+				}
 			},
 			computeWidth() {
-				console.log(this.$el.parentElement);
 				this.width = this.$el.parentElement.getBoundingClientRect().width;
-				console.log(this.width);
 			}
 		},
 		mounted() {
@@ -98,10 +110,10 @@ script {
 				let closestList = e.target.closest(".dropdown-list");
 				if (this.$refs.list == closestList)
 					clickedOnParent = true;
-				
-				console.log(clickedOnParent);
 
 				if (!clickedOnParent)
+					this.close();
+				else if (this.closeOnClick)
 					this.close();
 			});
 		}
@@ -122,7 +134,7 @@ style {
 
 		flex-direction: column;
 
-		margin-top: var(--base-height);
+		//margin-top: var(--base-height);
 
 		z-index: var(--z-overlay);
 
