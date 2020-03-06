@@ -10,11 +10,21 @@ CoreModule = function () {var _c_this = this;
 CoreModule.Module = function () {var _c_this = this;
 	this.test = null;
 
+	this.groups = null;
+
+	this.confirmations = null;
+
 	this.commentEdit = null;
 
 	this.commentCreate = null;
 
 	this.commentRead = null;
+
+	this.groupRead = null;
+
+	this.groupCreate = null;
+
+	this.groupEdit = null;
 
 	this.server = null;
 
@@ -45,6 +55,7 @@ CoreModule.Module = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var server = arguments[0];
 		_c_this.server = server;
+		_c_this.registerWithServer();
 	}
 
 }
@@ -61,6 +72,9 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		_c_this.registerPermission(_c_this.commentEdit);
 		_c_this.registerPermission(_c_this.commentCreate);
 		_c_this.registerPermission(_c_this.commentRead);
+		_c_this.groupRead = _c_this.registerPermission("Group.Read").setDescription("Allows users to read permission group information.");
+		_c_this.groupCreate = _c_this.registerPermission("Group.Create").setDescription("Allows users to create permission groups. WARNING This is an admin level permission.");
+		_c_this.groupEdit = _c_this.registerPermission("Group.Edit").setDescription("Allows users to edit permission groups. WARNING This is an admin level permission.");
 	}
 }
 
@@ -68,6 +82,15 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 	if (arguments.length == 0) {
 /*async*/
 		var db = _c_this.server.database.central;
+		_c_this.confirmations = db.collection("confirmations");
+		var confirmationSchema = _c_this.confirmations.schema().field("secret", "string").field("key", "string").field("ip", "string").field("created", "time").field("storage", "string").field("expires", "time").field("confirmed", "boolean").field("service", "string").field("method", "string").field("to", "string");
+		(await _c_this.registerCollection/* async call */(_c_this.confirmations));
+		_c_this.groups = db.collection("groups");
+		Websom.Group.applySchema(_c_this.groups);
+		(await _c_this.registerCollection/* async call */(_c_this.groups));
+		_c_this.server.api.interface(_c_this.groups, "/groups").route("/create").auth(_c_this.groupCreate).executes("insert").write("name").write("description").write("permissions").write("rules").write("public").write("user").setComputed("created", function (req) {
+			return Websom.Time.now();
+			}).route("/find").auth(_c_this.groupRead).executes("select").read("*").filter("default").order("created", "dsc").route("/read").auth(_c_this.groupRead).executes("select").read("*").filter("default").field("id", "==");
 		_c_this.test = db.collection("test");
 		var schema = _c_this.test.schema().field("name", "string").field("balance", "float").calc("averageBalance", new Websom.Calculators.Average("balance")).index().field("name", "==").field("balance", "dsc");
 		(await _c_this.registerCollection/* async call */(_c_this.test));
@@ -75,6 +98,14 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		(await _c_this.test.insert().set("name", "Hello").set("balance", Math.sin(x)).run/* async call */());
 		var res = (await _c_this.test.where("name", "==", "Hello").get/* async call */());
 		_c_this.server.api.interface(_c_this.test, "/testing").route("/create").auth(_c_this.commentCreate).executes("insert").write("name").limit(3, 256).set("balance", 0).route("/edit").auth(_c_this.commentEdit).executes("update").write("name").filter("default").field("id", "==").route("/find").auth(_c_this.commentRead).executes("select").read("name").read("balance").filter("default").field("name", "==").force("balance", "<", 100).order("balance", "dsc");
+	}
+}
+
+CoreModule.Module.prototype.registerWithServer = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		var adapter = new CoreModule.Confirmation(_c_this.server);
+		adapter.module = _c_this;
+		_c_this.server.confirmation.confirmation = adapter;
 	}
 }
 
@@ -131,6 +162,12 @@ CoreModule.Module.prototype.registerPermission = function () {var _c_this = this
 		var permission = arguments[0];
 		_c_this.registeredPermissions.push(permission);
 	}
+else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var permission = arguments[0];
+		var perm = new Websom.Permission(permission);
+		_c_this.registeredPermissions.push(perm);
+		return perm;
+	}
 }
 
 CoreModule.Module.prototype.setupData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -158,24 +195,6 @@ CoreModule.Module.prototype.setupBridges = function () {var _c_this = this; var 
 	if (arguments.length == 0) {
 		var bridges = [];
 		return bridges;
-	}
-}
-
-Person = function () {var _c_this = this;
-	this.firstName = "";
-
-	this.lastName = "";
-
-	this.age = 0;
-
-
-}
-
-Person.prototype.getSchema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
-	if (arguments.length == 0) {
-		var s = new Websom.Adapters.Database.Schema(null);
-		s.field("firstName", "string").field("lastName", "string").field("age", "int");
-		return s;
 	}
 }
 
@@ -254,6 +273,25 @@ CoreModule.LokiCollection.prototype.lazilyGetCollection = function () {var _c_th
 			return null;
 			}
 		return _c_this.documentFromRaw(doc);
+	}
+}
+
+/*i async*/CoreModule.LokiCollection.prototype.getAll = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (arguments[0] instanceof Array || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var ids = arguments[0];
+		_c_this.lazilyGetCollection();
+		var docs = null;
+		
+			docs = this.lokiCollection.find({
+				$loki: {"$in": ids}
+			});
+		
+		var outputs = [];
+		for (var i = 0; i < docs.length; i++) {
+			var doc = docs[i];
+			outputs.push(_c_this.documentFromRaw(doc));
+			}
+		return outputs;
 	}
 }
 
@@ -551,6 +589,18 @@ CoreModule.LokiCollection.prototype.entity = function () {var _c_this = this; va
 	}
 }
 
+/*i async*/CoreModule.LokiCollection.prototype.getEntity = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var id = arguments[0];
+/*async*/
+		var doc = (await _c_this.document/* async call */(id));
+		if (doc == null) {
+			return null;
+			}
+		return (await _c_this.makeEntity/* async call */(doc));
+	}
+}
+
 CoreModule.LokiDB = function () {var _c_this = this;
 	this.loki = null;
 
@@ -734,6 +784,167 @@ CoreModule.MetaDocument.prototype.arrayField = function () {var _c_this = this; 
 
 			this.collection.lokiCollection.update(this.raw);
 		
+	}
+}
+
+CoreModule.SendGrid = function () {var _c_this = this;
+	this.sendGrid = null;
+
+	this.route = "adapter.database.sendGrid";
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+	}
+
+}
+
+/*i async*/CoreModule.SendGrid.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+CoreModule.SendGrid.prototype.loadSendGrid = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		
+			if (!this.sendGrid) {
+				this.sendGrid = require("@sendgrid/mail");
+				this.sendGrid.setApiKey(this.server.getConfigString(this.route, "apiKey"));
+			}
+		
+	}
+}
+
+/*i async*/CoreModule.SendGrid.prototype.send = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Email.Email) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var email = arguments[0];
+		
+			try {
+				await this.sendGrid.send({
+					to: email.recipients,
+					from: email.fromAddress,
+					fromname: email.fromName,
+					text: email.textBody,
+					html: email.htmlBody,
+					subject: email.subject,
+					cc: email.cc,
+					bcc: email.bcc,
+					replyto: email.replyTo
+				});
+
+				return new Websom.Adapters.Email.SendResults("success", "Email sent", email.recipients.length);
+			} catch (e) {
+				return new Websom.Adapters.Email.SendResults("error", e.toString(), 0);
+			}
+		
+	}
+}
+
+CoreModule.SendGrid.prototype.email = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+		return new Websom.Adapters.Email.Email(_c_this);
+	}
+}
+
+CoreModule.SendGrid.prototype.template = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var title = arguments[0];
+		return new Websom.Adapters.Email.EmailTemplate(_c_this, title);
+	}
+}
+
+/*i async*/CoreModule.SendGrid.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+CoreModule.Confirmation = function () {var _c_this = this;
+	this.route = "adapter.confirmation";
+
+	this.module = null;
+
+	this.handlers = [];
+
+	this.server = null;
+
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var server = arguments[0];
+		_c_this.server = server;
+	}
+
+}
+
+/*i async*/CoreModule.Confirmation.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
+	}
+}
+
+/*i async*/CoreModule.Confirmation.prototype.dispatch = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Confirmation.Confirmation) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var confirmation = arguments[0];
+/*async*/
+		var secret = _c_this.server.crypto.getRandomHex(255);
+		var url = _c_this.server.apiHost + "/confirmations/confirm/" + secret;
+		var results = new Websom.Adapters.Confirmation.ConfirmationResults(secret, url, "success", "Confirmation created");
+		_c_this.module.confirmations.insert().set("secret", secret).set("key", confirmation.key).set("ip", confirmation.ip).set("created", Websom.Time.now()).set("storage", Websom.Json.encode(confirmation.storage)).set("expires", Websom.Time.now() + confirmation.ttl).set("confirmed", false).set("service", confirmation.notificationService).set("method", confirmation.method).set("to", confirmation.recipient);
+		if (confirmation.notificationService == "direct") {
+			return results;
+			}else if (confirmation.notificationService == "email") {
+/*async*/
+			if (confirmation.method == "link") {
+/*async*/
+				(await _c_this.sendLinkEmail/* async call */(url, confirmation));
+				}else if (confirmation.method == "code") {
+
+				}
+			return results;
+			}else if (confirmation.notificationService == "sms") {
+
+			}
+		return new Websom.Adapters.Confirmation.ConfirmationResults("", "", "error", "Invalid notificationService");
+	}
+else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Confirmation.Confirmation) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var confirmation = arguments[0];
+
+	}
+}
+
+/*i async*/CoreModule.Confirmation.prototype.sendLinkEmail = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.Adapters.Confirmation.Confirmation) || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var url = arguments[0];
+		var confirmation = arguments[1];
+/*async*/
+		var from = _c_this.server.getConfigString("adapters.confirmation", "fromEmail");
+		if (from == "") {
+			from = "no-reply@example.com";
+			}
+		(await _c_this.server.notification.email.template("confirmation").row().column().column().paragraph(confirmation.confirmationMessage).button("Confirm", url).column().email().addRecipient(confirmation.recipient).setFrom(from, _c_this.server.websiteName).setSubject(confirmation.emailSubject).send/* async call */());
+	}
+}
+
+CoreModule.Confirmation.prototype.confirm = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var key = arguments[0];
+		return new Websom.Adapters.Confirmation.Confirmation(_c_this, key);
+	}
+}
+
+CoreModule.Confirmation.prototype.handleConfirmation = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var key = arguments[0];
+		var handler = arguments[1];
+		_c_this.handlers.push(new Websom.Adapters.Confirmation.Handler(key, handler));
+	}
+}
+
+/*i async*/CoreModule.Confirmation.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
 	}
 }
 
