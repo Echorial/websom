@@ -63,6 +63,8 @@ script {
                                                
 %c        WEBSOM DEVELEPOMENT MODE    `
 			, "color: lime; background: linear-gradient(90deg, rgba(69, 120, 69, 1) 7%, rgba(69, 120, 94, .5) 7%, rgba(69, 120, 94, .5) 14%, rgba(69, 131, 94, 0) 14%);", "background: linear-gradient(90deg, rgba(69, 120, 94, 0.8) 7%, rgba(69, 120, 94, .4) 7%, rgba(69, 120, 94, .4) 100%, rgba(69, 131, 94, 0) 100%); color: white; font-size: 16px; line-height: 48px;");
+
+			console.log("Websom API: " + this.$store.state.websom.api);
 		},
 		computed: {
 			classes() {
