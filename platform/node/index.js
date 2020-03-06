@@ -2,8 +2,8 @@ const open = require("open");
 
 const createServer = require("../../webpack/server");
 
-async function startWebsomDevelopmentServer(server, port) {
-	let expressApp = await createServer(server);
+async function startWebsomDevelopmentServer(server, port, apiPort) {
+	let expressApp = await createServer(server, "http://localhost:" + apiPort);
 
 	expressApp.listen(port);
 

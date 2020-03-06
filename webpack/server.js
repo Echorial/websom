@@ -1,7 +1,6 @@
 const Vue = require("vue");
 const fs = require("fs");
 const express = require("express");
-const app = express();
 
 const path = require("path");
 
@@ -9,11 +8,16 @@ const template = require("./template.js");
 
 const wpkmd = require("webpack-dev-middleware");
 
+const compression = require('compression');
+
 const webpack = require("webpack");
 
 const { createBundleRenderer } = require("vue-server-renderer");
 
-module.exports = async (websomServer) => {
+module.exports = async (websomServer, apiServer) => {
+	const app = express();
+	app.use(compression());
+
 	const config = require("./webpack.client.config")(websomServer);
 	const serverConfig = require("./webpack.server.config.js")(websomServer);
 
@@ -118,7 +122,16 @@ module.exports = async (websomServer) => {
 	};
 
 	app.get("*", (req, res) => {
-		const context = { url: req.url };
+		const context = { 
+			url: req.url,
+			api: apiServer,
+			server: websomServer,
+			renderHeadElements() {
+				return `
+					<meta name="description" content="Websom page."/>
+				`;
+			}
+		};
 
 		renderer.renderToString(context, (err, html) => {
 			if (err)
