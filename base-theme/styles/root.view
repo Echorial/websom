@@ -131,9 +131,9 @@ style {
 		--z-nav: 150;
 		--z-below-nav: 149;
 
-		--z-above-overlay: 102;
-		--z-overlay: 101;
-		--z-below-overlay: 100;
+		--z-above-overlay: 202;
+		--z-overlay: 201;
+		--z-below-overlay: 200;
 
 		--modal-width: 50%;
 
