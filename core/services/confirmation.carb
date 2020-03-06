@@ -1,0 +1,16 @@
+class Websom.Services.Confirmation inherits Websom.Service {
+	Websom.Adapters.Confirmation.Adapter confirmation = null;
+
+	Websom.Status start() {
+		
+	}
+
+	
+	Websom.Adapters.Confirmation.Confirmation confirm(string key) {
+		return this.confirmation.confirm(key);
+	}
+
+	void handleConfirmation(string key, <void, Websom.Adapters.Confirmation.Execution>function handler) {
+		this.confirmation.handleConfirmation(key, handler);
+	}
+}
