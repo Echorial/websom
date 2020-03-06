@@ -1,0 +1,131 @@
+namespace Websom.Adapters.Confirmation {}
+
+header class Websom.Adapters.Confirmation.Adapter extends Websom.Adapter {
+	<Websom.Adapters.Confirmation.Handler>array handlers = new <Websom.Adapters.Confirmation.Handler>array();
+
+	Websom.Adapters.Confirmation.Confirmation confirm(string key) {
+		return new Websom.Adapters.Confirmation.Confirmation(this, key);
+	}
+
+	void handleConfirmation(string key, <void, Websom.Adapters.Confirmation.Execution>function handler) {
+		this.handlers.push(new Websom.Adapters.Confirmation.Handler(key, handler));
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Confirmation.ConfirmationResults dispatch(Websom.Adapters.Confirmation.Confirmation confirmation) {
+
+	}
+}
+
+header class Websom.Adapters.Confirmation.Handler {
+	string key = "";
+	<void, Websom.Adapters.Confirmation.Execution>function handler = null;
+
+	void @construct(string key, <void, Websom.Adapters.Confirmation.Execution>function handler) {
+		this.key = key;
+		this.handler = handler;
+	}
+}
+
+header class Websom.Adapters.Confirmation.Execution {
+	string key = "";
+	map storage = null;
+	Websom.Request request = null;
+
+	void @construct(Websom.Request req, string key, map storage) {
+		this.request = req;
+		this.key = key;
+		this.storage = storage;
+	}
+}
+
+header class Websom.Adapters.Confirmation.Confirmation {
+	Websom.Adapters.Confirmation.Adapter adapter = null;
+	string key = "";
+
+	string emailSubject = "";
+
+	string confirmationMessage = "";
+	
+	string notificationService = "direct";
+	string method = "link";
+
+	map storage = null;
+
+	string recipient = "";
+
+	string ip = "";
+
+	uint64 ttl = 1000 * 60 * 60; // 1 hour
+
+	void @construct(Websom.Adapters.Confirmation.Adapter adapter, string key) {
+		this.adapter = adapter;
+		this.key = key;
+	}
+
+	Websom.Adapters.Confirmation.Confirmation subject(string val) {
+		this.emailSubject = val;
+
+		return this;
+	}
+
+	Websom.Adapters.Confirmation.Confirmation message(string val) {
+		this.confirmationMessage = val;
+		
+		return this;
+	}
+
+	Websom.Adapters.Confirmation.Confirmation store(map val) {
+		this.storage = val;
+		
+		return this;
+	}
+
+	Websom.Adapters.Confirmation.Confirmation via(string val) {
+		this.notificationService = val;
+		
+		return this;
+	}
+
+	Websom.Adapters.Confirmation.ConfirmationResults dispatch() {
+		return this.adapter.dispatch(this);
+	}
+
+	Websom.Adapters.Confirmation.Confirmation using(string val) {
+		this.method = val;
+		
+		return this;
+	}
+
+	Websom.Adapters.Confirmation.Confirmation to(string val) {
+		this.recipient = val;
+		
+		return this;
+	}
+
+	Websom.Adapters.Confirmation.Confirmation createdBy(string ip) {
+		this.ip = ip;
+		
+		return this;
+	}
+
+	Websom.Adapters.Confirmation.Confirmation expiresAfter(uint64 ms) {
+		this.ttl = ms;
+		
+		return this;
+	}
+}
+
+header class Websom.Adapters.Confirmation.ConfirmationResults {
+	string secret = "";
+	string url = "";
+	string status = "";
+	string message = "";
+
+	void @construct(string secret, string url, string status, string message) {
+		this.secret = secret;
+		this.url = url;
+		this.status = status;
+		this.message = message;
+	}
+}
