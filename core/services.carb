@@ -58,5 +58,7 @@ namespace Websom.Services {}
 #include "util"
 #include "databases"
 #include "constructs/adapters/database"
+#include "constructs/adapters/notification"
+#include "constructs/adapters/confirmation"
 #include "constructs/endpointHandlers"
 #include "standard/standard.carb"
