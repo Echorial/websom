@@ -27,7 +27,10 @@ class Websom.Services.Config inherits Websom.Service {
 
 	`Executed after starting the database service`
 	void loadFromDatabase() {
-		
+		this.server.api.route("/data", void (Websom.Request req) => {
+			req.header("Content-Type", "application/json");
+			req.end(Websom.Json.encode(this.computeClientData()));
+		});
 	}
 
 	void load() {
@@ -186,5 +189,18 @@ class Websom.Services.Config inherits Websom.Service {
 				}
 			}
 		}
+	}
+
+	map computeClientData() {
+		let mp = new map();
+
+		mp["config"] = new map();
+		mp["routes"] = new map();
+		mp["endpoints"] = this.server.api.gatherEndpoints();
+		mp["navigation"] = new map();
+
+		mp["config"]["test"] = true;
+
+		return mp;
 	}
 }
