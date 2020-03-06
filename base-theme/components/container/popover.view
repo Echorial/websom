@@ -8,7 +8,7 @@ template {
 		<slot name="wrap" ref="slotWrap" @mouseenter="checkEnter()" @click="toggle()" @mouseleave="checkLeave()" />
 
 		<portal to="app-root">
-			<div class="popover" :class="{'popover-open': isOpen, ['popover-edge-' + realEdge]: true, 'popover-full': full}" ref="popover" :style="{left, top, '--popover-color': 'var(--' + color + ')'}">
+			<div class="popover" :class="{'popover-in-modal': popoverInModal, 'popover-open': isOpen, ['popover-edge-' + realEdge]: true, 'popover-full': full}" ref="popover" :style="{left, top, '--popover-color': 'var(--' + color + ')'}">
 				<div class="popover-edge-marker"></div>
 				<div class="popover-content">
 					<slot />
@@ -29,6 +29,10 @@ script {
 				type: Boolean,
 				default: true
 			},
+			activated: {
+				type: Boolean,
+				default: false
+			},
 			full: {
 				type: Boolean,
 				default: false
@@ -38,12 +42,23 @@ script {
 				default: "color"
 			}
 		},
+		watch: {
+			activated(nv) {
+				if (nv) {
+					this.open();
+				}else{
+					this.close();
+				}
+			}
+		},
 		data() {
 			return {
 				isOpen: false,
 				top: 0,
 				left: 0,
-				realEdge: ""
+				realEdge: "",
+				boundEvents: {},
+				popoverInModal: false
 			};
 		},
 		methods: {
@@ -60,8 +75,14 @@ script {
 
 				this.computePosition();
 
+				if (this.$el.closest(".modal")) {
+					this.popoverInModal = true;
+				}else{
+					this.popoverInModal = false;
+				}
+
 				let animFrame = () => {
-					if (!this.isOpen)
+					if (!this.isOpen || !this.$refs.popover)
 						return;
 					
 					requestAnimationFrame(animFrame);
@@ -153,17 +174,36 @@ script {
 			}
 		},
 		mounted() {
-			this.getTarget().addEventListener("mouseenter", () => {
+			this.boundEvents.mouseenter = () => {
 				this.checkEnter();
-			});
+			};
 
-			this.getTarget().addEventListener("mouseleave", () => {
+			this.boundEvents.mouseleave = () => {
 				this.checkLeave();
-			});
+			};
 
-			this.getTarget().addEventListener("click", () => {
+			this.boundEvents.click = () => {
 				this.toggle();
-			});
+			};
+			
+			let target = this.getTarget();
+
+			for (let k in this.boundEvents)
+				target.addEventListener(k, this.boundEvents[k]);
+
+			setTimeout(() => {
+				if (this.activated)
+					this.open();
+			}, 100);
+		},
+		beforeDestroy() {
+			this.isOpen = false;
+
+			let target = this.getTarget();
+
+			if (target)
+				for (let k in this.boundEvents)
+					target.removeEventListener(k, this.boundEvents[k]);
 		}
 	}
 }
@@ -177,6 +217,10 @@ style {
 		position: fixed;
 
 		z-index: var(--z-overlay);
+
+		&.popover-in-modal {
+			z-index: var(--z-above-modal);
+		}
 
 		opacity: 0;
 		transition: opacity var(--transition) var(--transition-easing);
@@ -255,6 +299,8 @@ style {
 			padding: var(--base-size);
 
 			position: relative;
+
+			box-shadow: 0px 3px 6px #00000033;
 		}
 
 		&.popover-full {
