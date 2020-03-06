@@ -83,6 +83,17 @@ class Websom.Request {
 		this.end(Websom.Json.encode(res));
 	}
 
+	void endWithComponent(string component, map context) {
+		let res = new map();
+		res["status"] = "component";
+		res["component"] = component;
+		res["context"] = context;
+
+		this.header("Content-Type", "application/json");
+
+		this.end(Websom.Json.encode(res));
+	}
+
 	void end(string content) {
 		if (this.sent)
 			return null; //TODO: Setup throw
