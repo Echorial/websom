@@ -12,6 +12,25 @@ style {
 		height: 100%;
 	}
 
+	main {
+		display: flex !important;
+		flex-direction: column;
+		align-items: center;
+		min-height: 100%;
+
+		& > .card {
+			margin: var(--base-size);
+
+			&:not(:first-child) {
+				margin-top: 0;
+			}
+
+			@media @small {
+				align-self: stretch;
+			}
+		}
+	}
+
 	.websom-view-wrap {
 		display: flex;
 		flex-direction: row;
@@ -30,6 +49,13 @@ style {
 		flex: 1;
 
 		overflow: auto;
+	}
+
+	.center-content {
+		display: flex;
+
+		align-items: center;
+		justify-content: center;
 	}
 
 	#app.websom-dashboard-slides {
@@ -59,5 +85,14 @@ style {
 
 	.pad-content {
 		padding: var(--base-size);
+	}
+
+	.mini-options {
+		display: flex;
+		justify-content: space-between;
+
+		font-size: 14px;
+
+		margin: var(--base-size) 0px;
 	}
 }
