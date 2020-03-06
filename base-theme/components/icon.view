@@ -124,7 +124,8 @@ export default {
 						clock: "access_time",
 						time: "access_time",
 						upload: "cloud_upload",
-						loading: "refresh"
+						loading: "refresh",
+						key: "vpn_key"
 					},
 					styles: {
 						all: {
