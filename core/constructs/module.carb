@@ -34,6 +34,13 @@ header class Websom.Module {
 	`Base constructor that should not be overridden(use spawn instead)`
 	void @construct(Websom.Server server) {
 		this.server = server;
+
+		this.registerWithServer();
+	}
+
+	`Used by standards to bind themselves to the standard server props. e.g. Websom.Server.userSystem`
+	void registerWithServer() {
+
 	}
 
 	`This is used to send(string key, primitive value) client data every route request. Access this data on the client via Websom.Client[key]`
