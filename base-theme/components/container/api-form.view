@@ -1,0 +1,135 @@
+info {
+	"name": "api-form",
+	"type": "component"
+}
+
+template {
+	<div class="api-form" :class="{'api-form-loading': loading, 'api-form-done-success': singleShot && status == 'success'}">
+		<div class="api-form-fields">
+			<slot />
+		</div>
+
+		<status-box v-if="status.length > 0 && status != 'component'" :message="message" :status="status" class="api-form-status" />
+		<component v-else-if="status == 'component'" :is="component" :context="componentContext"/>
+
+		<div class="api-form-loader"><loader :type="loaderType" /></div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			route: {
+				type: String,
+				required: true
+			},
+			singleShot: {
+				type: Boolean,
+				default: false
+			},
+			loaderType: {
+				type: String,
+				default: "small"
+			},
+			request: {
+				type: Object,
+				default: () => ({})
+			}
+		},
+		data: () => ({
+			loading: false,
+			status: "",
+			message: "",
+			component: null,
+			componentContext: {}
+		}),
+		methods: {
+			async submit(data) {
+				let fields = this.$el.querySelectorAll(".form-field");
+
+				let invalid = false
+
+				for (let field of fields) {
+					let res = await field.__vue__.checkValidation();
+
+					if (!res) {
+						if (!invalid)
+							field.__vue__.showErrorMessage();
+						
+						invalid = true;
+					}
+				}
+				if (invalid) {
+					console.error("Invalid form submission");
+					return;
+				}
+
+				this.loading = true;
+				
+				try {
+					let res = await this.websom.fetch(this.route, data, this.request);
+
+					if (res.status == "success") {
+						this.status = "success";
+						this.message = res.message;
+					}else if (res.status == "error") {
+						this.status = "error";
+						this.message = res.message;
+					}else if (res.status == "component") {
+						this.status = "component";
+						this.component = res.component;
+						this.componentContext = res.context;
+					}
+
+					this.loading = false;
+				} catch (e) {
+					this.loading = false;
+					this.status = "error";
+					this.message = "Connection error";
+
+					console.error(e);
+				}
+			}
+		}
+	}
+}
+
+style {
+	.api-form {
+		position: relative;
+
+		& > .api-form-loader {
+			position: absolute;
+			background: var(--background);
+
+			opacity: 0;
+
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+
+			pointer-events: none;
+
+			transition: var(--transition-color) var(--transition-easing);
+
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		& > .api-form-fields {
+			transition: var(--transition-color) var(--transition-easing);
+		}
+
+		&.api-form-loading > .api-form-loader {
+			opacity: 0.5;
+
+			pointer-events: all;
+		}
+
+		&.api-form-loading > .api-form-fields, &.api-form-loading > .api-form-status {
+			filter: blur(3px);
+		}
+	}
+}
