@@ -258,7 +258,7 @@ ${blocks.script ? blocks.script.block : "export default {}"}
 		if (configOptions.options.hasOwnProperty(key))
 			defaults[key] = configOptions.options[key].default || "";
 	}
-
+	
 	const view = {
 		info: {${blocks.info.block}},
 		package: ${JSON.stringify(incomingQuery.package) || "\"unknown\""},
