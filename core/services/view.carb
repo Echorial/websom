@@ -32,7 +32,9 @@ class Websom.Services.View inherits Websom.Service {
 			
 			this.moduleViews = this.getModuleViews(); //TODO: Fix hack.
 
-			this.buildCache();
+			if (this.server.config.legacy) {
+				this.buildCache();
+			}
 		}else{ // Fast cache load from website/viewCache.json
 			this.loadCache();
 		}
