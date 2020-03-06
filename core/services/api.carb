@@ -114,6 +114,32 @@ class Websom.Services.API inherits Websom.Service {
 		this.chains.push(chain);
 		return chain;
 	}
+
+	map gatherEndpoints() {
+		let mp = new map();
+
+		for (let int i in this.collections) {
+			let collection = this.collections[i];
+
+			for (let int r in collection.routes) {
+				let route = collection.routes[r];
+
+				let key = collection.baseRoute + route.route;
+
+				let writes = new map();
+
+				for (let int w in route.writes) {
+					let write = route.writes[w];
+					writes[write.field] = write.exposeToClient();
+				}
+
+				mp[key] = new map();
+				mp[key]["writes"] = writes;
+			}
+		}
+
+		return mp;
+	}
 }
 
 class Websom.APIContext {
