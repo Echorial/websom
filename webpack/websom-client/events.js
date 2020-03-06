@@ -7,7 +7,7 @@ export default {
 			document.addEventListener(event, handler, all);
 		};
 	},
-	unbind(isntance) {
+	unbind(instance) {
 		const handlers = instance.$websomGlobalHandlers;
 
 		if (handlers)
