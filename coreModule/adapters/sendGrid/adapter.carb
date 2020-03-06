@@ -1,0 +1,40 @@
+class CoreModule.SendGrid inherits Websom.Adapters.Email.Adapter {
+	void sendGrid = null;
+
+	string route = "adapter.database.sendGrid";
+
+	override void initialize() {
+		
+	}
+
+	void loadSendGrid() {
+		native javascript {
+			if (!this.sendGrid) {
+				this.sendGrid = require("@sendgrid/mail");
+				this.sendGrid.setApiKey(this.server.getConfigString(this.route, "apiKey"));
+			}
+		}
+	}
+
+	override Websom.Adapters.Email.SendResults send(Websom.Adapters.Email.Email email) {
+		native javascript {
+			try {
+				await this.sendGrid.send({
+					to: email.recipients,
+					from: email.fromAddress,
+					fromname: email.fromName,
+					text: email.textBody,
+					html: email.htmlBody,
+					subject: email.subject,
+					cc: email.cc,
+					bcc: email.bcc,
+					replyto: email.replyTo
+				});
+
+				return new Websom.Adapters.Email.SendResults("success", "Email sent", email.recipients.length);
+			} catch (e) {
+				return new Websom.Adapters.Email.SendResults("error", e.toString(), 0);
+			}
+		}
+	}
+}

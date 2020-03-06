@@ -11,7 +11,11 @@
 		"php": "*"
 	},
 	"npm": {
-		"lokijs": "1.5.8"
+		"lokijs": "1.5.8",
+		"@sendgrid/mail": "*"
+	},
+	"composer": {
+
 	},
 	"resources": [
 		
@@ -24,6 +28,14 @@
 				"php": false
 			},
 			"class": "CoreModule.LokiDB"
+		},
+		"sendGrid": {
+			"type": "email",
+			"supports": {
+				"javascript": true,
+				"php": true
+			},
+			"class": "CoreModule.SendGrid"
 		}
 	},
 	"config": {
@@ -35,6 +47,25 @@
 				"name": "Database File (Persistence)",
 				"type": "string",
 				"helper": "path",
+				"default": ""
+			}
+		},
+		"adapter.email.sendGrid": {
+			"apiKey": {
+				"name": "Send grid api key",
+				"type": "string",
+				"default": ""
+			}
+		},
+		"adapter.confirmation": {
+			"fromEmail": {
+				"name": "The email address to use when sending email confirmations.",
+				"type": "string",
+				"default": ""
+			},
+			"fromNumber": {
+				"name": "The phone number to use when sending SMS confirmations.",
+				"type": "string",
 				"default": ""
 			}
 		}
