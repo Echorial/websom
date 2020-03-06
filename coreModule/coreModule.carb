@@ -7,6 +7,7 @@ namespace CoreModule {}
 class CoreModule.Module inherits Websom.Module {
 	Websom.Adapters.Database.Collection test = null;
 	Websom.Adapters.Database.Collection groups = null;
+	Websom.Adapters.Database.Collection confirmations = null;
 
 	public Websom.Permission commentEdit = null;
 	public Websom.Permission commentCreate = null;
@@ -43,6 +44,21 @@ class CoreModule.Module inherits Websom.Module {
 
 	override void collections() {
 		let db = this.server.database.central;
+
+		this.confirmations = db.collection("confirmations");
+		let confirmationSchema = this.confirmations.schema()
+			.field("secret", "string")
+			.field("key", "string")
+			.field("ip", "string")
+			.field("created", "time")
+			.field("storage", "string")
+			.field("expires", "time")
+			.field("confirmed", "boolean")
+			.field("service", "string")
+			.field("method", "string")
+			.field("to", "string");
+
+		this.registerCollection(this.confirmations);
 
 		this.groups = db.collection("groups");
 
@@ -117,6 +133,12 @@ class CoreModule.Module inherits Websom.Module {
 						.order("balance", "dsc");
 	}
 
+	override void registerWithServer() {
+		let adapter = new CoreModule.Confirmation(this.server);
+		adapter.module = this;
+		this.server.confirmation.confirmation = adapter;
+	}
+
 	override Websom.Status start() {
 		this.server.api.route("/custom/endpoint", void (Websom.Request req) => {
 			req.end("Hello");
@@ -125,3 +147,5 @@ class CoreModule.Module inherits Websom.Module {
 }
 
 #include "adapters/loki"
+#include "adapters/sendGrid"
+#include "adapters/confirmation"
