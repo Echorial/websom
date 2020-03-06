@@ -166,6 +166,10 @@ header class Websom.Restriction {
 	string name() {
 		return "Restriction";
 	}
+
+	map exposeToClient() {
+		return new map();
+	}
 }
 
 namespace Websom.Restrictions {}
@@ -201,9 +205,21 @@ header class Websom.Restrictions.Limit inherits Websom.Restriction {
 	override string name() {
 		return "Limit";
 	}
+
+	override map exposeToClient() {
+		let mp = new map();
+
+		mp["min"] = this.min;
+		mp["max"] = this.max;
+		mp["type"] = "limit";
+
+		return mp;
+	}
 }
 
 header class Websom.Restrictions.Unique inherits Websom.Restriction {
+	string uniqueRoute = "";
+
 	[ForceAsync]
 	override trust bool testServer(Websom.Adapters.Database.Collection collection, Websom.Adapters.Database.Field field, primitive value) {
 		return collection.where(field.name, "==", value).limit(1).get().documents.length == 0;
@@ -211,6 +227,15 @@ header class Websom.Restrictions.Unique inherits Websom.Restriction {
 
 	override string name() {
 		return "Unique";
+	}
+
+	override map exposeToClient() {
+		let mp = new map();
+
+		mp["route"] = this.uniqueRoute;
+		mp["type"] = "unique";
+
+		return mp;
 	}
 }
 
@@ -239,6 +264,15 @@ header class Websom.Restrictions.Format inherits Websom.Restriction {
 	override string name() {
 		return "Format";
 	}
+
+	override map exposeToClient() {
+		let mp = new map();
+
+		mp["format"] = this.format;
+		mp["type"] = "format";
+
+		return mp;
+	}
 }
 
 header class Websom.Restrictions.Regex inherits Websom.Restriction {
@@ -257,6 +291,15 @@ header class Websom.Restrictions.Regex inherits Websom.Restriction {
 
 	override string name() {
 		return "Regex";
+	}
+
+	override map exposeToClient() {
+		let mp = new map();
+
+		mp["regex"] = this.regex;
+		mp["type"] = "regex";
+
+		return mp;
 	}
 }
 
@@ -374,6 +417,26 @@ class Websom.CollectionInterfaceWrite {
 	void @construct(string field, primitive defaultValue) {
 		this.field = field;
 		this.defaultValue = defaultValue;
+	}
+
+	map exposeToClient() {
+		let mp = new map();
+
+		mp["type"] = this.type;
+		mp["field"] = this.field;
+		mp["default"] = this.defaultValue;
+
+		let restrictions = new <map>array();
+
+		for (let int i in this.restrictions) {
+			let restriction = this.restrictions[i];
+
+			restrictions.push(restriction.exposeToClient());
+		}
+
+		mp["restrictions"] = restrictions;
+
+		return mp;
 	}
 }
 
