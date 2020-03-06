@@ -5,13 +5,29 @@ info {
 
 template {
 	<nav class="navbar">
-		
+		<div class="navbar-align-left">
+			<nav-item v-for="(v, i) in nav.left" :item="v" :key="i"/>
+		</div>
+		<div class="navbar-align-center">
+			<nav-item v-for="(v, i) in nav.center" :item="v" :key="i"/>
+		</div>
+		<div class="navbar-align-right">
+			<nav-item v-for="(v, i) in nav.right" :item="v" :key="i"/>
+		</div>
 	</nav>
 }
 
 script {
 	export default {
-		
+		computed: {
+			nav() {
+				return {
+					left: this.$store.state.websom.data.navigation.navbar.filter(i => i.align == "left" || !i.align),
+					center: this.$store.state.websom.data.navigation.navbar.filter(i => i.align == "center"),
+					right: this.$store.state.websom.data.navigation.navbar.filter(i => i.align == "right")
+				};
+			}
+		}
 	}
 }
 
@@ -22,6 +38,26 @@ style {
 		background: var(--color);
 
 		z-index: var(--z-nav);
+
+		display: flex;
+		flex-direction: row;
+
+		--icon-size: 24px;
+
+		& > * {
+			flex: 1;
+
+			display: flex;
+			flex-direction: row;
+		}
+
+		& > .navbar-align-center {
+			justify-content: center;
+		}
+
+		& > .navbar-align-right {
+			justify-content: flex-end;
+		}
 	}
 }
 

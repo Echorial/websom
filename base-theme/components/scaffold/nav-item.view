@@ -1,0 +1,51 @@
+info {
+	"name": "nav-item",
+	"type": "component"
+}
+
+template {
+	<component v-if="item.type == 'component'" :is="item.component" v-bind="item.props || {}"/>
+	<a v-else-if="item.type == 'link'" class="nav-item" :class="item.class || ''" :id="item.id" :href="item.href">
+		{{item.title}}
+	</a>
+}
+
+script {
+	export default {
+		props: {
+			item: {
+				type: Object,
+				default: {
+					type: "link",
+					title: "Home",
+					href: "/"
+				}
+			}
+		}
+	}
+}
+
+style {
+	.nav-item {
+		width: calc(var(--base-size) * 5);
+		
+		display: flex;
+		justify-content: center;
+		align-items: center;
+
+		cursor: pointer;
+
+		background: var(--color);
+		color: var(--contrast);
+
+		&:hover {
+			background: var(--color-light);
+			color: var(--contrast-light);
+		}
+
+		&:active {
+			background: var(--color-dark);
+			color: var(--contrast-dark);
+		}
+	}
+}
