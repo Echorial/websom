@@ -88,6 +88,11 @@ class Websom.AdapterInterface {
 			}
 		}
 
+		if (selectedClass == "") {
+			Console.log("No adapter found for '" + this.name + "'");
+			return null;
+		}
+
 		this.load(selectedModule, selectedClass);
 	}
 }
