@@ -43,7 +43,7 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 	}
 
 	void sendLinkEmail(string url, Websom.Adapters.Confirmation.Confirmation confirmation) {
-		let from = this.server.getConfigString("adapters.confirmation", "fromEmail");
+		let from = this.server.getConfigString("adapter.core.confirmation", "fromEmail");
 		if (from == "") {
 			from = "no-reply@example.com";
 		}
@@ -56,6 +56,7 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 					.button("Confirm", url)
 				.column()
 			.email()
+				.setTextBody("Click here to confirm your email address: " + url)
 				.addRecipient(confirmation.recipient)
 				.setFrom(from, this.server.websiteName)
 				.setSubject(confirmation.emailSubject)
