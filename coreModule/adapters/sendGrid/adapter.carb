@@ -1,7 +1,7 @@
 class CoreModule.SendGrid inherits Websom.Adapters.Email.Adapter {
 	void sendGrid = null;
 
-	string route = "adapter.database.sendGrid";
+	string route = "adapter.email.sendGrid";
 
 	override void initialize() {
 		
@@ -17,6 +17,8 @@ class CoreModule.SendGrid inherits Websom.Adapters.Email.Adapter {
 	}
 
 	override Websom.Adapters.Email.SendResults send(Websom.Adapters.Email.Email email) {
+		this.loadSendGrid();
+
 		native javascript {
 			try {
 				await this.sendGrid.send({
@@ -33,6 +35,7 @@ class CoreModule.SendGrid inherits Websom.Adapters.Email.Adapter {
 
 				return new Websom.Adapters.Email.SendResults("success", "Email sent", email.recipients.length);
 			} catch (e) {
+				this.server.logException(e);
 				return new Websom.Adapters.Email.SendResults("error", e.toString(), 0);
 			}
 		}
