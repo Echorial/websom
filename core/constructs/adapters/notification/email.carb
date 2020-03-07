@@ -46,7 +46,7 @@ header class Websom.Adapters.Email.Email {
 
 	Websom.Adapters.Email.Adapter& adapter = null;
 
-	void @construct(Websom.Adapters.Email.Adapter& adapter) {
+	trust void @construct(Websom.Adapters.Email.Adapter& adapter) {
 		this.adapter = adapter;
 	}
 
@@ -119,7 +119,7 @@ header class Websom.Adapters.Email.EmailTemplate {
 
 	<Websom.Adapters.Email.Row>array rows = new <Websom.Adapters.Email.Row>array();
 
-	void @construct(Websom.Adapters.Email.Adapter adapter, string title) {
+	trust void @construct(Websom.Adapters.Email.Adapter adapter, string title) {
 		this.adapter = adapter;
 		this.title = title;
 	}

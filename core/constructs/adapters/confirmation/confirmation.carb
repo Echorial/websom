@@ -58,7 +58,7 @@ header class Websom.Adapters.Confirmation.Confirmation {
 
 	uint64 ttl = 1000 * 60 * 60; // 1 hour
 
-	void @construct(Websom.Adapters.Confirmation.Adapter adapter, string key) {
+	trust void @construct(Websom.Adapters.Confirmation.Adapter adapter, string key) {
 		this.adapter = adapter;
 		this.key = key;
 	}
