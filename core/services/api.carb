@@ -252,8 +252,13 @@ class Websom.APIChain {
 			let value = req.body[input.field];
 
 			if (this.server.security.typeCheck(value, input.type) == false) {
-				req.endWithError("Invalid type on field " + input.field);
-				return null;
+				if (value.typeAsString() == "float" and input.type == "string") {
+					let float val = value;
+					value = val.toString();
+				}else{
+					req.endWithError("Invalid type on field " + input.field);
+					return null;
+				}
 			}
 
 			for (let int r in input.restrictions) {
