@@ -21,7 +21,7 @@ class Websom.Services.Config inherits Websom.Service {
 		}else if (this.optionValuesFromDatabase[route]) {
 			return this.optionValuesFromDatabase[route][option];
 		}else{
-			return this.optionDefaults[route][option];
+			return this.optionDefaults[route + "." + option];
 		}
 	}
 
@@ -185,7 +185,7 @@ class Websom.Services.Config inherits Websom.Service {
 				let options = routes[route];
 
 				for (let string option in options) {
-					this.optionDefaults[route + option] = options[option]["default"];
+					this.optionDefaults[route + "." + option] = options[option]["default"];
 				}
 			}
 		}
