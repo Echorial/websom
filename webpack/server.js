@@ -62,7 +62,7 @@ module.exports = async (websomServer, apiServer) => {
 		renderer = createBundleRenderer(serverBundle, {
 			runInNewContext: false,
 			template: template({}),
-			clientManifest: clientManifest
+			clientManifest: Object.assign(clientManifest, {publicPath: "/"})
 		});
 	};
 
