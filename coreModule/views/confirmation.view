@@ -1,0 +1,40 @@
+info {
+	"name": "page-core-confirmations",
+	"type": "page",
+	"route": "/confirmations/confirm/:secret",
+	"title": "Confirmation"
+}
+
+template {
+	<scaffold>
+		<main class="center-content">
+			<card>
+				<div slot="body">
+					<loader type="big" :status="loaderStatus"/>
+				</div>
+			</card>
+		</main>
+	</scaffold>
+}
+
+script {
+	export default {
+		data: () => ({
+			loaderStatus: null,
+
+		}),
+		computed: {
+			secret() {
+				return this.$route.params.secret;
+			}
+		},
+		async mounted() {
+			let res = await this.websom.fetch("/confirmation/confirm", {
+				secret: this.$route.params.secret
+			});
+
+			this.loaderStatus = res.status;
+			this.laoderMessage = res.message;
+		}
+	}
+}
