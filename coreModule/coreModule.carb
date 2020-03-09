@@ -137,6 +137,8 @@ class CoreModule.Module inherits Websom.Module {
 		let adapter = new CoreModule.Confirmation(this.server);
 		adapter.module = this;
 		this.server.confirmation.confirmation = adapter;
+
+		adapter.registerCollection();
 	}
 
 	override Websom.Status start() {
