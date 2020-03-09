@@ -28,9 +28,6 @@ module.exports = (websomServer) => {
 				openAnalyzer: false,
 				analyzerPort: 8971
 			})
-		],
-		output: {
-			
-		}
+		]
 	});
 };
