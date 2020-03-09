@@ -1119,8 +1119,14 @@ Websom.APIChain.prototype.executes = function () {var _c_this = this; var _c_roo
 			var value = req.body[input.field];
 			if (_c_this.server.security.typeCheck(value, input.type) == false) {
 /*async*/
-				(await req.endWithError/* async call */("Invalid type on field " + input.field));
-				return null;
+				if ((typeof value == 'object' ? (Array.isArray(value) ? 'array' : 'map') : (typeof value == 'number' ? 'float' : typeof value)) == "float" && input.type == "string") {
+					var val = value;
+					value = val.toString();
+					}else{
+/*async*/
+						(await req.endWithError/* async call */("Invalid type on field " + input.field));
+						return null;
+					}
 				}
 			for (var r = 0; r < input.restrictions.length; r++) {
 /*async*/
@@ -1250,7 +1256,7 @@ Websom.Services.Config.prototype.getString = function () {var _c_this = this; va
 			}else if (_c_this.optionValuesFromDatabase[route]) {
 			return _c_this.optionValuesFromDatabase[route][option];
 			}else{
-				return _c_this.optionDefaults[route][option];
+				return _c_this.optionDefaults[route + "." + option];
 			}
 	}
 }
@@ -1410,7 +1416,7 @@ Websom.Services.Config.prototype.fillDefaults = function () {var _c_this = this;
 			for (var route in routes) {
 				var options = routes[route];
 				for (var option in options) {
-					_c_this.optionDefaults[route + option] = options[option]["default"];
+					_c_this.optionDefaults[route + "." + option] = options[option]["default"];
 					}
 				}
 			}
@@ -13742,7 +13748,7 @@ Websom.Adapters.Email.SendResults = function () {var _c_this = this;
 
 }
 
-Websom.Adapters.Email.Email = function () {var _c_this = this;
+Websom.Adapters.Email.Email = function (adapter) {var _c_this = this;
 	this.subject = "";
 
 	this.textBody = "";
@@ -13763,11 +13769,7 @@ Websom.Adapters.Email.Email = function () {var _c_this = this;
 
 	this.adapter = null;
 
-	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Email.Adapter) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
-		var adapter = arguments[0];
 		_c_this.adapter = adapter;
-	}
-
 }
 
 Websom.Adapters.Email.Email.prototype.setSubject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -13861,7 +13863,7 @@ Websom.Adapters.Email.Row = function () {var _c_this = this;
 
 }
 
-Websom.Adapters.Email.EmailTemplate = function () {var _c_this = this;
+Websom.Adapters.Email.EmailTemplate = function (adapter, title) {var _c_this = this;
 	this.adapter = null;
 
 	this.title = "";
@@ -13870,13 +13872,8 @@ Websom.Adapters.Email.EmailTemplate = function () {var _c_this = this;
 
 	this.rows = [];
 
-	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Adapters.Email.Adapter) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
-		var adapter = arguments[0];
-		var title = arguments[1];
 		_c_this.adapter = adapter;
 		_c_this.title = title;
-	}
-
 }
 
 Websom.Adapters.Email.EmailTemplate.prototype.email = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -14047,7 +14044,7 @@ Websom.Adapters.Confirmation.Execution = function () {var _c_this = this;
 
 }
 
-Websom.Adapters.Confirmation.Confirmation = function () {var _c_this = this;
+Websom.Adapters.Confirmation.Confirmation = function (adapter, key) {var _c_this = this;
 	this.adapter = null;
 
 	this.key = "";
@@ -14068,13 +14065,8 @@ Websom.Adapters.Confirmation.Confirmation = function () {var _c_this = this;
 
 	this.ttl = 1000 * 60 * 60;
 
-	if (arguments.length == 2 && ((arguments[0] instanceof Websom.Adapters.Confirmation.Adapter) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
-		var adapter = arguments[0];
-		var key = arguments[1];
 		_c_this.adapter = adapter;
 		_c_this.key = key;
-	}
-
 }
 
 Websom.Adapters.Confirmation.Confirmation.prototype.subject = function () {var _c_this = this; var _c_root_method_arguments = arguments;

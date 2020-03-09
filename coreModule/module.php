@@ -1,2 +1,2 @@
 
-<?php return 'CoreModule_Module'; ?>
+<?php return 'Unknown'; ?>

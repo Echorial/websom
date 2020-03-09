@@ -106,6 +106,7 @@ CoreModule.Module.prototype.registerWithServer = function () {var _c_this = this
 		var adapter = new CoreModule.Confirmation(_c_this.server);
 		adapter.module = _c_this;
 		_c_this.server.confirmation.confirmation = adapter;
+		adapter.registerCollection();
 	}
 }
 
@@ -790,7 +791,7 @@ CoreModule.MetaDocument.prototype.arrayField = function () {var _c_this = this; 
 CoreModule.SendGrid = function () {var _c_this = this;
 	this.sendGrid = null;
 
-	this.route = "adapter.database.sendGrid";
+	this.route = "adapter.email.sendGrid";
 
 	this.server = null;
 
@@ -821,6 +822,7 @@ CoreModule.SendGrid.prototype.loadSendGrid = function () {var _c_this = this; va
 /*i async*/CoreModule.SendGrid.prototype.send = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Email.Email) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var email = arguments[0];
+		_c_this.loadSendGrid();
 		
 			try {
 				await this.sendGrid.send({
@@ -837,6 +839,7 @@ CoreModule.SendGrid.prototype.loadSendGrid = function () {var _c_this = this; va
 
 				return new Websom.Adapters.Email.SendResults("success", "Email sent", email.recipients.length);
 			} catch (e) {
+				this.server.logException(e);
 				return new Websom.Adapters.Email.SendResults("error", e.toString(), 0);
 			}
 		
@@ -878,9 +881,30 @@ CoreModule.Confirmation = function () {var _c_this = this;
 
 }
 
-/*i async*/CoreModule.Confirmation.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+CoreModule.Confirmation.prototype.registerCollection = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
-
+		_c_this.server.api.route("/confirmations/confirm").input("secret").type("string").limit(254, 256).executes(async function (ctx) {
+/*async*/
+			var res = (await _c_this.module.confirmations.where("secret", "==", ctx.get("secret")).get/* async call */());
+			if (res.documents.length == 0) {
+				ctx.request.endWithError("Invalid secret");
+				return null;
+				}
+			var doc = res.documents[0];
+			var expires = doc.get("expires");
+			if (expires > Websom.Time.now()) {
+				ctx.request.endWithError("Confirmation expired");
+				return null;
+				}
+			(await _c_this.module.confirmations.update().where("id", "==", doc.get("id")).set("confirmed", true).run/* async call */());
+			for (var i = 0; i < _c_this.handlers.length; i++) {
+				var handler = _c_this.handlers[i];
+				if (handler.key == doc.get("key")) {
+					handler.handler(new Websom.Adapters.Confirmation.Execution(ctx.request, doc.get("key"), doc.get("storage")));
+					}
+				}
+			ctx.request.endWithSuccess("Success");
+			});
 	}
 }
 
@@ -888,8 +912,8 @@ CoreModule.Confirmation = function () {var _c_this = this;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Confirmation.Confirmation) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var confirmation = arguments[0];
 /*async*/
-		var secret = _c_this.server.crypto.getRandomHex(255);
-		var url = _c_this.server.apiHost + "/confirmations/confirm/" + secret;
+		var secret = (await _c_this.server.crypto.getRandomHex/* async call */(255));
+		var url = _c_this.server.clientHost + "/confirmations/confirm/" + secret;
 		var results = new Websom.Adapters.Confirmation.ConfirmationResults(secret, url, "success", "Confirmation created");
 		_c_this.module.confirmations.insert().set("secret", secret).set("key", confirmation.key).set("ip", confirmation.ip).set("created", Websom.Time.now()).set("storage", Websom.Json.encode(confirmation.storage)).set("expires", Websom.Time.now() + confirmation.ttl).set("confirmed", false).set("service", confirmation.notificationService).set("method", confirmation.method).set("to", confirmation.recipient);
 		if (confirmation.notificationService == "direct") {
@@ -919,11 +943,11 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Con
 		var url = arguments[0];
 		var confirmation = arguments[1];
 /*async*/
-		var from = _c_this.server.getConfigString("adapters.confirmation", "fromEmail");
+		var from = _c_this.server.getConfigString("adapter.core.confirmation", "fromEmail");
 		if (from == "") {
 			from = "no-reply@example.com";
 			}
-		(await _c_this.server.notification.email.template("confirmation").row().column().column().paragraph(confirmation.confirmationMessage).button("Confirm", url).column().email().addRecipient(confirmation.recipient).setFrom(from, _c_this.server.websiteName).setSubject(confirmation.emailSubject).send/* async call */());
+		(await _c_this.server.notification.email.template("confirmation").row().column().column().paragraph(confirmation.confirmationMessage).button("Confirm", url).column().email().setTextBody("Click here to confirm your email address: " + url).addRecipient(confirmation.recipient).setFrom(from, _c_this.server.websiteName).setSubject(confirmation.emailSubject).send/* async call */());
 	}
 }
 
@@ -939,6 +963,12 @@ CoreModule.Confirmation.prototype.handleConfirmation = function () {var _c_this 
 		var key = arguments[0];
 		var handler = arguments[1];
 		_c_this.handlers.push(new Websom.Adapters.Confirmation.Handler(key, handler));
+	}
+}
+
+/*i async*/CoreModule.Confirmation.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) {
+
 	}
 }
 
