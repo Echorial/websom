@@ -18,7 +18,9 @@
 
 	},
 	"resources": [
-		
+		{
+			"path": "./views"
+		}
 	],
 	"adapters": {
 		"loki": {
@@ -57,7 +59,7 @@
 				"default": ""
 			}
 		},
-		"adapter.confirmation": {
+		"adapter.core.confirmation": {
 			"fromEmail": {
 				"name": "The email address to use when sending email confirmations.",
 				"type": "string",
