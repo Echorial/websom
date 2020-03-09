@@ -4,18 +4,21 @@ info {
 }
 
 template {
-	<div v-if="!hasSlot()" class="loader" :class="{'loader-active': active, ['loader-' + type]: true}">
+	<div v-if="!status && !hasSlot()" class="loader" :class="{'loader-active': active, ['loader-' + type]: true}">
 		<div class="loader-before"></div>
 		<div class="loader-icon"><icon icon="loading" /></div>
 		<div class="loader-after"></div>
 	</div>
-	<div v-else class="loader-block" :class="{'loader-block-active': active}">
+	<div v-else-if="!status && !hasSlot()" class="loader-block" :class="{'loader-block-active': active}">
 		<div class="loader-block-content">
 			<slot />
 		</div>
 		<div class="loader-block-loader">
 			<loader type="small" />
 		</div>
+	</div>
+	<div v-else-if="status">
+		<icon class="loader-status-icon" :icon="status == 'error' ? 'danger' : status" />
 	</div>
 }
 
@@ -29,6 +32,10 @@ script {
 			active: {
 				type: Boolean,
 				default: true
+			},
+			status: {
+				type: String,
+				default: ""
 			}
 		},
 		methods: {
@@ -40,6 +47,21 @@ script {
 }
 
 style {
+	@keyframes status-icon {
+		0% {
+			transform: scale(0);
+		}
+
+		100% {
+			transform: scale(1);
+		}
+	}
+
+	.loader-status-icon {
+		animation: status-icon 1s;
+		--icon-size: calc(var(--base-size) * 3);
+	}
+
 	.loader-block {
 		position: relative;
 
@@ -109,7 +131,7 @@ style {
 			}
 		}
 
-		&.loader-small {
+		&.loader-small, &.loader-big {
 			.loader-icon {
 				opacity: 0;
 			}
@@ -119,6 +141,14 @@ style {
 					opacity: 1;
 					animation: loader-small-rotate 1s infinite linear;
 				}
+			}
+		}
+
+		&.loader-big {
+			padding: calc(var(--base-size) * 6);
+
+			.loader-icon {
+				--icon-size: calc(var(--base-size) * 6);
 			}
 		}
 	}
