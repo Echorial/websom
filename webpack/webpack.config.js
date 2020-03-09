@@ -152,7 +152,8 @@ module.exports = (websomServer) => {
 		},
 		output: {
 			path: websomServer.config.javascriptOutput,
-			filename: websomServer.config.jsBundle
+			filename: websomServer.config.jsBundle,
+			publicPath: "/"
 		},
 		plugins: [
 			new VueLoaderPlugin()
