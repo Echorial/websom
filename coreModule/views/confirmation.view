@@ -29,12 +29,12 @@ script {
 			}
 		},
 		async mounted() {
-			let res = await this.websom.fetch("/confirmation/confirm", {
+			let res = await this.websom.fetch("/confirmations/confirm", {
 				secret: this.$route.params.secret
 			});
 
 			this.loaderStatus = res.status;
-			this.laoderMessage = res.message;
+			this.loaderMessage = res.message;
 		}
 	}
 }
