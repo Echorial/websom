@@ -9,7 +9,7 @@ template {
 		<div class="loader-icon"><icon icon="loading" /></div>
 		<div class="loader-after"></div>
 	</div>
-	<div v-else-if="!status && !hasSlot()" class="loader-block" :class="{'loader-block-active': active}">
+	<div v-else-if="!status && hasSlot()" class="loader-block" :class="{'loader-block-active': active}">
 		<div class="loader-block-content">
 			<slot />
 		</div>
