@@ -8,8 +8,9 @@ async function startWebsomDevelopmentServer(server, port, apiPort) {
 	expressApp.listen(port);
 
 	console.log(`Started server on port ${port}`);
-
-	open("http://localhost:" + port + "/");
+	
+	if (server.config.openInBrowser)
+		open("http://localhost:" + port + "/");
 }
 
 module.exports = {

@@ -11,6 +11,9 @@ class Websom.Config {
 
 	string url = "localhost";
 
+	`Open the ui using the default system browser.`
+	bool openInBrowser = true;
+
 	`Should Websom tell the browser about the manifest file.`
 	bool hasManifest = true;
 
