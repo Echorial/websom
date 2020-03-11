@@ -7,7 +7,7 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 		this.server.api.route("/confirmations/confirm")
 			.input("secret")
 				.type("string")
-				.limit(254, 256)
+				.limit(500, 512)
 			.executes(void (Websom.APIContext ctx) => {
 				let res = this.module.confirmations.where("secret", "==", ctx.get("secret")).get();
 
@@ -20,7 +20,7 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 
 				let uint64 expires = doc.get("expires");
 
-				if (expires > Websom.Time.now()) {
+				if (Websom.Time.now() > expires) {
 					ctx.request.endWithError("Confirmation expired");
 					return null;
 				}
@@ -58,7 +58,8 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 			.set("confirmed", false)
 			.set("service", confirmation.notificationService)
 			.set("method", confirmation.method)
-			.set("to", confirmation.recipient);
+			.set("to", confirmation.recipient)
+			.run();
 
 		if (confirmation.notificationService == "direct") {
 			return results;
