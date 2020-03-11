@@ -126,6 +126,7 @@ module.exports = async (websomServer, apiServer) => {
 			url: req.url,
 			api: apiServer,
 			server: websomServer,
+			title: req.route.path,
 			renderHeadElements() {
 				return `
 					<meta name="description" content="Websom page."/>
