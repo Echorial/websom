@@ -121,6 +121,10 @@ class Websom.Server {
 			this.config.headless = config["headless"] == true;
 		}
 
+		if ("openInBrowser" in config) {
+			this.config.openInBrowser = config["openInBrowser"] == true;
+		}
+
 		if ("verbose" in config) {
 			this.config.verbose = config["verbose"] == true;
 		}
@@ -171,7 +175,18 @@ class Websom.Server {
 
 	void logException(Exception e) {
 		if (this.config.dev) {
-			Console.log(e.message);
+			native javascript {
+				const chalk = require("chalk");
+				console.log("");
+				console.log(chalk.white.bgRed.bold("--- ⚠️  Package Exception ⚠️  ---"));
+				console.log("");
+				console.log(chalk.red(e.stack));
+				console.log("");
+			}
+
+			native php {
+				die($e->getMessage());
+			}
 		}
 	}
 
