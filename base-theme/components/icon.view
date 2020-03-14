@@ -89,7 +89,9 @@ export default {
 						menu: "bars",
 						time: "clock",
 						loading: "sync",
-						refresh: "sync"
+						refresh: "sync",
+						"user-add": "user-plus",
+						"user-subtract": "user-minus"
 					},
 					styles: {
 						free: {
@@ -110,6 +112,8 @@ export default {
 					icons: {
 						trophy: "emoji_events",
 						user: "person",
+						"user-add": "person_add",
+						"user-subtract": "person_add_disabled",
 						question: "help",
 						danger: "not_interested",
 						success: "check",
@@ -151,7 +155,8 @@ export default {
 						sound: "volume-up",
 						power: "shut-down",
 						clock: "time",
-						loading: "refresh"
+						loading: "refresh",
+						"user-subtract": "user-unfollow"
 					},
 					styles: {
 						all: {
