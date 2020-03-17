@@ -95,5 +95,9 @@ style {
 
 			.define-shift(shift, 1);
 		}
+
+		& > .card:not(:first-child) {
+			margin-top: var(--base-size);
+		}
 	}
 }
