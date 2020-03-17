@@ -76,6 +76,20 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 			}
 		}
 
+		if (filter.handler != null) {
+			native javascript {
+				await filter.handler(req, query);
+			}
+
+			native php {
+				$filter->handler($req, $query);
+			}
+		}
+
+		if (req.sent) {
+			return null;
+		}
+
 		let res = new map();
 
 		res["status"] = "success";
@@ -125,6 +139,10 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 
 					mp[read.field] = val;
 				}
+			}
+
+			if ("*" in returnFields) {
+				mp["id"] = doc.get("id");
 			}
 
 			output.push(mp);
