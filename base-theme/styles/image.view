@@ -1,0 +1,10 @@
+info {
+	"name": "image",
+	"type": "style"
+}
+
+style {
+	img.square-framed {
+		border-radius: 50%;
+	}
+}
