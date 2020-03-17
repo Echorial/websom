@@ -101,6 +101,30 @@ module.exports = (websomServer) => {
 					]
 				},
 				{
+					test: /\.websom-state$/,
+					use: [
+						{
+							loader: path.resolve(__dirname, "./websom-loader/loader.js"),
+							options: {
+								type: "state",
+								files: gatherViews
+							}
+						}
+					]
+				},
+				{
+					test: /\.websom-scripts$/,
+					use: [
+						{
+							loader: path.resolve(__dirname, "./websom-loader/loader.js"),
+							options: {
+								type: "script",
+								files: gatherViews
+							}
+						}
+					]
+				},
+				{
 					test: /\.websom-styles$/,
 					use: [
 						"vue-style-loader",
