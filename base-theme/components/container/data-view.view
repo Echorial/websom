@@ -1,0 +1,115 @@
+info {
+	"name": "data-view",
+	"type": "component"
+}
+
+template {
+	<transition-group v-if="!error" tag="div" class="data-view-collection" :name="transition" :mode="transitionMode">
+		<slot v-for="(d, i) in documents" :entity="d" :index="i" />
+	</transition-group>
+	<div v-else>
+		<h3>Error</h3>
+		<p>{{message}}</p>
+		<button @click="refresh()">Retry</button>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			route: {
+				type: String,
+				required: true
+			},
+			filter: {
+				type: String,
+				default: "default"
+			},
+			query: {
+				type: Object,
+				default: () => ({})
+			},
+			transition: {
+				type: String,
+				default: "data-view"
+			},
+			transitionMode: {
+				type: String,
+				default: "out-in"
+			},
+			collection: {
+				type: String,
+				default: ""
+			},
+			limit: {
+				type: Number,
+				default: 15
+			},
+			page: {
+				type: Number,
+				default: 0
+			},
+			fetchOptions: {
+				type: Object,
+				default: () => ({})
+			}
+		},
+		data: () => ({
+			documents: [],
+			error: false,
+			message: ""
+		}),
+		methods: {
+			async refresh() {
+				this.error = false;
+				this.message = "";
+
+				let res = await this.websom.fetch(this.route, {
+					filter: this.filter,
+					fields: {"*": true},
+					query: this.query,
+					page: this.page,
+					limit: this.limit
+				}, this.fetchOptions);
+
+				if (res.status == "error") {
+					if (!this.websom.ssr)
+						console.error("Error while fetching for data-view", res);
+
+					this.error = true;
+					this.message = res.message;
+
+					return false;
+				}
+
+				this.documents.splice(0, this.documents.length);
+
+				if (this.collection == "") {
+					for (let doc of res.documents) this.documents.push(doc);
+				}else{
+					for (let doc of res.documents) {
+						let entity = websom.makeEntity(this.collection, doc);
+						this.documents.push(this.$store.commit("setEntity", entity));
+					}
+				}
+
+				this.$emit("update", this.documents);
+
+				return true;
+			}
+		},
+		serverPrefetch() {
+			return this.refresh();
+		},
+		mounted() {
+			if (this.documents.length == 0)
+				this.refresh();
+		}
+	}
+}
+
+style {
+	.data-view-collection {
+
+	}
+}
