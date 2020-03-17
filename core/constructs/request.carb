@@ -9,7 +9,8 @@ class Websom.Request {
 
 	map body = new map();
 
-	//Websom.Standard.UserSystem.User userCache = null;
+	Websom.Standard.UserSystem.User userCache = null;
+	bool cachedUser = false;
 
 	bool external = false;
 
@@ -192,6 +193,15 @@ class Websom.Request {
 		*/
 	}
 	
+	[ForceAsync]
+	Websom.Standard.UserSystem.User user() {
+		if (this.cachedUser)
+			return this.userCache;
+		
+		this.cachedUser = true;
+		this.userCache = this.server.userSystem.getUserFromRequest(this);
+		return this.userCache;
+	}
 }
 
 class Websom.Session {
@@ -256,25 +266,11 @@ class Websom.Session {
 	}
 
 	primitive get(string key) {
-		if (this.request.server.config.legacy) {
-			native javascript {
-				return this.request.jsRequest.session[key] || null;
-			}
-
-			native php {
-				if (!isset($_SESSION)) session_start();
-				if (isset($_SESSION[$key]))
-					return $_SESSION[$key];
-				else
-					return NULL;
-			}
-		}else{
-			if (this.loaded == false) {
-				this.loaded = true;
-				this.request.server.session.loadRequest(this.request);
-			}
-			
-			return this.data[key];
+		if (this.loaded == false) {
+			this.loaded = true;
+			this.request.server.session.loadRequest(this.request);
 		}
+		
+		return this.data[key];
 	}
 }
