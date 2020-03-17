@@ -63,6 +63,37 @@ class Websom.AdapterInterface {
 		this.adapter.initialize();
 	}
 
+	bool loadAsBranchAdapter(string branchName) {
+		if (this.server.config.verbose)
+			Console.log("Searching for adapter: " + this.name + ", found: " + branchName);
+
+		let Websom.Module selectedModule = null;
+		let string selectedClass = "";
+
+		for (let int i in this.server.module.modules) {
+			let mod = this.server.module.modules[i];
+			let map adapters = mod.baseConfig["adapters"];
+
+			if (adapters != null) {
+				let map opts = adapters[branchName];
+
+				if (opts != null) {
+					let string cls = opts["class"];
+
+					selectedModule = mod;
+					selectedClass = cls;
+				}
+			}
+		}
+
+		if (selectedClass == "")
+			return false;
+
+		this.load(selectedModule, selectedClass);
+
+		return true;
+	}
+
 	void loadFromConfig() {
 		let adapterName = this.server.configService.getString("adapters", this.name);
 		
