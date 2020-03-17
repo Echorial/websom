@@ -13,5 +13,8 @@
     ],
     "autoload": {
         "files": ["native/php/websom.php"]
+    },
+    "require": {
+        "google/apiclient": "*"
     }
 }
