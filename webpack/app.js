@@ -6,6 +6,8 @@ import { createRouter } from "./router";
 import EffectLoader from "./effect-loader.js";
 
 import Packages from "./all.websom-packages";
+import State from "./all.websom-state";
+import Scripts from "./all.websom-scripts";
 import Effects from "./all.websom-effects";
 import "./all.websom-styles";
 
@@ -39,6 +41,7 @@ export async function createApp (api, websomServer) {
 	const store = new Vuex.Store({
 		state: () => ({
 			websom: {
+				colorScheme: "light",
 				api,
 				ssr,
 				data: {
@@ -55,6 +58,7 @@ export async function createApp (api, websomServer) {
 			userSystem: {
 				user: null
 			},
+			entities: {},
 			assets: {
 				logo: WebsomLogo,
 				logoRaster: WebsomLogoRaster
@@ -81,14 +85,57 @@ export async function createApp (api, websomServer) {
 			},
 			setValidator(state, d) {
 				Vue.set(state.websom.validators, d.type, d.handler);
+			},
+			setColorScheme(state, d) {
+				state.websom.colorScheme = d;
+			},
+			setUser(state, user) {
+				state.userSystem.user = user;
+			},
+			setEntity(state, entity) {
+				let collection = entity.$collection;
+
+				if (!state.entities[collection])
+					state.entities[collection] = {};
+				
+				if (state.entities[collection][entity.id]) {
+					let oldEntity = state.entities[collection][entity.id];
+
+					for (let f of entity.$fields) {
+						Vue.set(oldEntity, f, entity[f]);
+					}
+				}else{
+					state.entities[collection][entity.id] = entity;
+				}
+
+				return state.entities[collection][entity.id];
 			}
 		}
 	});
 
-	var websomUtils = WebsomUtils(store);
+	var websomUtils = WebsomUtils(store, Packages);
+
+	State.forEach(s =>
+		store.registerModule(s.info.name, s.script(websomUtils))
+	);
 
 	if (!ssr && window.__INITIAL_STATE__) {
+		console.log("Loaded with initial state");
+
 		store.replaceState(window.__INITIAL_STATE__);
+
+		console.log(store.state);
+	}
+
+	if (!ssr) {
+		let darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+		store.commit("setColorScheme", darkModeMediaQuery.matches ? "dark" : "light");
+		console.log(`Color scheme ${store.state.websom.colorScheme == "dark" ? "🌒 dark" : "☀️ light"}.`);
+
+		darkModeMediaQuery.addListener((e) => {
+			store.commit("setColorScheme", e.matches ? "dark" : "light")
+		});
 	}
 
 	if (!store.state.websom.data.loaded)
@@ -136,7 +183,7 @@ export async function createApp (api, websomServer) {
 	for (let v of Packages) {
 		Vue.component(v.info.name, v.vue);
 	}
-
+	
 	const app = new Vue({
 		router,
 		render: h => h(App.vue),
@@ -148,6 +195,15 @@ export async function createApp (api, websomServer) {
 		let effectLoader = new EffectLoader(Effects);
 		effectLoader.initialize();
 	}
+
+	for (let s of Scripts)
+		s.script({
+			app,
+			websom: websomUtils,
+			store,
+			packages: Packages,
+			ssr
+		});
 	
 	return { app, router, store };
 }
