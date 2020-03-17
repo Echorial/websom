@@ -4,7 +4,8 @@ header relative Websom.Standard.UserSystem.Module {
 	Websom.Adapters.Database.Collection users = null;
 	Websom.Adapters.Database.Collection logins = null;
 
-	Websom.Standard.UserSystem.User getUserFromRequest(Websom.Request req);
+	[ForceAsync]
+	Websom.Standard.UserSystem.User getUserFromRequest(Websom.Request req) {}
 }
 
 header relative Websom.Standard.UserSystem.User extends Websom.Entity {
@@ -22,6 +23,11 @@ header relative Websom.Standard.UserSystem.User extends Websom.Entity {
 	field string country = "";
 	field string postCode = "";
 
+	field string bio = "";
+	field string nickname = "";
+
+	field <<string>array>array social = new <<string>array>array();
+
 	`admin, author, moderator`
 	field string role = "";
 
@@ -34,6 +40,8 @@ header relative Websom.Standard.UserSystem.User extends Websom.Entity {
 
 	`Is this account's authentication passed onto an external OAuth system. e.g. Google, Facebook ...`
 	field bool connected = false;
+
+	field string connectedAdapter = "";
 
 	`If locked, login is not allowed.`
 	field bool locked = false;
@@ -70,4 +78,25 @@ header relative Websom.Standard.UserSystem.Connection {
 	field bool active = false;
 	field Websom.Time created = null;
 	field Websom.Time disabled = null;
+}
+
+namespace Websom.Adapters.UserSystem {}
+
+header class Websom.Adapters.UserSystem.Connection extends Websom.Adapter {
+	[ForceAsync]
+	Websom.Adapters.UserSystem.ConnectionUser getUser(map data) {}
+}
+
+header class Websom.Adapters.UserSystem.ConnectionUser {
+	string firstName = "";
+	string lastName = "";
+	string username = "";
+	string email = "";
+
+	void @construct(string firstName, string lastName, string username, string email) {
+		this.firstName = firstName;
+		this.lastName = lastName;
+		this.username = username;
+		this.email = email;
+	}
 }
