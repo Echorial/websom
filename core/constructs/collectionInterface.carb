@@ -97,6 +97,14 @@ class Websom.CollectionInterface {
 		return this;
 	}
 
+	Websom.CollectionInterface filter(string name, <void, Websom.Request, Websom.Adapters.Database.SelectQuery>function handler) {
+		let filter = new Websom.CollectionInterfaceFilter(name);
+		filter.handler = handler;
+
+		this.routes[this.routes.length - 1].filters.push(filter);
+		return this;
+	}
+
 	Websom.CollectionInterface field(string name, string operator) {
 		return this.field(name, operator, null);
 	}
@@ -493,6 +501,8 @@ class Websom.CollectionInterfaceFilter {
 	<int>array limits = new <int>array();
 
 	bool paginate = true;
+
+	<void, Websom.Request, Websom.Adapters.Database.SelectQuery>function handler = null;
 
 	void @construct(string name) {
 		this.limits.push(25);
