@@ -137,7 +137,19 @@ class Websom.RequestChain {
 		return this;
 	}
 
-	void makeRequest(string method, <void, Websom.Result>function callback) {
+	async Websom.Result execute(string method) {
+		native javascript {
+			this.makeRequest(method, (res) => {
+				@return(res);
+			});
+		}
+
+		native php {
+			return $this->phpRequest($method);
+		}
+	}
+
+	Websom.Request phpRequest(string method) {
 		native php {
 			$ch = curl_init($this->url);
 			$data = "";
@@ -191,8 +203,14 @@ class Websom.RequestChain {
 			$res = new Websom_Result($error, $response);
 			$res->status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 			curl_close($ch);
+			
+			return $res;
+		}
+	}
 
-			$callback($res);
+	void makeRequest(string method, <void, Websom.Result>function callback) {
+		native php {
+			$callback($this->phpRequest($method));
 		}
 
 		native javascript {
