@@ -20,6 +20,9 @@
 	"resources": [
 		{
 			"path": "./views"
+		},
+		{
+			"path": "./scripts"
 		}
 	],
 	"adapters": {
@@ -38,6 +41,14 @@
 				"php": true
 			},
 			"class": "CoreModule.SendGrid"
+		},
+		"reCaptcha": {
+			"type": "captcha",
+			"supports": {
+				"javascript": true,
+				"php": true
+			},
+			"class": "CoreModule.reCaptcha"
 		}
 	},
 	"config": {
@@ -55,6 +66,28 @@
 		"adapter.email.sendGrid": {
 			"apiKey": {
 				"name": "Send grid api key",
+				"type": "string",
+				"default": ""
+			}
+		},
+		"security.captcha": {
+			"background": {
+				"name": "Background",
+				"type": "boolean",
+				"description": "Should Websom always run captcha services in the background.",
+				"default": false,
+				"public": true
+			}
+		},
+		"adapter.captcha.reCaptcha": {
+			"clientKey": {
+				"name": "reCaptcha v3 client key",
+				"type": "string",
+				"default": "",
+				"public": true
+			},
+			"secretKey": {
+				"name": "reCaptcha v3 secret key",
 				"type": "string",
 				"default": ""
 			}
