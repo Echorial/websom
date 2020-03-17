@@ -111,6 +111,8 @@ style {
 
 		--base-height: calc(var(--base-size) * 3);
 
+		--nav-height: calc(var(--base-size) * 6);
+
 		--padding-h: calc(var(--base-size) * 2);
 		--padding-v: 0px;
 

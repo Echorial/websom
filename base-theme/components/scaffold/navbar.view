@@ -33,7 +33,7 @@ script {
 
 style {
 	.navbar {
-		min-height: calc(var(--base-size) * 6);
+		min-height: var(--nav-height);
 		
 		background: var(--color);
 
