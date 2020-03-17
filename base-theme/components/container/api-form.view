@@ -44,6 +44,10 @@ script {
 			componentContext: {}
 		}),
 		methods: {
+			setStatus(raw) {
+				this.status = raw.status;
+				this.message = raw.message;
+			},
 			async submit(data) {
 				let fields = this.$el.querySelectorAll(".form-field");
 
