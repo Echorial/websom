@@ -1,0 +1,25 @@
+namespace Websom.Adapters.Captcha {}
+
+header class Websom.Adapters.Captcha.Adapter extends Websom.Adapter {
+	[ForceAsync]
+	map clientInitialization(Websom.Request req, string action) {}
+	
+	[ForceAsync]
+	Websom.Adapters.Captcha.Report verify(Websom.Request req, map payload) {}
+}
+
+header class Websom.Adapters.Captcha.Report {
+	string token = "";
+	string id = "";
+	float score = 0;
+	string action = "";
+	uint64 initialized = 0;
+	string hostname = "";
+
+	string status = "";
+	string message = "";
+
+	void @construct() {
+		
+	}
+}

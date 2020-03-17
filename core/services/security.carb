@@ -13,6 +13,20 @@ class Websom.Services.Security inherits Websom.Service {
 
 	uint64 interval = 60000;
 
+	Websom.AdapterInterface captchaAdapter = null;
+
+	Websom.Adapters.Captcha.Adapter captcha = null;
+
+	void preStart() {
+		this.captchaAdapter = this.server.adapt("captcha");
+	}
+
+	void loadAdapter() {
+		this.captchaAdapter.loadFromConfig();
+
+		this.captcha = this.captchaAdapter.adapter;
+	}
+
 	Websom.Status start() {
 		this.configPath = this.server.config.root + "/security.json";
 
@@ -156,6 +170,8 @@ class Websom.Services.Security inherits Websom.Service {
 			return value.typeAsString() == "float";
 		}else if (type == "string") {
 			return value.typeAsString() == "string";
+		}else if (type == "map") {
+			return value.typeAsString() == "map";
 		}else if (type == "time") {
 			return value.typeAsString() == "float";
 		}else if (type == "boolean") {
