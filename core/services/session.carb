@@ -19,7 +19,12 @@ class Websom.Services.Session inherits Websom.Service {
 					.set("data", Websom.Json.encode(req.session.data))
 					.run();
 
-				req.cookie("wbsm_session", req.session.id);
+				let c = req.cookie("wbsm_session", req.session.id);
+				
+				c.domain = this.server.clientDomain;
+				c.path = "/";
+
+				req.header("X-Set-Session", req.session.id);
 			}else{
 				this.sessions.update()
 					.where("key", "==", req.session.id)
@@ -33,10 +38,15 @@ class Websom.Services.Session inherits Websom.Service {
 		return this.server.crypto.getRandomHex(128);
 	}
 
-	[ForceAsync]
 	void loadRequest(Websom.Request req) {
-		if ("wbsm_session" in req.cookies) {
-			let results = this.sessions.where("key", "==", req.cookies["wbsm_session"]).get();
+		if ("wbsm_session" in req.cookies or "x-session" in req.headers) {
+			let session = req.cookies["wbsm_session"];
+
+			if (session == null) {
+				session = req.headers["x-session"];
+			}
+
+			let results = this.sessions.where("key", "==", session).get();
 
 			if (results.documents.length > 0) {
 				let doc = results.documents[0];
