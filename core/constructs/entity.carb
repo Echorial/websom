@@ -1,4 +1,5 @@
 header class Websom.Entity {
+	map rawFields = null;
 	Websom.Adapters.Database.Collection collection = null;
 	string id = "";
 	
@@ -57,8 +58,80 @@ header class Websom.Entity {
 		}
 	}
 
+	primitive getFieldValue(string field) {
+		native javascript {
+			return this[field];
+		}
+
+		native php {
+			return $this->$field;
+		}
+	}
+
+	<Websom.Adapters.Database.Field>array getFieldsChanged() {
+		let fieldsChanged = new <Websom.Adapters.Database.Field>array();
+
+		for (let int i in this.collection.appliedSchema.fields) {
+			let field = this.collection.appliedSchema.fields[i];
+
+			let primitive realValue = null;
+			let myValue = this.getFieldValue(field.name);
+			let rawValue = this.rawFields[field.name];
+
+			let isDifferent = false;
+
+			if (field.type == "time") {
+				let Websom.Time cast = myValue;
+				realValue = cast.timestamp;
+				isDifferent = realValue != rawValue;
+			}else if (field.type == "reference") { 
+				let Websom.Entity cast = myValue;
+
+				if (cast != null) {
+					realValue = cast.id;
+				}
+
+				isDifferent = realValue != rawValue;
+			}else if (field.type == "array") {
+				native javascript {
+					isDifferent = JSON.stringify(myValue) != JSON.stringify(rawValue);
+				}
+
+				native php {
+					$isDifferent = count(array_diff($myValue, $rawValue)) > 0;
+				}
+			}else {
+				realValue = myValue;
+				isDifferent = realValue != rawValue;
+			}
+
+			if (isDifferent)
+				fieldsChanged.push(field);
+		}
+
+		return fieldsChanged;
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Database.UpdateQueryResult saveToCollection() {
+		let fields = this.getFieldsChanged();
+
+		let update = this.collection.update()
+			.where("id", "==", this.id);
+
+		for (let int i in fields) {
+			let field = fields[i];
+
+			update.set(field.name, this.getFieldValue(field.name));
+		}
+
+		return update.run();
+	}
+
 	[ForceAsync]
 	override void loadFromMap(map data) {
+		this.rawFields = data;
+
 		native javascript {
 			for (let k in data) {
 				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
@@ -93,29 +166,48 @@ header class Websom.Entity {
 
 let buildFieldForMember = void (Carbon.Class cls, Carbon.Property prop) => {
 	let rawType = "string";
+	let isPrimitive = prop.output.reference.descendantOf(Carbon.findClass("primitive"));
 
-	if (prop.output.reference.descendantOf(Carbon.findClass("primitive"))) {
+	if (isPrimitive == true) {
 		if (prop.output.reference.route == "string") {
 			rawType = "string";
-		}else if (prop.output.reference.route == "float") {
+		}
+		if (prop.output.reference.route == "float") {
 			rawType = "float";
-		}else if (prop.output.reference.route == "int") {
+		}
+		if (prop.output.reference.route == "int") {
 			rawType = "integer";
-		}else if (prop.output.reference.route == "array") {
+		}
+		if (prop.output.reference.route == "array") {
 			rawType = "array";
-		}else if (prop.output.reference.route == "map") {
+		}
+		if (prop.output.reference.route == "map") {
 			rawType = "string";
-		}else if (prop.output.reference.route == "bool") {
+		}
+		if (prop.output.reference.route == "bool") {
 			rawType = "boolean";
 		}
-	}else if (prop.output.reference.route == "Websom.Time") {
-		rawType = "time";
+	}
 
-		let camel = prop.name.substr(0, 1).toUpper() + prop.name.substr(1, prop.name.length);
+	if (isPrimitive == false) {
+		let isTime = prop.output.reference.route == "Websom.Time";
 
-		Carbon.Method.eval("void load" + camel + "(primitive value) {this." + prop.name + " = new Websom.Time(); this." + prop.name + ".timestamp = value;}", cls);
-	}else{
-		rawType = "reference";
+		if (isTime == true) {
+			rawType = "time";
+			
+			let first = prop.name.substr(0, 1);
+			first = first.toUpper();
+
+			let last = prop.name.substr(1, prop.name.length);
+
+			let camel = first + last;
+
+			Carbon.Method.eval("void load" + camel + "(primitive value) {this." + prop.name + " = new Websom.Time(); this." + prop.name + ".timestamp = value;}", cls);
+		}
+
+		if (isTime == false) {
+			rawType = "reference";
+		}
 	}
 
 	return '.field("' + prop.name + '", "' + rawType + '")';
