@@ -3,6 +3,10 @@ class Websom.Services.Config inherits Websom.Service {
 	map optionValuesFromDatabase = new map();
 	map optionDefaults = new map();
 
+	<<string>array>array publicDefaults = new <<string>array>array();
+	bool publicValueCache = false;
+	map publicValues = new map();
+
 	string global = "";
 
 	// We lazy load options in bulk. All or nothing.
@@ -13,6 +17,10 @@ class Websom.Services.Config inherits Websom.Service {
 	// type.sub-type.package-name -> adapter.database.loki
 	// type.package-name -> module.usermanager
 	string getString(string route, string option) {
+		return this.getPrimitive(route, option);
+	}
+
+	primitive getPrimitive(string route, string option) {
 		if (this.loaded == false)
 			this.load();
 
@@ -185,7 +193,19 @@ class Websom.Services.Config inherits Websom.Service {
 				let options = routes[route];
 
 				for (let string option in options) {
-					this.optionDefaults[route + "." + option] = options[option]["default"];
+					let map opt = options[option];
+					this.optionDefaults[route + "." + option] = opt["default"];
+					let public = false;
+
+					if ("public" in opt)
+						public = opt["public"];
+
+					let arr = new <string>array();
+					arr.push(route);
+					arr.push(option);
+
+					if (public)
+						this.publicDefaults.push(arr);
 				}
 			}
 		}
@@ -193,8 +213,17 @@ class Websom.Services.Config inherits Websom.Service {
 
 	map computeClientData() {
 		let mp = new map();
+		if (this.publicValueCache == false) {
+			for (let int i in this.publicDefaults) {
+				let p = this.publicDefaults[i];
+				this.publicValues[p[0] + "." + p[1]] = this.getPrimitive(p[0], p[1]);
+			}
 
-		mp["config"] = new map();
+			this.publicValueCache = true;
+		}
+
+		mp["config"] = this.publicValues;
+
 		mp["routes"] = new map();
 		mp["endpoints"] = this.server.api.gatherEndpoints();
 		mp["navigation"] = new map();
