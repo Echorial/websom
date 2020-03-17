@@ -64,7 +64,8 @@ module.exports = async function (source) {
 		"effect",
 		"script",
 		"style",
-		"page"
+		"page",
+		"state"
 	];
 
 	try {
