@@ -18,6 +18,8 @@ style {
 		align-items: center;
 		min-height: 100%;
 
+		padding-top: var(--base-size);
+
 		& > .card {
 			margin: var(--base-size);
 
@@ -27,6 +29,18 @@ style {
 
 			@media @small {
 				align-self: stretch;
+			}
+		}
+
+		& > .grid-layout {
+			min-width: 70%;
+
+			@media @small {
+				min-width: 100%;
+			}
+
+			@media @medium {
+				min-width: 90%;
 			}
 		}
 	}
@@ -65,6 +79,11 @@ style {
 		}
 	}
 
+	.stick-to-nav {
+		position: sticky;
+		top: calc(var(--nav-height) + var(--base-size));
+	}
+
 	#app {
 		font-family: var(--body-font);
 		font-weight: var(--body-weight);
@@ -94,5 +113,25 @@ style {
 		font-size: 14px;
 
 		margin: var(--base-size) 0px;
+	}
+
+	.space-top {
+		margin-top: var(--base-size);
+	}
+
+	.space-right {
+		margin-right: var(--base-size);
+	}
+
+	.space-left {
+		margin-left: var(--base-size);
+	}
+
+	.space-bottom {
+		margin-bottom: var(--base-size);
+	}
+
+	.fat-action {
+		cursor: pointer;
 	}
 }
