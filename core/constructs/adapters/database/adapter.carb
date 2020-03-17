@@ -102,7 +102,7 @@ header class Websom.Adapters.Database.Collection {
 	}
 
 	[ForceAsync]
-	Websom.Adapters.Database.Document document(string id) {}
+	trust Websom.Adapters.Database.Document document(string id) {}
 
 	[ForceAsync]
 	<Websom.Adapters.Database.Document>array getAll(<string>array id) {}
@@ -125,7 +125,7 @@ header class Websom.Adapters.Database.Collection {
 		entity.collection = this;
 	}
 
-	Websom.Entity getEntity(string id) {
+	trust Websom.Entity getEntity(string id) {
 		let doc = this.document(id);
 		if (doc == null)
 			return null;
@@ -276,17 +276,34 @@ header class Websom.Calculators.KeyCount inherits Websom.Calculator {
 	string fieldName = "";
 	string clusterType = "value";
 
+	Websom.Adapters.Database.Collection toCollection = null;
+	string toCollectionFieldName = "";
+
 	void @construct(string fieldName, string clusterType) {
 		this.fieldName = fieldName;
 		this.clusterType = clusterType;
 	}
 
+	void @construct(string fieldName, string clusterType, Websom.Adapters.Database.Collection toCollection, string toCollectionFieldName) {
+		this.fieldName = fieldName;
+		this.clusterType = clusterType;
+		this.toCollection = toCollection;
+		this.toCollectionFieldName = this.toCollectionFieldName;
+	}
+
 	trust void trackGroup(string key, int change) {
-		let metaDoc = this.collection.meta("key_count_" + key);
+		if (this.toCollection != null) {
+			this.toCollection.update()
+				.where("id", "==", key)
+				.increment(this.toCollectionFieldName, change)
+				.run();
+		}else{
+			let metaDoc = this.collection.meta("key_count_" + key);
 
-		metaDoc.incrementNumberField(1, change);
+			metaDoc.incrementNumberField(1, change);
 
-		metaDoc.update();
+			metaDoc.update();
+		}
 	}
 
 	trust override void insert(Websom.Adapters.Database.Document doc, Websom.Adapters.Database.Collection collection) {
