@@ -49,5 +49,51 @@ module.exports = function (source) {
 		}
 
 		return `let imports = []; ${imports.join("\n")} export default imports`;
+	}else if (this.query.type == "state") {
+		let imports = [];
+
+		for (let [i, file] of files.entries()) {
+			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
+			
+			let type = JSON.parse(`{${blocks.info.block}}`).type;
+			if (type != "state")
+				continue;
+
+			imports.push(`
+				import stateInfo${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-info=true";
+				import stateConfig${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-config=true";
+				import stateScript${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-script=true";
+
+				imports.push({
+					info: stateInfo${i},
+					config: stateConfig${i},
+					script: stateScript${i}
+				});
+			`);
+		}
+
+		return `let imports = []; ${imports.join("\n")} export default imports`;
+	}else if (this.query.type == "script") {
+		let imports = [];
+
+		for (let [i, file] of files.entries()) {
+			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
+			
+			let type = JSON.parse(`{${blocks.info.block}}`).type;
+			if (type != "script")
+				continue;
+
+			imports.push(`
+				import scriptInfo${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-info=true";
+				import scriptScript${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-script=true";
+
+				imports.push({
+					info: scriptInfo${i},
+					script: scriptScript${i}
+				});
+			`);
+		}
+
+		return `let imports = []; ${imports.join("\n")} export default imports`;
 	}
 };
