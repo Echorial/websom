@@ -153,10 +153,10 @@ script {
 					let out = edges[e](targetRect, rect);
 
 					if (
-						out.left + targetRect.width > window.innerWidth ||
-						out.left + targetRect.width < 0 ||
-						out.top + targetRect.height > window.innerHeight ||
-						out.top + targetRect.height < 0
+						out.left + rect.width > window.innerWidth ||
+						out.left < 0 ||
+						out.top + rect.height > window.innerHeight ||
+						out.top < 0
 					) {
 						if (checks < 5) {
 							checkEdge(out.next);
