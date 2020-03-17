@@ -81,7 +81,10 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 	}
 	
 	CoreModule.LokiDocument documentFromRaw(map raw) {
-		let doc = new CoreModule.LokiDocument(this, raw["$loki"]);
+		let uint64 idVal = raw["$loki"];
+		
+		let doc = new CoreModule.LokiDocument(this, idVal.toString());
+		raw["id"] = raw["$loki"];
 		doc.rawData = raw;
 
 		return doc;
@@ -186,7 +189,7 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		let id = "";
 
 		native javascript {
-			id = this.lokiCollection.insert(query.sets).$loki;
+			id = this.lokiCollection.insert(query.sets).$loki.toString();
 			this.database.loki.saveDatabase(() => {
 				console.log("Saved db");
 			});
@@ -229,10 +232,15 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 
 			for (let condition of query.conditions) {
 				if (condition.type == "where") {
-					if (!qMap[condition.field])
-						qMap[condition.field] = {};
-					
-					qMap[condition.field][ops[condition.operator]] = condition.value;
+					if (condition.operator == "==" && condition.field == "id") {
+						qMap["$loki"] = {};
+						qMap["$loki"]["$aeq"] = condition.value;
+					}else{
+						if (!qMap[condition.field])
+							qMap[condition.field] = {};
+						
+						qMap[condition.field][ops[condition.operator]] = condition.value;
+					}
 				}else if (condition.type == "order") {
 					orderByField = condition.field;
 					orderByOrder = condition.operator;
