@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<div class="card" :class="{'card-revealed': revealed, 'card-has-reveal fat-action': canReveal}">
+	<div class="card" :class="{'card-revealed': revealed, 'card-has-reveal fat-action': canReveal, 'fat-action': href}" @click="click">
 		<div class="card-main" @click="open">
 			<div v-if="$slots.image || images.length > 0" class="card-images">
 				<slider v-if="images.length > 0" class="card-images-slider" :images="images" />
@@ -21,7 +21,7 @@ template {
 				<slot class="card-actions" name="action" />
 			</div>
 		</div>
-		<div class="card-reveal">
+		<div class="card-reveal" v-if="canReveal">
 			<div class="card-reveal-content">
 				<div class="card-reveal-bar" @click="close">
 					<slot name="reveal-title" />
@@ -43,6 +43,10 @@ script {
 			titlePosition: {
 				type: String,
 				default: "image"
+			},
+			href: {
+				type: String,
+				default: ""
 			}
 		},
 		data() {
@@ -62,6 +66,11 @@ script {
 			},
 			close(e) {
 				this.revealed = false;
+			},
+			click() {
+				if (this.href) {
+					this.$router.push(this.href);
+				}
 			}
 		}
 	}
@@ -76,6 +85,7 @@ style {
 		& > h5,
 		& > h6 {
 			padding-top: 0px;
+			padding: 0;
 		}
 	}
 
@@ -90,6 +100,23 @@ style {
 			bottom: 0px;
 			padding: var(--base-size);
 			width: calc(100% - var(--base-size) * 2);
+
+			color: white;
+		}
+	}
+
+	.card:not(:first-child) {
+		margin-top: var(--base-size);
+	}
+
+	@media @small {
+		.card {
+			margin-left: var(--base-size);
+			margin-right: var(--base-size);
+
+			&:last-child {
+				margin-bottom: var(--base-size);
+			}
 		}
 	}
 
@@ -97,6 +124,8 @@ style {
 		background: var(--background-overlay);
 		border: 1px solid var(--background-center);
 		border-radius: 4px;
+
+		transition: var(--transition-color) var(--transition-easing);
 
 		position: relative;
 
@@ -106,6 +135,15 @@ style {
 			}
 		}
 
+		&.space-horizontal {
+			margin-left: var(--base-size);
+			margin-right: var(--base-size);
+		}
+
+		&.fat-action:hover {
+			background: var(--background-tint);
+		}
+ 
 		.card-main {
 			text-align: left;
 
@@ -118,6 +156,15 @@ style {
 					margin-bottom: 12px;
 
 					position: relative;
+				}
+
+				& > h1 + div,
+				& > h2 + div,
+				& > h3 + div,
+				& > h4 + div,
+				& > h5 + div,
+				& > h6 + div {
+					padding-top: var(--base-size);
 				}
 			}
 			
