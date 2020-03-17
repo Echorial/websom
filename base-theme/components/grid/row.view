@@ -6,7 +6,7 @@ info {
 template {
 	<div :class="'grid-row purpose-' + purpose">
 		<slot />
-	</div>	
+	</div>
 }
 
 script {
@@ -31,5 +31,23 @@ style {
 		flex-wrap: wrap;
 
 		height: 100%;
+
+		&.reverse-on-small {
+			@media @small {
+				flex-direction: column-reverse;
+			}
+		}
+
+		&.reverse-on-medium {
+			@media @medium {
+				flex-direction: row-reverse;
+			}
+		}
+
+		&.reverse-on-large {
+			@media @large {
+				flex-direction: row-reverse;
+			}
+		}
 	}
 }
