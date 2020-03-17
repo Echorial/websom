@@ -41,7 +41,9 @@ class Websom.Server {
 	string websomRoot = "";
 
 	string apiHost = "https://localhost:8790";
+	string apiDomain = "localhost:8790";
 	string clientHost = "https://localhost:8080";
+	string clientDomain = "localhost:8080";
 	string websiteName = "Websom site";
 
 	Websom.Status status = new Websom.Status();
@@ -336,6 +338,7 @@ class Websom.Server {
 				res.setHeader("X-Powered-By", "Websom");
 				res.setHeader("Access-Control-Allow-Origin", "*");
 				res.setHeader("Access-Control-Allow-Headers", "*");
+				res.setHeader("Access-Control-Expose-Headers", "X-Set-Session");
 
 				this.processAPIRequest(websomRequest);
 			});
