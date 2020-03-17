@@ -1,0 +1,33 @@
+info {
+	"name": "reCaptcha",
+	"type": "component"
+}
+
+template {
+	<div></div>
+}
+
+script {
+	export default {
+		methods: {
+			execute(payload) {
+				return new Promise((res, rej) => {
+					grecaptcha.ready(() => {
+						grecaptcha.execute(this.clientKey, {action: action}).then((token) => {
+							res({ token });
+						});
+					});
+				});
+			}
+		},
+		computed: {
+			clientKey() {
+				return this.websom.getConfig("adapter.captcha.reCaptcha", "clientKey")
+			}
+		},
+		mounted() {
+			if (typeof grecaptcha === "undefined")
+				this.websom.loadScript(`https://www.google.com/recaptcha/api.js?render=${this.clientKey}`);
+		}
+	}
+}

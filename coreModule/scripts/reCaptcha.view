@@ -1,0 +1,16 @@
+info {
+	"name": "reCaptcha",
+	"type": "script"
+}
+
+script {
+	export default ctx => {
+		if (!ctx.websom.getConfig("security.captcha", "background"))
+			return;
+
+		let clientKey = ctx.websom.getConfig("adapter.captcha.reCaptcha", "clientKey");
+
+		if (typeof grecaptcha === "undefined")
+				ctx.websom.loadScript(`https://www.google.com/recaptcha/api.js?render=${clientKey}`);
+	}
+}

@@ -1,0 +1,50 @@
+class CoreModule.reCaptcha inherits Websom.Adapters.Captcha.Adapter {
+	string route = "adapter.captcha.reCaptcha";
+
+	string reCaptchaAPI = "https://www.google.com/recaptcha/api/siteverify";
+
+	[ForceAsync]
+	override map clientInitialization(Websom.Request req, string action) {
+		let mp = new map();
+		mp["component"] = "reCaptcha";
+		mp["action"] = action;
+		return mp;
+	}
+	
+	[ForceAsync]
+	override Websom.Adapters.Captcha.Report verify(Websom.Request req, map payload) {
+		let token = payload["token"];
+
+		let body = new map();
+
+		body["response"] = token;
+		body["secret"] = this.server.getConfigString(this.route, "secretKey");
+
+		let results = this.server.request(this.reCaptchaAPI)
+			.parseJson()
+			.json(body)
+			.execute("post");
+
+		let map data = results.data;
+
+		let bool success = data["success"];
+		let string hostname = data["hostname"];
+
+		let report = new Websom.Adapters.Captcha.Report();
+		report.token = token;
+
+		if (success) {
+			report.status = "success";
+			report.message = "Success";
+		}else{
+			report.status = "error";
+			report.message = "reCaptcha error";
+		}
+
+		report.hostname = hostname;
+		report.action = data["action"];
+		report.score = data["score"];
+		
+		return report;
+	}
+}
