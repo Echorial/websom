@@ -34,7 +34,7 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 					let handler = this.handlers[i];
 
 					if (handler.key == doc.get("key")) {
-						handler.handler(new Websom.Adapters.Confirmation.Execution(ctx.request, doc.get("key"), doc.get("storage")));
+						handler.handler(new Websom.Adapters.Confirmation.Execution(ctx.request, doc.get("key"), Websom.Json.parse(doc.get("storage"))));
 					}
 				}
 				
