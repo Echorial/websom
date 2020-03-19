@@ -129,7 +129,8 @@ export default {
 						time: "access_time",
 						upload: "cloud_upload",
 						loading: "refresh",
-						key: "vpn_key"
+						key: "vpn_key",
+						wrench: "build"
 					},
 					styles: {
 						all: {
@@ -156,7 +157,8 @@ export default {
 						power: "shut-down",
 						clock: "time",
 						loading: "refresh",
-						"user-subtract": "user-unfollow"
+						"user-subtract": "user-unfollow",
+						wrench: "tools"
 					},
 					styles: {
 						all: {
