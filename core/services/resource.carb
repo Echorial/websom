@@ -440,7 +440,7 @@ class Websom.Services.Resource inherits Websom.Service {
 					output.push(Websom.Resource.invalid(this.server, owner, realPath));
 			}else if ("path" in raw) {
 				var realPath = FileSystem.resolve(basePath + "/" + raw["path"]);
-				if (FileSystem.isDir(realPath)) {
+				if (FileSystem.exists(realPath) and FileSystem.isDir(realPath)) {
 					var files = FileSystem.readDirSync(realPath);
 					for (var int f in files) {
 						var file = files[f];
@@ -451,7 +451,7 @@ class Websom.Services.Resource inherits Websom.Service {
 					}
 				}
 			}else{
-				output.push(Websom.Resource.invalid(this.server, owner, "Unkown")); //Bad error reporting
+				output.push(Websom.Resource.invalid(this.server, owner, "Unknown")); //Bad error reporting
 			}
 		}
 
@@ -658,6 +658,8 @@ class Websom.Resource {
 	int order = 0;
 	bool isInvalid = false;
 	string reference = "";
+
+	string bundle = "";
 
 	map raw = null;
 
