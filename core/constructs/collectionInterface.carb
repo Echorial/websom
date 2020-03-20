@@ -115,6 +115,12 @@ class Websom.CollectionInterface {
 		return this;
 	}
 
+	Websom.CollectionInterface fieldComputed(string name, string operator, <primitive, Websom.Request>function func) {
+		let filters = this.routes[this.routes.length - 1].filters;
+		filters[filters.length - 1].computed.push(new Websom.CollectionInterfaceFieldSetComputed(name, operator, func));
+		return this;
+	}
+
 	Websom.CollectionInterface force(string name, string operator, primitive value) {
 		let filters = this.routes[this.routes.length - 1].filters;
 		filters[filters.length - 1].forces.push(new Websom.CollectionInterfaceFieldSet(name, operator, value));
@@ -491,8 +497,21 @@ class Websom.CollectionInterfaceFieldSet {
 	}
 }
 
+class Websom.CollectionInterfaceFieldSetComputed {
+	string name = "";
+	string operator = "";
+	<primitive, Websom.Request>function handler = null;
+
+	void @construct(string name, string operator, <primitive, Websom.Request>function func) {
+		this.name = name;
+		this.operator = operator;
+		this.handler = func;
+	}
+}
+
 class Websom.CollectionInterfaceFilter {
 	<Websom.CollectionInterfaceFieldSet>array fields = new <Websom.CollectionInterfaceFieldSet>array();
+	<Websom.CollectionInterfaceFieldSetComputed>array computed = new <Websom.CollectionInterfaceFieldSetComputed>array();
 	<Websom.CollectionInterfaceFieldSet>array forces = new <Websom.CollectionInterfaceFieldSet>array();
 	<Websom.CollectionInterfaceFieldSet>array orders = new <Websom.CollectionInterfaceFieldSet>array();
 
