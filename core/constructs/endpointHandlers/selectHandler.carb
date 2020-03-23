@@ -13,12 +13,19 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 			return null;
 		}
 
-		let query = this.buildQuery(cir, filter, req);
-	}
-
-	override void buildQuery(Websom.CollectionInterfaceRoute cir, Websom.CollectionInterfaceFilter filter, Websom.Request req) {
 		let collection = cir.collection.collection;
 		let query = collection.select();
+
+		let out = this.buildQuery(cir, filter, req, query);
+
+		if (out == null)
+			return null;
+
+		this.executeQuery(cir, filter, req, query);
+	}
+
+	override Websom.Adapters.Database.SelectQuery buildQuery(Websom.CollectionInterfaceRoute cir, Websom.CollectionInterfaceFilter filter, Websom.Request req, Websom.Adapters.Database.SelectQuery query) {
+		let collection = cir.collection.collection;
 
 		let limit = filter.limits[0];
 
@@ -76,6 +83,24 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 			}
 		}
 
+		for (let int i in filter.computed) {
+			let field = filter.computed[i];
+			let primitive value = null;
+			
+			native javascript {
+				value = await field.handler(req);
+			}
+			
+			native php {
+				$value = $field->handler($req);
+			}
+
+			if (req.sent)
+				return null;
+
+			query.where(field.name, field.operator, value);
+		}
+
 		if (filter.handler != null) {
 			native javascript {
 				await filter.handler(req, query);
@@ -89,6 +114,12 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 		if (req.sent) {
 			return null;
 		}
+
+		return query;
+	}
+
+	void executeQuery(Websom.CollectionInterfaceRoute cir, Websom.CollectionInterfaceFilter filter, Websom.Request req, Websom.Adapters.Database.SelectQuery query) {
+		let collection = cir.collection.collection;
 
 		let res = new map();
 
