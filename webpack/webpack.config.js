@@ -1,7 +1,9 @@
 const path = require("path");
 const VueLoaderPlugin = require("vue-loader/lib/plugin");
 
-module.exports = (websomServer) => {
+module.exports = (websomServer, deployBundle) => {
+	deployBundle = deployBundle || "default";
+
 	let gatherViews = () => {
 		let files = [];
 
@@ -83,7 +85,8 @@ module.exports = (websomServer) => {
 							loader: path.resolve(__dirname, "./websom-loader/loader.js"),
 							options: {
 								type: "components",
-								files: gatherViews
+								files: gatherViews,
+								bundle: deployBundle
 							}
 						}
 					]
@@ -119,7 +122,8 @@ module.exports = (websomServer) => {
 							loader: path.resolve(__dirname, "./websom-loader/loader.js"),
 							options: {
 								type: "script",
-								files: gatherViews
+								files: gatherViews,
+								bundle: deployBundle
 							}
 						}
 					]
@@ -134,7 +138,8 @@ module.exports = (websomServer) => {
 							loader: path.resolve(__dirname, "./websom-loader/loader.js"),
 							options: {
 								type: "styles",
-								files: gatherViews
+								files: gatherViews,
+								bundle: deployBundle
 							}
 						}
 					]
