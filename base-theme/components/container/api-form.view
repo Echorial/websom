@@ -34,6 +34,10 @@ script {
 			request: {
 				type: Object,
 				default: () => ({})
+			},
+			"use-local-storage": {
+				type: Boolean,
+				default: false
 			}
 		},
 		data: () => ({
@@ -71,7 +75,7 @@ script {
 				this.loading = true;
 				
 				try {
-					let res = await this.websom.fetch(this.route, data, this.request);
+					let res = await this.websom.fetch(this.route, data, {useLocalStorage: this.useLocalStorage, ...this.request});
 
 					if (res.status == "success") {
 						this.status = "success";
@@ -86,6 +90,8 @@ script {
 					}
 
 					this.loading = false;
+
+					return res;
 				} catch (e) {
 					this.loading = false;
 					this.status = "error";
