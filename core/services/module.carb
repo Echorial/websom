@@ -65,15 +65,21 @@ class Websom.Services.Module inherits Websom.Service {
 		native javascript {
 			if (this.server.config.dev) {
 				if (config.npm) {
+					const path = require("path");
 					const npm = require('npm-programmatic');
+					
 					(async () => {
 						let packages = [];
 
 						for (let package in config.npm)
 							packages.push(package + "@" + config.npm[package]);
 						
-						await npm.install(packages);
-						console.log("Installed dependencies");
+						await npm.install(packages, {
+							cwd: path.resolve(this.server.config.configOverrides, "../"),
+        					save: true
+						});
+
+						console.log("Installed dependencies " + JSON.stringify(packages));
 					})();
 				}
 
