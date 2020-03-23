@@ -230,6 +230,11 @@ class Websom.Session {
 				$_SESSION[$key] = $value;
 			}
 		}else{
+			if (this.loaded == false) {
+				this.loaded = true;
+				this.request.server.session.loadRequest(this.request);
+			}
+			
 			this.changed = true;
 			this.data[key] = value;
 		}
@@ -246,6 +251,11 @@ class Websom.Session {
 				unset($_SESSION[$key]);
 			}
 		}else{
+			if (this.loaded == false) {
+				this.loaded = true;
+				this.request.server.session.loadRequest(this.request);
+			}
+
 			this.changed = true;
 			this.data[key] = null;
 		}
