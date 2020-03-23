@@ -37,12 +37,16 @@ class Websom.Server {
 	Websom.Config config = null;
 	Websom.Services.Config configService = null;
 
+	map rawInputConfig = null;
+
+	string devDeploy = "development";
+
 	string scriptPath = "";
 	string websomRoot = "";
 
-	string apiHost = "https://localhost:8790";
-	string apiDomain = "localhost:8790";
-	string clientHost = "https://localhost:8080";
+	string apiHost = "http://localhost:8970";
+	string apiDomain = "localhost:8970";
+	string clientHost = "http://localhost:8080";
 	string clientDomain = "localhost:8080";
 	string websiteName = "Websom site";
 
@@ -78,6 +82,8 @@ class Websom.Server {
 	}
 
 	void @construct(map config) {
+		this.rawInputConfig = config;
+
 		native php {
 			$this->scriptPath = __FILE__;
 		}
@@ -131,8 +137,17 @@ class Websom.Server {
 			this.config.verbose = config["verbose"] == true;
 		}
 
+		if ("deploy" in config) {
+			this.devDeploy = config["deploy"];
+		}
+
 		if ("config" in config) {
 			this.config.configOverrides = FileSystem.resolve(basePath + "/" + config["config"]);
+
+			let deploys = FileSystem.resolve(basePath + "/" + config["config"] + "/deploy.json");
+			if (FileSystem.exists(deploys)) {
+				this.config.deploys = Websom.Json.parse(FileSystem.readSync(deploys, "utf8"));
+			}
 		}
 
 		if ("name" in config) {
@@ -165,6 +180,17 @@ class Websom.Server {
 		if (this.config.dev)
 			if (collection.appliedSchema != null)
 				collection.appliedSchema.register();
+	}
+
+	map getDeploy(string name) {
+		if (this.config.deploys == null or this.config.deploys["deploys"] == null)
+			return null;
+		
+		let <map>array deploys = this.config.deploys["deploys"];
+
+		return deploys.find(bool (map d) => {
+			return d["name"] == name;
+		});
 	}
 
 	Websom.AdapterInterface adapt(string name) {
