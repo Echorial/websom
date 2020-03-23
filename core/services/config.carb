@@ -227,6 +227,7 @@ class Websom.Services.Config inherits Websom.Service {
 		mp["routes"] = new map();
 		mp["endpoints"] = this.server.api.gatherEndpoints();
 		mp["navigation"] = new map();
+		mp["navigation"]["navbar"] = new <map>array();
 
 		mp["config"]["test"] = true;
 
