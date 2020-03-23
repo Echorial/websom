@@ -82,7 +82,13 @@ header class Websom.Entity {
 
 			if (field.type == "time") {
 				let Websom.Time cast = myValue;
-				realValue = cast.timestamp;
+				
+				if (cast == null) {
+					realValue = null;
+				}else{
+					realValue = cast.timestamp;
+				}
+
 				isDifferent = realValue != rawValue;
 			}else if (field.type == "reference") { 
 				let Websom.Entity cast = myValue;
