@@ -4,8 +4,8 @@ const nodeExternals = require("webpack-node-externals");
 const baseConfig = require("./webpack.config.js");
 const VueSSRServerPlugin = require("vue-server-renderer/server-plugin");
 
-module.exports = (websomServer) => {
-	return merge(baseConfig(websomServer), {
+module.exports = (websomServer, bundle) => {
+	return merge(baseConfig(websomServer, bundle), {
 		// Point entry to your app"s server entry file
 		entry: "./entry.server.js",
 
@@ -15,7 +15,7 @@ module.exports = (websomServer) => {
 		target: "node",
 
 		// For bundle renderer source map support
-		devtool: "source-map",
+		//devtool: "source-map",
 
 		// This tells the server bundle to use Node-style exports
 		output: {
