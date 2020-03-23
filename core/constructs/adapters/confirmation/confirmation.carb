@@ -30,6 +30,7 @@ header class Websom.Adapters.Confirmation.Handler {
 header class Websom.Adapters.Confirmation.Execution {
 	string key = "";
 	map storage = null;
+	map params = null;
 	Websom.Request request = null;
 
 	void @construct(Websom.Request req, string key, map storage) {
