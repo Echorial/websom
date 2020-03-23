@@ -1,18 +1,22 @@
 info {
 	"name": "page-core-confirmations",
 	"type": "page",
-	"route": "/confirmations/confirm/:secret",
+	"route": "/confirmations/confirm/:key/:secret",
 	"title": "Confirmation"
 }
 
 template {
 	<scaffold>
 		<main class="center-content">
-			<card>
+			<card v-if="!component">
 				<div slot="body">
 					<loader type="big" :status="loaderStatus"/>
 				</div>
 			</card>
+			<loader v-else :active="loading">
+				<component :is="component" :secret="secret" @confirm="confirm($event)" />
+				<status-box v-if="status.length > 0 && status != 'component'" :message="loaderMessage" :status="status" class="api-form-status" />
+			</loader>
 		</main>
 	</scaffold>
 }
@@ -21,14 +25,37 @@ script {
 	export default {
 		data: () => ({
 			loaderStatus: null,
-
+			loading: false,
+			loaderMessage: "",
+			status: ""
 		}),
 		computed: {
 			secret() {
 				return this.$route.params.secret;
+			},
+			component() {
+				return this.$options.components["confirmation-" + this.$route.params.key];
+			}
+		},
+		methods: {
+			async confirm(params) {
+				this.loading = true;
+
+				let res = await this.websom.fetch("/confirmations/confirm", {
+					secret: this.$route.params.secret,
+					params
+				});
+
+				this.loading = false;
+
+				this.status = res.status;
+				this.loaderMessage = res.message;
 			}
 		},
 		async mounted() {
+			if (this.component)
+				return;
+
 			let res = await this.websom.fetch("/confirmations/confirm", {
 				secret: this.$route.params.secret
 			});
