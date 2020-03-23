@@ -236,9 +236,9 @@ ${blocks.script ? blocks.script.block : "export default {}"}
 			if (this.config) {
 				setValue = this.config[key] || setValue;
 			}
-
-			res.data.normalizedStyle["--" + key] = setValue;
-			styles += "--" + key + ":" + setValue + ";";
+			let kebab = key.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase();
+			res.data.normalizedStyle["--" + kebab] = setValue;
+			styles += "--" + kebab + ":" + setValue + ";";
 		}
 
 		res.data.style = styles + res.data.style;
