@@ -1,0 +1,28 @@
+class Websom.DeleteHandler inherits Websom.SelectHandler {
+	override void fulfill(Websom.CollectionInterfaceRoute cir, Websom.Request req) {
+		let filterName = req.body["filter"];
+		if (filterName.typeAsString() != "string") {
+			filterName = "default";
+		}
+
+		let filter = cir.findFilter(filterName);
+		
+		if (filter == null) {
+			req.endWithError("Unknown filter provided");
+
+			return null;
+		}
+
+		let collection = cir.collection.collection;
+		let query = collection.delete();
+
+		let out = this.buildQuery(cir, filter, req, query);
+
+		if (out == null)
+			return null;
+
+		let deleteResults = query.run();
+
+		req.endWithSuccess("Deleted");
+	}
+}
