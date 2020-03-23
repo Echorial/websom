@@ -575,7 +575,7 @@ header class Websom.Adapters.Database.UpdateQueryResult {
 header class Websom.Adapters.Database.DeleteQuery extends Websom.Adapters.Database.SelectQuery {
 	Websom.Adapters.Database.Collection collection = null;
 
-	trust void @construct(Websom.Adapters.Database.Collection collection) {
+	trust override void @construct(Websom.Adapters.Database.Collection collection) {
 		this.collection = collection;
 	}
 
