@@ -149,5 +149,6 @@ class CoreModule.Module inherits Websom.Module {
 }
 
 #include "adapters/loki"
+#include "adapters/firestore"
 #include "adapters/sendGrid"
 #include "adapters/confirmation"

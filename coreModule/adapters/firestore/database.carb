@@ -1,0 +1,48 @@
+class CoreModule.Firestore inherits Websom.Adapters.Database.Adapter {
+	void firestore = null;
+
+	string route = "adapter.database.firestore";
+
+	override void initialize() {
+		this.loadDB();
+	}
+
+	[ForceAsync]
+	void loadDB() {
+		native javascript {
+			const admin = require(require.resolve("firebase-admin", {
+				paths: [
+					this.server.config.configOverrides
+				]
+			}));
+			
+			const path = require("path");
+
+			if (!!process.env.GCP_PROJECT) {
+				const functions = require("firebase-functions");
+
+				admin.initializeApp(functions.config().firebase);
+
+			}else{
+				let serviceAccount = require(path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials")));
+
+				admin.initializeApp({
+					credential: admin.credential.cert(serviceAccount)
+				});
+			}
+			
+			this.firestore = admin.firestore();
+			this.firestore.settings({
+				timestampsInSnapshots: true
+			});
+		}
+	}
+
+	async override void shutdown() {
+		
+	}
+
+	override Websom.Adapters.Database.Collection collection(string name) {
+		return new CoreModule.FirestoreCollection(this, name);
+	}
+}

@@ -1,0 +1,274 @@
+class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collection {
+	void firestoreCollection = null;
+
+	void lazilyGetCollection() {
+		native javascript {
+			if (!this.firestoreCollection)
+				this.firestoreCollection = this.database.firestore.collection(this.name);
+		}
+	}
+
+	override Websom.Adapters.Database.Document document(string id) {
+		this.lazilyGetCollection();
+
+		let map doc = null;
+
+		native javascript {
+			doc = (await this.firestoreCollection.doc(id).get()).data();
+		}
+		
+		if (doc == null)
+			return null;
+	
+		return this.documentFromRaw(id, doc);
+	}
+
+	override <Websom.Adapters.Database.Document>array getAll(<string>array ids) {
+		this.lazilyGetCollection();
+
+		let <map>array docs = null;
+
+		native javascript {
+			docs = (await this.firestoreCollection.getAll(...(ids.map(id => this.firestoreCollection.doc(id)))));
+		}
+		
+		let outputs = new <Websom.Adapters.Database.Document>array();
+
+		for (let int i in docs) {
+			let doc = docs[i];
+
+			native javascript {
+				outputs.push(this.documentFromRaw(doc.id, doc.data()));
+			}
+		}
+
+		return outputs;
+	}
+
+	override Websom.Adapters.Database.MetaDocument meta(string key) {
+		this.lazilyGetCollection();
+
+		let map doc = null;
+
+		native javascript {
+			doc = (await this.firestoreCollection.doc(key).get()).data();
+		}
+		
+		if (doc == null) {
+			native javascript {
+				doc = {
+					metaKey: key,
+					number1: 0,
+					number2: 0,
+					number3: 0,
+					string1: "",
+					string2: "",
+					string3: "",
+					array1: [],
+					array2: [],
+					array3: []
+				};
+
+				this.firestoreCollection.doc(key).set(doc);
+			}
+		}
+	
+		let meta = new CoreModule.FirestoreMetaDocument(key);
+		meta.raw = doc;
+		meta.collection = this;
+
+		return meta;
+	}
+	
+	CoreModule.FirestoreDocument documentFromRaw(string id, map raw) {
+		let doc = new CoreModule.FirestoreDocument(this, id);
+		doc.rawData = raw;
+
+		return doc;
+	}
+
+	void registerSchema(Websom.Adapters.Database.Schema schema) {
+		
+	}
+
+	async override <Websom.Adapters.Database.InsertQueryResult>array commitBatch(Websom.Adapters.Database.BatchQuery query) {
+		native javascript {
+			let transaction = this.database.firestore.runTransaction(async t => {
+				for (let update of query.updates) {
+					this.runUpdate(update, t);
+				}
+
+				let inserts = [];
+
+				for (let insert of query.inserts) {
+					inserts.push(this.runInsert(insert, t));
+				}
+			}).then((res) => {
+				console.log(res);
+				@return();
+			}).catch((err) => {
+				console.log(err);
+			});
+		}
+	}
+
+	override Websom.Adapters.Database.UpdateQueryResult executeUpdate(Websom.Adapters.Database.UpdateQuery query) {
+		this.lazilyGetCollection();
+		return this.runUpdate(query, this.firestoreCollection);
+	}
+
+	[ForceAsync]
+	override Websom.Adapters.Database.UpdateQueryResult runUpdate(Websom.Adapters.Database.UpdateQuery query, void ctx) {
+		this.lazilyGetCollection();
+
+		let docs = this.executeSelect(query).documents;
+
+		native javascript {
+			const firebase = require(require.resolve("firebase-admin", {
+				paths: [
+					this.database.server.config.configOverrides
+				]
+			}));
+
+			for (let doc of docs) {
+				let oldCopy = this.documentFromRaw(doc.id, Object.assign({}, doc.rawData));
+
+				for (let k in query.sets) {
+					if (query.sets.hasOwnProperty(k)) {
+						doc.rawData[k] = query.sets[k];
+					}
+				}
+
+				for (let k in query.increments) {
+					if (query.hasOwnProperty(k)) {
+						doc.rawData[k] = firebase.firestore.FieldValue.increment(query.increments[k]);
+					}
+				}
+
+				if (this.appliedSchema != null) {
+					for (let i in this.appliedSchema.calculators) {
+						let calc = this.appliedSchema.calculators[i];
+
+						await calc.update(oldCopy, doc, this);
+					}
+				}
+
+				ctx.doc(doc.id).set(doc.rawData);
+			}
+		}
+
+		let res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
+		res.updateCount = docs.length;
+
+		return res;
+	}
+
+	override Websom.Adapters.Database.DeleteQueryResult executeDelete(Websom.Adapters.Database.DeleteQuery query) {
+		this.lazilyGetCollection();
+
+		let docs = this.executeSelect(query).documents;
+
+		for (let int i in docs) {
+			let doc = docs[i];
+
+			native javascript {
+				await this.firestoreCollection.doc(doc.id).delete();
+			}
+
+			if (this.appliedSchema != null) {
+				for (let int j in this.appliedSchema.calculators) {
+					let calc = this.appliedSchema.calculators[j];
+
+					calc.delete(doc, this);
+				}
+			}
+		}
+
+		return new Websom.Adapters.Database.DeleteQueryResult(true, "");
+	}
+
+	override Websom.Adapters.Database.InsertQueryResult executeInsert(Websom.Adapters.Database.InsertQuery query) {
+		this.lazilyGetCollection();
+		return this.runInsert(query, this.firestoreCollection);
+	}
+
+	[ForceAsync]
+	override Websom.Adapters.Database.InsertQueryResult runInsert(Websom.Adapters.Database.InsertQuery query, void ctx) {
+		this.lazilyGetCollection();
+
+		let id = "";
+
+		native javascript {
+			let newDoc = ctx.doc();
+			id = newDoc.id;
+			newDoc.set(query.sets);
+		}
+
+		if (this.appliedSchema != null) {
+			let doc = this.documentFromRaw(id, query.sets);
+			for (let int i in this.appliedSchema.calculators) {
+				let calc = this.appliedSchema.calculators[i];
+
+				calc.insert(doc, this);
+			}
+		}
+
+		let res = new Websom.Adapters.Database.InsertQueryResult(true, "", id);
+
+		return res;
+	}
+
+	override Websom.Adapters.Database.SelectQueryResult executeSelect(Websom.Adapters.Database.SelectQuery query) {
+		this.lazilyGetCollection();
+
+		let res = new Websom.Adapters.Database.SelectQueryResult(true, "");
+		
+		native javascript {
+			const firebase = require(require.resolve("firebase-admin", {
+				paths: [
+					this.database.server.config.configOverrides
+				]
+			}));
+
+			let ops = {
+				">": ">",
+				">=": ">=",
+				"<": "<",
+				"<=": "<=",
+				"==": "==",
+				"in": "in",
+				"contains": "array-contains",
+				"contains-any": "array-contains-any"
+			};
+
+			let fsQuery = this.firestoreCollection;
+
+			let orderByField = "";
+			let orderByOrder = "asc";
+			let didOrderBy = false;
+
+			for (let condition of query.conditions) {
+				if (condition.type == "where") {
+					let f = condition.field;
+					if (condition.field == "id")
+						f = firebase.firestore.FieldPath.documentId();
+
+					fsQuery = fsQuery.where(f, ops[condition.operator], condition.value);
+				}else if (condition.type == "order") {
+					didOrderBy = true;
+					fsQuery = fsQuery.orderBy(condition.field, ({dsc: "desc", asc: "asc"})[condition.operator]);
+				}
+			}
+
+			if (query.documentStart != 0)
+				fsQuery = fsQuery.startAt(query.documentStart);
+				
+			let rawResults = await fsQuery.limit(query.documentLimit).get();
+
+			rawResults.forEach(doc => 
+				res.documents.push(this.documentFromRaw(doc.id, doc.data())));
+		}
+
+		return res;
+	}
+}

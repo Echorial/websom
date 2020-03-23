@@ -1,0 +1,14 @@
+class CoreModule.FirestoreDocument inherits Websom.Adapters.Database.Document {
+	map rawData = null;
+
+	override primitive get(string field) {
+		if (field == "id")
+			return this.id;
+		
+		return this.rawData[field];
+	}
+
+	override map data() {
+		return this.rawData;
+	}
+}
