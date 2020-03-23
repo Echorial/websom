@@ -347,7 +347,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 /*async*/
 			var doc = docs[i];
 			
-				this.lokiCollection.remove(doc);
+				this.lokiCollection.remove(doc.rawData);
 			
 			if (_c_this.appliedSchema != null) {
 /*async*/
@@ -609,6 +609,448 @@ CoreModule.MetaDocument.prototype.arrayField = function (index) {var _c_this = t
 			this.collection.lokiCollection.update(this.raw);
 		}
 
+CoreModule.FirestoreCollection = function (database, name) {var _c_this = this;
+	this.firestoreCollection = null;
+
+	this.database = null;
+
+	this.appliedSchema = null;
+
+	this.name = "";
+
+	this.entityTemplate = null;
+
+		_c_this.database = database;
+		_c_this.name = name;
+}
+
+CoreModule.FirestoreCollection.prototype.lazilyGetCollection = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			if (!this.firestoreCollection)
+				this.firestoreCollection = this.database.firestore.collection(this.name);
+		}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.document = async function (id) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.lazilyGetCollection();
+		var doc = null;
+		
+			doc = (await this.firestoreCollection.doc(id).get()).data();
+		
+		if (doc == null) {
+			return null;
+			}
+		return _c_this.documentFromRaw(id, doc);}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.getAll = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.lazilyGetCollection();
+		var docs = null;
+		
+			docs = (await this.firestoreCollection.getAll(...(ids.map(id => this.firestoreCollection.doc(id)))));
+		
+		var outputs = [];
+		for (var i = 0; i < docs.length; i++) {
+			var doc = docs[i];
+			
+				outputs.push(this.documentFromRaw(doc.id, doc.data()));
+			
+			}
+		return outputs;}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.meta = async function (key) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.lazilyGetCollection();
+		var doc = null;
+		
+			doc = (await this.firestoreCollection.doc(key).get()).data();
+		
+		if (doc == null) {
+			
+				doc = {
+					metaKey: key,
+					number1: 0,
+					number2: 0,
+					number3: 0,
+					string1: "",
+					string2: "",
+					string3: "",
+					array1: [],
+					array2: [],
+					array3: []
+				};
+
+				this.firestoreCollection.doc(key).set(doc);
+			
+			}
+		var meta = new CoreModule.FirestoreMetaDocument(key);
+		meta.raw = doc;
+		meta.collection = _c_this;
+		return meta;}
+
+CoreModule.FirestoreCollection.prototype.documentFromRaw = function (id, raw) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var doc = new CoreModule.FirestoreDocument(_c_this, id);
+		doc.rawData = raw;
+		return doc;}
+
+CoreModule.FirestoreCollection.prototype.registerSchema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Schema) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var schema = arguments[0];
+
+	}
+else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Schema) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var schema = arguments[0];
+
+	}
+}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.commitBatch = async function (query) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			let transaction = this.database.firestore.runTransaction(async t => {
+				for (let update of query.updates) {
+					this.runUpdate(update, t);
+				}
+
+				let inserts = [];
+
+				for (let insert of query.inserts) {
+					inserts.push(this.runInsert(insert, t));
+				}
+			}).then((res) => {
+				console.log(res);
+				_c_resolve(); return;
+			}).catch((err) => {
+				console.log(err);
+			});
+		}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.executeUpdate = async function (query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		_c_this.lazilyGetCollection();
+		return (await _c_this.runUpdate/* async call */(query, _c_this.firestoreCollection));}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.runUpdate = async function (query, ctx) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		_c_this.lazilyGetCollection();
+		var docs = (await _c_this.executeSelect/* async call */(query)).documents;
+		
+			const firebase = require(require.resolve("firebase-admin", {
+				paths: [
+					this.database.server.config.configOverrides
+				]
+			}));
+
+			for (let doc of docs) {
+				let oldCopy = this.documentFromRaw(doc.id, Object.assign({}, doc.rawData));
+
+				for (let k in query.sets) {
+					if (query.sets.hasOwnProperty(k)) {
+						doc.rawData[k] = query.sets[k];
+					}
+				}
+
+				for (let k in query.increments) {
+					if (query.hasOwnProperty(k)) {
+						doc.rawData[k] = firebase.firestore.FieldValue.increment(query.increments[k]);
+					}
+				}
+
+				if (this.appliedSchema != null) {
+					for (let i in this.appliedSchema.calculators) {
+						let calc = this.appliedSchema.calculators[i];
+
+						await calc.update(oldCopy, doc, this);
+					}
+				}
+
+				ctx.doc(doc.id).set(doc.rawData);
+			}
+		
+		var res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
+		res.updateCount = docs.length;
+		return res;}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.executeDelete = async function (query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		_c_this.lazilyGetCollection();
+		var docs = (await _c_this.executeSelect/* async call */(query)).documents;
+		for (var i = 0; i < docs.length; i++) {
+/*async*/
+			var doc = docs[i];
+			
+				await this.firestoreCollection.doc(doc.id).delete();
+			
+			if (_c_this.appliedSchema != null) {
+/*async*/
+				for (var j = 0; j < _c_this.appliedSchema.calculators.length; j++) {
+/*async*/
+					var calc = _c_this.appliedSchema.calculators[j];
+					(await calc.delete/* async call */(doc, _c_this));
+					}
+				}
+			}
+		return new Websom.Adapters.Database.DeleteQueryResult(true, "");}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.executeInsert = async function (query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		_c_this.lazilyGetCollection();
+		return (await _c_this.runInsert/* async call */(query, _c_this.firestoreCollection));}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.runInsert = async function (query, ctx) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		_c_this.lazilyGetCollection();
+		var id = "";
+		
+			let newDoc = ctx.doc();
+			id = newDoc.id;
+			newDoc.set(query.sets);
+		
+		if (_c_this.appliedSchema != null) {
+/*async*/
+			var doc = _c_this.documentFromRaw(id, query.sets);
+			for (var i = 0; i < _c_this.appliedSchema.calculators.length; i++) {
+/*async*/
+				var calc = _c_this.appliedSchema.calculators[i];
+				(await calc.insert/* async call */(doc, _c_this));
+				}
+			}
+		var res = new Websom.Adapters.Database.InsertQueryResult(true, "", id);
+		return res;}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.executeSelect = async function (query) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.lazilyGetCollection();
+		var res = new Websom.Adapters.Database.SelectQueryResult(true, "");
+		
+			const firebase = require(require.resolve("firebase-admin", {
+				paths: [
+					this.database.server.config.configOverrides
+				]
+			}));
+
+			let ops = {
+				">": ">",
+				">=": ">=",
+				"<": "<",
+				"<=": "<=",
+				"==": "==",
+				"in": "in",
+				"contains": "array-contains",
+				"contains-any": "array-contains-any"
+			};
+
+			let fsQuery = this.firestoreCollection;
+
+			let orderByField = "";
+			let orderByOrder = "asc";
+			let didOrderBy = false;
+
+			for (let condition of query.conditions) {
+				if (condition.type == "where") {
+					let f = condition.field;
+					if (condition.field == "id")
+						f = firebase.firestore.FieldPath.documentId();
+
+					fsQuery = fsQuery.where(f, ops[condition.operator], condition.value);
+				}else if (condition.type == "order") {
+					didOrderBy = true;
+					fsQuery = fsQuery.orderBy(condition.field, ({dsc: "desc", asc: "asc"})[condition.operator]);
+				}
+			}
+
+			if (query.documentStart != 0)
+				fsQuery = fsQuery.startAt(query.documentStart);
+				
+			let rawResults = await fsQuery.limit(query.documentLimit).get();
+
+			rawResults.forEach(doc => 
+				res.documents.push(this.documentFromRaw(doc.id, doc.data())));
+		
+		return res;}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.makeEntity = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var entity = null;
+		
+			entity = new this.entityTemplate();
+		
+		
+		entity.collection = _c_this;
+		entity.id = document.id;
+		(await entity.loadFromMap/* async call */(document.data()));
+		return entity;}
+
+CoreModule.FirestoreCollection.prototype.schema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.appliedSchema = new Websom.Adapters.Database.Schema(_c_this);
+		return _c_this.appliedSchema;}
+
+CoreModule.FirestoreCollection.prototype.insert = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.Adapters.Database.InsertQuery(_c_this);}
+
+CoreModule.FirestoreCollection.prototype.select = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.Adapters.Database.SelectQuery(_c_this);}
+
+CoreModule.FirestoreCollection.prototype.where = function (field, operator, value) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var q = _c_this.select();
+		q.where(field, operator, value);
+		return q;}
+
+CoreModule.FirestoreCollection.prototype.update = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.Adapters.Database.UpdateQuery(_c_this);}
+
+CoreModule.FirestoreCollection.prototype.delete = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.Adapters.Database.DeleteQuery(_c_this);}
+
+CoreModule.FirestoreCollection.prototype.batch = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.Adapters.Database.BatchQuery(_c_this);}
+
+CoreModule.FirestoreCollection.prototype.entity = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var entity = null;
+		
+			entity = this.entityTemplate();
+		
+		
+		entity.collection = _c_this;}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.getEntity = async function (id) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var doc = (await _c_this.document/* async call */(id));
+		if (doc == null) {
+			return null;
+			}
+		return (await _c_this.makeEntity/* async call */(doc));}
+
+CoreModule.Firestore = function (server) {var _c_this = this;
+	this.firestore = null;
+
+	this.route = "adapter.database.firestore";
+
+	this.server = null;
+
+		_c_this.server = server;
+}
+
+/*i async*/CoreModule.Firestore.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.loadDB/* async call */());}
+
+/*i async*/CoreModule.Firestore.prototype.loadDB = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			const admin = require(require.resolve("firebase-admin", {
+				paths: [
+					this.server.config.configOverrides
+				]
+			}));
+			
+			const path = require("path");
+
+			if (!!process.env.GCP_PROJECT) {
+				const functions = require("firebase-functions");
+
+				admin.initializeApp(functions.config().firebase);
+
+			}else{
+				let serviceAccount = require(path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials")));
+
+				admin.initializeApp({
+					credential: admin.credential.cert(serviceAccount)
+				});
+			}
+			
+			this.firestore = admin.firestore();
+			this.firestore.settings({
+				timestampsInSnapshots: true
+			});
+		}
+
+/*i async*/CoreModule.Firestore.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+CoreModule.Firestore.prototype.collection = function (name) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new CoreModule.FirestoreCollection(_c_this, name);}
+
+CoreModule.FirestoreDocument = function (collection, id) {var _c_this = this;
+	this.rawData = null;
+
+	this.collection = null;
+
+	this.id = "";
+
+		_c_this.collection = collection;
+		_c_this.id = id;
+}
+
+CoreModule.FirestoreDocument.prototype.get = function (field) {var _c_this = this; var _c_root_method_arguments = arguments;
+		if (field == "id") {
+			return _c_this.id;
+			}
+		return _c_this.rawData[field];}
+
+CoreModule.FirestoreDocument.prototype.data = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.rawData;}
+
+/*i async*/CoreModule.FirestoreDocument.prototype.calc = async function (field) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.collection.appliedSchema == null) {
+			throw "No schema on collection";
+			return null;
+			}
+		for (var i = 0; i < _c_this.collection.appliedSchema.calculators.length; i++) {
+/*async*/
+			var calc = _c_this.collection.appliedSchema.calculators[i];
+			if (calc.getterName == field) {
+/*async*/
+				return (await calc.get/* async call */(_c_this.collection));
+				}
+			}}
+
+CoreModule.FirestoreMetaDocument = function (id) {var _c_this = this;
+	this.raw = {};
+
+	this.sets = {};
+
+	this.collection = null;
+
+	this.id = "";
+
+		_c_this.id = id;
+}
+
+CoreModule.FirestoreMetaDocument.prototype.incrementNumberField = function (index, value) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var curValue = _c_this.raw["number" + index];
+		
+			const firebase = require(require.resolve("firebase-admin", {
+				paths: [
+					this.collection.database.server.config.configOverrides
+				]
+			}));
+
+			this.sets["number" + index] = firebase.firestore.FieldValue.increment(value);
+		}
+
+CoreModule.FirestoreMetaDocument.prototype.setNumberField = function (index, value) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.sets["number" + index] = value;}
+
+CoreModule.FirestoreMetaDocument.prototype.numberField = function (index) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.raw["number" + index];}
+
+CoreModule.FirestoreMetaDocument.prototype.setStringField = function (index, value) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.sets["string" + index] = value;}
+
+CoreModule.FirestoreMetaDocument.prototype.stringField = function (index) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.raw["string" + index];}
+
+CoreModule.FirestoreMetaDocument.prototype.setArrayField = function (index, value) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.sets["array" + index] = value;}
+
+CoreModule.FirestoreMetaDocument.prototype.arrayField = function (index) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.raw["array" + index];}
+
+/*i async*/CoreModule.FirestoreMetaDocument.prototype.update = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			for (let k in this.sets) {
+				this.raw[k] = this.sets[k];
+			}
+
+			this.collection.firestoreCollection.doc(this.id).set(this.raw);
+		}
+
 CoreModule.SendGrid = function (server) {var _c_this = this;
 	this.sendGrid = null;
 
@@ -690,11 +1132,25 @@ CoreModule.Confirmation.prototype.registerCollection = function () {var _c_this 
 				(await ctx.request.endWithError/* async call */("Confirmation expired"));
 				return null;
 				}
-			(await _c_this.module.confirmations.update().where("id", "==", doc.get("id")).set("confirmed", true).run/* async call */());
+			if (doc.get("confirmed")) {
+/*async*/
+				(await ctx.request.endWithError/* async call */("Confirmation already used"));
+				return null;
+				}
 			for (var i = 0; i < _c_this.handlers.length; i++) {
+/*async*/
 				var handler = _c_this.handlers[i];
 				if (handler.key == doc.get("key")) {
-					handler.handler(new Websom.Adapters.Confirmation.Execution(ctx.request, doc.get("key"), Websom.Json.parse(doc.get("storage"))));
+/*async*/
+					var confirmationExec = new Websom.Adapters.Confirmation.Execution(ctx.request, doc.get("key"), Websom.Json.parse(doc.get("storage")));
+					if (ctx.request.body["params"]) {
+						confirmationExec.params = ctx.request.body["params"];
+						}
+					handler.handler(confirmationExec);
+					if (ctx.request.sent == false) {
+/*async*/
+						(await _c_this.module.confirmations.update().where("id", "==", doc.get("id")).set("confirmed", true).run/* async call */());
+						}
 					}
 				}
 			(await ctx.request.endWithSuccess/* async call */("Success"));
@@ -705,7 +1161,7 @@ CoreModule.Confirmation.prototype.registerCollection = function () {var _c_this 
 		var confirmation = arguments[0];
 /*async*/
 		var secret = (await _c_this.server.crypto.getRandomHex/* async call */(255));
-		var url = _c_this.server.clientHost + "/confirmations/confirm/" + secret;
+		var url = _c_this.server.clientHost + "/confirmations/confirm/" + confirmation.key + "/" + secret;
 		var results = new Websom.Adapters.Confirmation.ConfirmationResults(secret, url, "success", "Confirmation created");
 		(await _c_this.module.confirmations.insert().set("secret", secret).set("key", confirmation.key).set("ip", confirmation.ip).set("created", Websom.Time.now()).set("storage", Websom.Json.encode(confirmation.storage)).set("expires", Websom.Time.now() + confirmation.ttl).set("confirmed", false).set("service", confirmation.notificationService).set("method", confirmation.method).set("to", confirmation.recipient).run/* async call */());
 		if (confirmation.notificationService == "direct") {
