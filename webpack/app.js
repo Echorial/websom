@@ -35,7 +35,7 @@ export async function createApp (api, websomServer) {
 
 	if (typeof window !== "undefined") {
 		ssr = false;
-		api = window.websom_api || api;
+		api = window.websom_api || api || (typeof __websom_api !== "undefined" ? __websom_api : null);
 	}
 
 	const store = new Vuex.Store({
@@ -49,7 +49,7 @@ export async function createApp (api, websomServer) {
 					routes: {},
 					endpoints: {},
 					navigation: {
-						
+						navbar: []
 					},
 					loaded: false
 				},
@@ -71,7 +71,16 @@ export async function createApp (api, websomServer) {
 				if (ssr) {
 					commit("setWebsomData", await websomServer.configService.computeClientData());
 				}else{
-					commit("setWebsomData", await websomUtils.fetch("/data", {}));
+					if (typeof __websom_data !== "undefined") {
+						commit("setWebsomData", __websom_data);
+						return;
+					}
+					
+					try {
+						commit("setWebsomData", await websomUtils.fetch("/data", {}));
+					} catch (e) {
+						console.error(e);
+					}
 				}
 			},
 			registerValidator({ commit }, d) {
@@ -109,6 +118,9 @@ export async function createApp (api, websomServer) {
 				}
 
 				return state.entities[collection][entity.id];
+			},
+			addNavItem(state, data) {
+				state.websom.data.navigation.navbar.push(data);
 			}
 		}
 	});
@@ -139,11 +151,11 @@ export async function createApp (api, websomServer) {
 	}
 
 	if (!store.state.websom.data.loaded)
-		await store.dispatch("fetchWebsomData");
+		store.dispatch("fetchWebsomData").then(() => {}).catch((e) => {});
 	else
 		console.log("Websom data is already loaded");
 
-	store.state.websom.data.navigation.navbar = [
+	store.commit("addNavItem",
 		{
 			type: "component",
 			component: "user-nav",
@@ -152,7 +164,7 @@ export async function createApp (api, websomServer) {
 				name: "Test"
 			}
 		}
-	];
+	);
 	
 	let formats = {
 		"single-line": new RegExp("^([^\\n]*)$"),
@@ -205,5 +217,8 @@ export async function createApp (api, websomServer) {
 			ssr
 		});
 	
+	if (typeof __websom_route === "string")
+		router.push(__websom_route);
+
 	return { app, router, store };
 }
