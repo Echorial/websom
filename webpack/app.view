@@ -30,7 +30,7 @@ template {
 
 		<toaster ref="toaster" />
 
-		<link rel="preload" :href="fonts" as="style" onload="this.onload=null; this.rel = 'stylesheet'">
+		<link rel="stylesheet" :href="fonts" as="style" onload="this.onload=null; this.rel = 'stylesheet'">
 	</div>
 }
 
