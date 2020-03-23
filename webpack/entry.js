@@ -1,7 +1,9 @@
 import { createApp } from "./app.js";
 
 (async () => {
-	const { app, store } = await createApp();
+	const { app, router } = await createApp();
 
 	app.$mount("#app");
+
+	console.log(router);
 })();
