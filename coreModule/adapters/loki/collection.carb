@@ -162,7 +162,7 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 			let doc = docs[i];
 
 			native javascript {
-				this.lokiCollection.remove(doc);
+				this.lokiCollection.remove(doc.rawData);
 			}
 
 			if (this.appliedSchema != null) {
