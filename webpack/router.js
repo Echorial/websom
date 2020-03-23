@@ -5,7 +5,7 @@ Vue.use(Router);
 
 export function createRouter (views) {
 	let templatePages = {};
-
+	
 	let routes = [];
 	for (let view of views) {
 		if (view.info.type == "page") {
