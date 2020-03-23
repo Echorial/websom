@@ -15,6 +15,7 @@
         "files": ["native/php/websom.php"]
     },
     "require": {
-        "google/apiclient": "*"
+        "google/apiclient": "*",
+        "google/cloud-firestore": "*"
     }
 }
