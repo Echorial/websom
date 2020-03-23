@@ -5,7 +5,7 @@ info {
 
 template {
 	<transition-group v-if="!error" tag="div" class="data-view-collection" :name="transition" :mode="transitionMode">
-		<slot v-for="(d, i) in documents" :entity="d" :index="i" />
+		<slot v-for="(d, i) in documents" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" />
 	</transition-group>
 	<div v-else>
 		<h3>Error</h3>
@@ -82,16 +82,21 @@ script {
 					return false;
 				}
 
-				this.documents.splice(0, this.documents.length);
+				//this.documents.splice(0, this.documents.length);
+				let resDocs = [];
 
 				if (this.collection == "") {
-					for (let doc of res.documents) this.documents.push(doc);
+					for (let doc of res.documents) {
+						resDocs.push(doc);
+					}
 				}else{
 					for (let doc of res.documents) {
 						let entity = websom.makeEntity(this.collection, doc);
-						this.documents.push(this.$store.commit("setEntity", entity));
+						resDocs.push(this.$store.commit("setEntity", entity));
 					}
 				}
+
+				this.documents = resDocs;
 
 				this.$emit("update", this.documents);
 
@@ -111,5 +116,17 @@ script {
 style {
 	.data-view-collection {
 
+	}
+
+	.data-view {
+		transition: all 1s;
+	}
+	.data-view-enter, .data-view-leave-to {
+		opacity: 0;
+		transform: translateY(30px);
+	}
+
+	.data-view-leave-active {
+		position: absolute;
 	}
 }
