@@ -12,10 +12,12 @@
 	},
 	"npm": {
 		"lokijs": "1.5.8",
-		"@sendgrid/mail": "*"
+		"@sendgrid/mail": "*",
+		"firestore-admin": "*",
+		"firebase-functions": "*"
 	},
 	"composer": {
-
+		
 	},
 	"resources": [
 		{
@@ -33,6 +35,14 @@
 				"php": false
 			},
 			"class": "CoreModule.LokiDB"
+		},
+		"firestore": {
+			"type": "database",
+			"supports": {
+				"javascript": true,
+				"php": true
+			},
+			"class": "CoreModule.Firestore"
 		},
 		"sendGrid": {
 			"type": "email",
