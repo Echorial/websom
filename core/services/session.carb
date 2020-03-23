@@ -52,7 +52,7 @@ class Websom.Services.Session inherits Websom.Service {
 				let doc = results.documents[0];
 
 				req.session.data = Websom.Json.parse(doc.get("data"));
-				req.session.id = req.cookies["wbsm_session"];
+				req.session.id = doc.get("key");
 			}
 		}
 	}
