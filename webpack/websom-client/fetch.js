@@ -6,6 +6,9 @@ export default (store) => {
 		opts = opts || {};
 
 		let session = sessionStorage.getItem("Websom-Session");
+		
+		if (!session)
+			session = localStorage.getItem("Websom-Session");
 
 		let addHeaders = {};
 
@@ -24,7 +27,10 @@ export default (store) => {
 			}
 		}).then(res => {
 			if (res.headers.get("X-Set-Session")) {
-				sessionStorage.setItem("Websom-Session", res.headers.get("X-Set-Session"));
+				if (opts.useLocalStorage)
+					localStorage.setItem("Websom-Session", res.headers.get("X-Set-Session"));
+				else
+					sessionStorage.setItem("Websom-Session", res.headers.get("X-Set-Session"));
 			}
 
 			return res.json().then((data) => {
