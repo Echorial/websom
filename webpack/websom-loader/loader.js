@@ -1,9 +1,18 @@
 const parse = require("../view-loader/parser");
+const qs = require('querystring');
 
 const fs = require("fs");
 
 module.exports = function (source) {
+	let resourceQuery = this.resourceQuery;
+
+	const rawQuery = resourceQuery.slice(1);
+	const incomingQuery = qs.parse(rawQuery);
+
+	let viewName = incomingQuery["view"];
+
 	let files = this.query.files();
+	let deployBundle = this.query.bundle;
 
 	if (this.query.type == "components") {
 		let imports = [];
@@ -11,8 +20,9 @@ module.exports = function (source) {
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
 			
-			let type = JSON.parse(`{${blocks.info.block}}`).type;
-			if (type == "component" || type == "page")
+			let info = JSON.parse(`{${blocks.info.block}}`);
+			let type = info.type;
+			if (type == "component" || (type == "page" && ((info.bundle || "default") == deployBundle) || info.bundle === "*"))
 				imports.push(`import imports${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}"; \n imports.push(imports${i});`);
 		}
 
@@ -21,7 +31,15 @@ module.exports = function (source) {
 		let imports = [];
 
 		for (let [i, file] of files.entries()) {
-			imports.push(`@import "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-style=true";`);
+			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
+			
+			let info = JSON.parse(`{${blocks.info.block}}`);
+			let add = true;
+			if (info.type == "page" && ((info.bundle || "default") != deployBundle) && info.bundle !== "*")
+				add = false;
+			
+			if (add)
+				imports.push(`@import "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-style=true";`);
 		}
 
 		return `${imports.join("\n")}`;
@@ -79,9 +97,36 @@ module.exports = function (source) {
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
 			
-			let type = JSON.parse(`{${blocks.info.block}}`).type;
+			let info = JSON.parse(`{${blocks.info.block}}`);
+
+			let type = info.type;
+
 			if (type != "script")
 				continue;
+
+			if ((info.bundle || "default") != deployBundle && info.bundle !== "*")
+				continue;
+
+			if (info.name === viewName)
+				return `
+					import scriptInfo from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-info=true";
+					import scriptScript from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-script=true";
+
+					import WebsomUtils from "./websom-client";
+					//import Store from "./store";
+
+					let api = __websom_api;
+					//let store = Store(api);
+					let websomUtils = WebsomUtils({}, []);
+
+					scriptScript({
+						app: null,
+						websom: websomUtils,
+						store: {},
+						packages: [],
+						ssr: false
+					});
+				`;
 
 			imports.push(`
 				import scriptInfo${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-info=true";
