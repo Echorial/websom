@@ -10,6 +10,7 @@ class Websom.Services.API inherits Websom.Service {
 	override Websom.Status start() {
 		this.registerEndpointHandler("select", new Websom.SelectHandler(this.server));
 		this.registerEndpointHandler("insert", new Websom.InsertHandler(this.server));
+		this.registerEndpointHandler("delete", new Websom.DeleteHandler(this.server));
 	}
 
 	void registerEndpointHandler(string key, Websom.EndpointHandler handler) {
