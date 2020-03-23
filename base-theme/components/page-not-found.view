@@ -2,7 +2,8 @@ info {
 	"name": "page-not-found",
 	"type": "page",
 	"route": "/404",
-	"template-page": "404"
+	"template-page": "404",
+	"bundle": "*"
 }
 
 template {
