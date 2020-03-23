@@ -1,0 +1,52 @@
+info {
+	"name": "time-display",
+	"type": "component"
+}
+
+template {
+	<span>
+		{{display}}
+	</span>
+}
+
+script {
+	export default {
+		props: {
+			time: {
+				type: Number,
+				default: () => Date.now()
+			},
+			prefix: {
+				type: String,
+				default: ""
+			},
+			postfix: {
+				type: String,
+				default: ""
+			}
+		},
+		computed: {
+			display() {
+				let now = Date.now();
+				let diff = Math.floor((now - this.time) / 1000);
+				let rtn;
+
+				if (diff < 60) {
+					rtn = `${diff} seconds ago`;
+				}else if (diff < 60 * 60) {
+					rtn = `${Math.floor(diff / 60)} minutes ago`;
+				}else if (diff < 60 * 60 * 24) {
+					rtn = `${Math.floor(diff / (60 * 60))} hours ago`;
+				}else if (diff < 60 * 60 * 24 * 30) {
+					rtn = `${Math.floor(diff / (60 * 60 * 24))} days ago`;
+				}else if (diff < 60 * 60 * 24 * 30 * 12) {
+					rtn = `${Math.floor(diff / (60 * 60 * 24 * 30))} months ago`;
+				}else if (diff) {
+					rtn = `${Math.floor(diff / (60 * 60 * 24 * 30 * 12))} years ago`;
+				}
+
+				return this.prefix + rtn + this.postfix;
+			}
+		}
+	}
+}
