@@ -11,21 +11,60 @@ const wpkmd = require("webpack-dev-middleware");
 const compression = require('compression');
 
 const webpack = require("webpack");
+const webpackMerge = require("webpack-merge");
 
 const { createBundleRenderer } = require("vue-server-renderer");
+
+const deploys = require("./deploys");
 
 module.exports = async (websomServer, apiServer) => {
 	const app = express();
 	app.use(compression());
 
-	const config = require("./webpack.client.config")(websomServer);
-	const serverConfig = require("./webpack.server.config.js")(websomServer);
-
 	const dist = websomServer.config.javascriptOutput;
 
 	const ssrServer = path.resolve(dist, "./vue-ssr-server-bundle.json");
 	const ssrClient = path.resolve(dist, "./vue-ssr-client-manifest.json");
-	
+
+	let deploy = websomServer.getDeploy(websomServer.devDeploy);
+
+	let deployBundle = deploy ? deploy.bundle : "default";
+
+	let config = require("./webpack.client.config")(websomServer, deployBundle);
+	let serverConfig = require("./webpack.server.config.js")(websomServer, deployBundle);
+
+	let clientHooks = {};
+	let serverHooks = {};
+
+	if (deploy) {
+		if (!deploys[deploy.type]) {
+			console.error("Invalid deploy type: " + deploy.type);
+		}
+
+		let outs = await ((deploys[deploy.type])({
+			server: websomServer,
+			deploy,
+			api: apiServer,
+			template,
+			bundles: {
+				server: ssrServer,
+				client: ssrClient
+			},
+			createBundleRenderer
+		}));
+
+		if (outs.server && outs.server.webpack) {
+			serverConfig = webpackMerge(serverConfig, outs.server.webpack);
+
+			serverHooks = outs.server.hooks || {};
+		}
+
+		if (outs.client && outs.client.webpack) {
+			config = webpackMerge(config, outs.client.webpack);
+			clientHooks = outs.client.hooks || {};
+		}
+	}
+
 	if (!fs.existsSync(ssrServer)) {
 		await new Promise((resolve) => {
 			webpack(serverConfig, (err, stats) => {
@@ -68,29 +107,50 @@ module.exports = async (websomServer, apiServer) => {
 
 	updateRenderer();
 
-	config.plugins.push(new webpack.optimize.OccurrenceOrderPlugin());
-	config.plugins.push(new webpack.HotModuleReplacementPlugin());
-	config.plugins.push(new webpack.NoEmitOnErrorsPlugin());
+	if (!deploy) {
+		config.plugins.push(new webpack.optimize.OccurrenceOrderPlugin());
+		config.plugins.push(new webpack.HotModuleReplacementPlugin());
+		config.plugins.push(new webpack.NoEmitOnErrorsPlugin());
 
-	config.entry = ["webpack-hot-middleware/client", config.entry];
+		if (typeof config.entry == "object") {
+			if (Array.isArray(config.entry)) {
+				config.entry.unshift("webpack-hot-middleware/client");
+			}else{
+				for (let k in config.entry)
+					if (Array.isArray(config.entry[k])) {
+						config.entry[k].unshift("webpack-hot-middleware/client");
+					}else{
+						config.entry[k] = ["webpack-hot-middleware/client", config.entry[k]];
+					}
+			}
+		}else{
+			config.entry = ["webpack-hot-middleware/client", config.entry];
+		}
+	}
 
 	let compiler = webpack(config);
 
-	app.use(wpkmd(compiler, {
-		contentBase: dist,
-		hot: true,
-		open: true,
-		overlay: true,
-		stats: {
-			colors: true
-		}
-	}));
+	for (let ch in clientHooks) {
+		compiler.hooks[ch].tap("deploy", clientHooks[ch]);
+	}
 
-	let devMiddleware = require("webpack-hot-middleware")(compiler, {
-		noInfo: true
-	});
+	if (!deploy) {
+		app.use(wpkmd(compiler, {
+			contentBase: dist,
+			hot: true,
+			open: true,
+			overlay: true,
+			stats: {
+				colors: true
+			}
+		}));
 
-	app.use(devMiddleware);
+		let devMiddleware = require("webpack-hot-middleware")(compiler, {
+			noInfo: true
+		});
+
+		app.use(devMiddleware);
+	}
 
 	compiler.hooks.done.tap("renderWatcher", stats => {
 		stats = stats.toJson();
@@ -105,50 +165,70 @@ module.exports = async (websomServer, apiServer) => {
 		updateRenderer();
 	});
 
-	const serverCompiler = webpack(serverConfig);
+	if (!deploy) {
+		const serverCompiler = webpack(serverConfig);
 
-	serverCompiler.watch({}, (err, stats) => {
-		if (err) throw err;
-		stats = stats.toJson();
-		if (stats.errors.length) return;
+		for (let sh in serverHooks) {
+			serverCompiler.hooks[sh].tap("deploy", serverHooks[sh]);
+		}
 
-		serverBundle = JSON.parse(fs.readFileSync(path.resolve(dist, "./vue-ssr-server-bundle.json"), "utf8"));
-		updateRenderer();
-	});
+		serverCompiler.watch({}, (err, stats) => {
+			if (err) throw err;
+			stats = stats.toJson();
+			if (stats.errors.length) return;
 
-	websomServer.devBuildWatcher = () => {
-		serverCompiler.run(() => {});
-		compiler.run(() => {});
-	};
+			serverBundle = JSON.parse(fs.readFileSync(path.resolve(dist, "./vue-ssr-server-bundle.json"), "utf8"));
+			updateRenderer();
+		});
 
-	app.get("*", (req, res) => {
-		const context = { 
-			url: req.url,
-			api: apiServer,
-			server: websomServer,
-			title: req.route.path,
-			renderHeadElements() {
-				return `
-					<meta name="description" content="Websom page."/>
-				`;
-			}
+		websomServer.devBuildWatcher = () => {
+			serverCompiler.run(() => {});
+			compiler.run(() => {});
 		};
 
-		renderer.renderToString(context, (err, html) => {
-			if (err)
-			if (err.code == "500") {
-				res.status(500);
-				res.end(err.toString() + err.stack);
-				return;
-			}else if (err.code == "404") {
-				res.status(404);
-				res.end("Unknown route " + context.url);
-				return;
-			}
+		app.get("*", (req, res) => {
+			const context = { 
+				url: req.url,
+				api: apiServer,
+				server: websomServer,
+				title: req.route.path,
+				renderHeadElements() {
+					return `
+						<meta name="description" content="Websom page."/>
+					`;
+				}
+			};
 
-			res.end(html);
+			renderer.renderToString(context, (err, html) => {
+				if (err)
+				if (err.code == "500") {
+					res.status(500);
+					res.end(err.toString() + err.stack);
+					return;
+				}else if (err.code == "404") {
+					res.status(404);
+					res.end("Unknown route " + context.url);
+					return;
+				}
+
+				res.end(html);
+			});
 		});
-	});
 
-	return app;
+		return app;
+	}else{
+		compiler.watch({}, (err, stats) => {
+			console.log("Deploy watch");
+
+			if (err) throw err;
+			stats = stats.toJson();
+			if (stats.errors.length) return;
+		});
+
+		websomServer.devBuildWatcher = () => {
+			compiler.run(() => {
+				console.log("Deploy built");
+			});
+		};
+	}
 };

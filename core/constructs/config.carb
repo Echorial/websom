@@ -85,6 +85,8 @@ class Websom.Config {
 
 	bool refreshViews = false;
 
+	map deploys = null;
+
 	`A compatibility mode for use with older websom servers`
 	bool legacy = false;
 
