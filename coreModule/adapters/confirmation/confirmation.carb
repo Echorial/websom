@@ -24,17 +24,30 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 					ctx.request.endWithError("Confirmation expired");
 					return null;
 				}
-
-				this.module.confirmations.update()
-					.where("id", "==", doc.get("id"))
-					.set("confirmed", true)
-					.run();
+				
+				if (doc.get("confirmed")) {
+					ctx.request.endWithError("Confirmation already used");
+					return null;
+				}
 
 				for (let int i in this.handlers) {
 					let handler = this.handlers[i];
 
 					if (handler.key == doc.get("key")) {
-						handler.handler(new Websom.Adapters.Confirmation.Execution(ctx.request, doc.get("key"), Websom.Json.parse(doc.get("storage"))));
+						let confirmationExec = new Websom.Adapters.Confirmation.Execution(ctx.request, doc.get("key"), Websom.Json.parse(doc.get("storage")));
+						
+						if (ctx.request.body["params"]) {
+							confirmationExec.params = ctx.request.body["params"];
+						}
+
+						handler.handler(confirmationExec);
+
+						if (ctx.request.sent == false) {
+							this.module.confirmations.update()
+								.where("id", "==", doc.get("id"))
+								.set("confirmed", true)
+								.run();
+						}
 					}
 				}
 				
@@ -44,7 +57,7 @@ class CoreModule.Confirmation inherits Websom.Adapters.Confirmation.Adapter {
 
 	Websom.Adapters.Confirmation.ConfirmationResults dispatch(Websom.Adapters.Confirmation.Confirmation confirmation) {
 		let secret = this.server.crypto.getRandomHex(255);
-		let url = this.server.clientHost + "/confirmations/confirm/" + secret;
+		let url = this.server.clientHost + "/confirmations/confirm/" + confirmation.key + "/" + secret;
 
 		let results = new Websom.Adapters.Confirmation.ConfirmationResults(secret, url, "success", "Confirmation created");
 
