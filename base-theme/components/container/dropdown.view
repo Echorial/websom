@@ -5,8 +5,8 @@ info {
 
 template {
 	<div class="dropdown">
-		<portal to="app-root">
-			<ul class="dropdown-list" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': width + 'px'}">
+		<portal to="app-root" key="list">
+			<ul class="dropdown-list" :id="rng" key="list-sub" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': width + 'px'}">
 				<slot />
 			</ul>
 		</portal>
@@ -30,7 +30,8 @@ script {
 				left: 0,
 				top: 0,
 				width: 0,
-				active: false
+				active: false,
+				rng: Math.floor(Math.random() * 10000000)
 			};
 		},
 		methods: {
@@ -67,6 +68,9 @@ script {
 					this.left -= rect.width;
 					this.top -= rect.height;
 				}
+
+				if (!this.$refs.list)
+					this.$refs.list = document.getElementById(this.rng);
 
 				let listRect = this.$refs.list.getBoundingClientRect();
 
