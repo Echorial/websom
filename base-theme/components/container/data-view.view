@@ -5,7 +5,16 @@ info {
 
 template {
 	<transition-group v-if="!error" tag="div" class="data-view-collection" :name="transition" :mode="transitionMode">
-		<slot v-for="(d, i) in documents" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" />
+		<template v-if="documents.length > 0">
+			<slot v-for="(d, i) in documents" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" />
+		</template>
+		<template v-else-if="!loading">
+			<slot name="empty">
+				<div :index="0" :class="{'data-view': true, [transition]: true}" key="0">
+					Nothing here.
+				</div>
+			</slot>
+		</template>
 	</transition-group>
 	<div v-else>
 		<h3>Error</h3>
@@ -57,12 +66,14 @@ script {
 		data: () => ({
 			documents: [],
 			error: false,
-			message: ""
+			message: "",
+			loading: true
 		}),
 		methods: {
 			async refresh() {
 				this.error = false;
 				this.message = "";
+				this.loading = true;
 
 				let res = await this.websom.fetch(this.route, {
 					filter: this.filter,
@@ -78,6 +89,8 @@ script {
 
 					this.error = true;
 					this.message = res.message;
+
+					this.loading = false;
 
 					return false;
 				}
@@ -99,6 +112,8 @@ script {
 				this.documents = resDocs;
 
 				this.$emit("update", this.documents);
+
+				this.loading = false;
 
 				return true;
 			}
