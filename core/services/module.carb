@@ -63,7 +63,7 @@ class Websom.Services.Module inherits Websom.Service {
 		#end if
 		var that = this;
 		native javascript {
-			if (this.server.config.dev) {
+			if (this.server.config.dev && false) {
 				if (config.npm) {
 					const path = require("path");
 					const npm = require('npm-programmatic');
@@ -95,7 +95,6 @@ class Websom.Services.Module inherits Websom.Service {
 
 			if (this.server.config.dev) {
 				var fs = require("fs");
-				console.log("Setup watch on module " + config.name);
 				this.watchers.push(fs.watch(modDir, {recursive: true}, function (type, file) {
 					var ext = file.split(".");
 					ext = ext[ext.length - 1];
@@ -107,15 +106,22 @@ class Websom.Services.Module inherits Websom.Service {
 							if (that.server.config.legacy) {
 								that.server.resource.build(true);
 							}
+
+							if (that.server.restartHandler)
+								that.server.restartHandler();
 						}else{
 							if (that.server.config.legacy) {
 								console.log("Saw change on " + file + ". Rebuilding resources");
 								that.server.resource.build(true);
 							}
 
-							if (type == "rename")
-								if (this.server.devBuildWatcher)
-									this.server.devBuildWatcher(file);
+							if (type == "rename") {
+								if (that.server.restartHandler)
+									that.server.restartHandler();
+
+								if (false && _c_this.server.devBuildWatcher)
+									_c_this.server.devBuildWatcher(file);
+							}
 						}
 						if (!single) {
 							for (var i = that.watchers.length - 1; i >= 0; i--) {
@@ -338,6 +344,18 @@ class Websom.Services.Module inherits Websom.Service {
 		}
 
 		return this.reload(dir);
+	}
+
+	override void stop() {
+		native javascript {
+			for (let watcher of this.watchers)
+				watcher.close();
+		}
+
+		for (let int i in this.modules) {
+			let mod = this.modules[i];
+			mod.stop();
+		}
 	}
 
 	void handleBridge(Websom.Request req, string bridgeName, string method, <primitive>array args) {
