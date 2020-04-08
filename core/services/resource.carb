@@ -49,27 +49,54 @@ class Websom.Services.Resource inherits Websom.Service {
 	}
 
 	void deploy(string name, <void, string>function progress, <void>function callback) {
-		this.loadDeployConfig();
+		if (this.server.config.legacy) {
+			this.loadDeployConfig();
 
-		progress("Searching for deploy " + name);
+			progress("Searching for deploy " + name);
 
-		var deploy = this.findDeploy(name);
+			var deploy = this.findDeploy(name);
 
-		if (deploy == null) {
-			progress("Unknown deploy " + name);
-			callback();
-			return null;
+			if (deploy == null) {
+				progress("Unknown deploy " + name);
+				callback();
+				return null;
+			}
+
+			var handler = this.findHandler(deploy["handler"]);
+
+			if (handler == null) {
+				progress("Unknown handler " + name);
+				callback();
+				return null;
+			}
+
+			handler.execute(deploy, progress, callback);
+		}else{
+			let deploy = this.server.getDeploy(name);
+
+			if (deploy == null) {
+				progress("Unknown deploy " + name);
+				return null;
+			}
+
+			native javascript {
+				const nodeDevPlatform = require(this.server.websomRoot + "/platform/node/index.js");
+
+				(async () => {
+					let res = await nodeDevPlatform.executeDeploy(this.server, deploy);
+					callback(res);
+				})();
+			}
 		}
+	}
 
-		var handler = this.findHandler(deploy["handler"]);
+	void analyze() {
+		native javascript {
+			const a = require(this.server.websomRoot + "/webpack/analyze.js");
 
-		if (handler == null) {
-			progress("Unknown handler " + name);
-			callback();
-			return null;
+			
+			a(this.server);
 		}
-
-		handler.execute(deploy, progress, callback);
 	}
 
 	string buildViews(bool saveToFiles) { //TODO: Clean up
