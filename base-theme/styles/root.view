@@ -12,7 +12,7 @@ style {
 		box-sizing: content-box;
 	}
 
-	@primary: rgba(#186ccb, 100%);
+	@primary: rgba(#0288d1, 100%);
 		@dark-mode-primary: @primary;
 	
 	@tertiary: rgba(#5456ff, 100%);
@@ -83,9 +83,9 @@ style {
 		--transition-easing: ease-in-out;
 		--transition-easing-movement: ease-in-out;
 
-		--light-background: #fdfdfd;
+		--light-background: #f5f5f5;
 			--light-background-contrast: #1a1a1a;
-			--light-background-overlay: #f5f5f5;
+			--light-background-overlay: #fdfdfd;
 			--light-background-tint: #eeeeee;
 			--light-background-center: #eeeeee;
 		
