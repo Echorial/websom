@@ -101,6 +101,17 @@ script {
 					this.open();
 			},
 			open() {
+				let listRect = this.$refs.list.getBoundingClientRect();
+				let styleMap = this.$refs.list.computedStyleMap();
+				let height = listRect.height
+					+ styleMap.get("margin-top").value
+					+ styleMap.get("margin-bottom").value
+					+ styleMap.get("padding-top").value
+					+ styleMap.get("padding-bottom").value;
+				
+				this.$refs.list.style.setProperty("--target-height", height + "px");
+
+				this.$refs.list.classList.add("opening");
 				this.active = true;
 
 				this.startUpdating();
