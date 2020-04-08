@@ -129,6 +129,8 @@ style {
 
 		position: relative;
 
+		overflow: hidden;
+
 		&.card-has-reveal {
 			.card-main {
 				cursor: var(--cursor-action);
