@@ -4,7 +4,7 @@ import websomFetch from "./fetch.js";
 
 import Entity from "./entity";
 
-export default (store, packages) => ({
+export default (store, packages, context) => ({
 	getComponentForAdapter(name) {
 		return packages.find(p => p.info.adapt == name).vue;
 	},
@@ -22,7 +22,7 @@ export default (store, packages) => ({
 		script.src = src;
 		document.head.appendChild(script);
 	},
-	fetch: websomFetch(store),
+	fetch: websomFetch(store, context),
 	getConfig(route, key) {
 		return store.state.websom.data.config[route + "." + key];
 	},
