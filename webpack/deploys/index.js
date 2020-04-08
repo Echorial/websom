@@ -1,4 +1,6 @@
 module.exports = {
 	development: require("./development"),
-	extension: require("./extension")
+	gcp: require("./gcp"),
+	extension: require("./extension"),
+	node: require("./node")
 };
