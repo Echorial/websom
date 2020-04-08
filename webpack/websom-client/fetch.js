@@ -1,7 +1,7 @@
-export default (store) => {
+export default (store, context) => {
 	return (route, body, opts) => {
 		if (typeof window === "undefined")
-			return {status: "error", message: "Fetch request from server"};
+			return context.server.api.hit(context.server.makeRequestFromExpress(context.ssrRequest), route, body);
 		
 		opts = opts || {};
 
@@ -31,6 +31,8 @@ export default (store) => {
 					localStorage.setItem("Websom-Session", res.headers.get("X-Set-Session"));
 				else
 					sessionStorage.setItem("Websom-Session", res.headers.get("X-Set-Session"));
+				
+				document.cookie = `wbsm_session=${res.headers.get("X-Set-Session")}`;
 			}
 
 			return res.json().then((data) => {
