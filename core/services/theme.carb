@@ -33,11 +33,14 @@ class Websom.Services.Theme inherits Websom.Service {
 							}
 						});
 				}
-
-				console.log("Setup watch on theme " + config.name);
+				
+				if (this.server.config.verbose)
+					console.log("Setup watch on theme " + config.name);
 				
 				fs.watch(themeDir, {recursive: true}, (type, file) => {
-					console.log("Saw change on " + file + ". Rebuilding theme");
+					if (this.server.config.verbose)
+						console.log("Saw change on " + file + ". Rebuilding theme");
+
 					var configFile = "";
 
 					if (this.server.config.legacy) {
