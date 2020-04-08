@@ -2,7 +2,7 @@ import { createApp } from "./app.js";
 
 export default context => {
 	return new Promise(async (resolve, reject) => {
-		const { app, router, store } = await createApp(context.api, context.server);
+		const { app, router, store } = await createApp(context.api, context);
 
 		router.push(context.url);
 
