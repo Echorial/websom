@@ -182,7 +182,7 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 		res["documents"] = output;
 
 		req.header("Content-Type", "application/json");
-		req.header("Access-Control-Allow-Origin", "*");
+		//req.header("Access-Control-Allow-Origin", "*");
 		req.end(Websom.Json.encode(res));
 	}
 }
