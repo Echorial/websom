@@ -52,6 +52,12 @@ class Websom.Server {
 
 	Websom.Status status = new Websom.Status();
 
+	Websom.Server developmentServer = null;
+
+	<void>function restartHandler = null;
+
+	void expressServer = null;
+
 	`This is the legacy constructor, use the construct(map config) overload instead.`
 	void @construct(Websom.Config config) {
 		native php {
@@ -148,6 +154,18 @@ class Websom.Server {
 			if (FileSystem.exists(deploys)) {
 				this.config.deploys = Websom.Json.parse(FileSystem.readSync(deploys, "utf8"));
 			}
+
+			if (this.devDeploy != "development") {
+				let deploy = this.getDeploy(this.devDeploy);
+
+				if (deploy != null and deploy["useApi"]) {
+					let data = Websom.Json.parse(FileSystem.readSync(FileSystem.resolve(this.config.configOverrides + "/" + deploy["useApi"]), "utf8"));
+					this.apiHost = data["api"];
+					this.apiDomain = this.apiHost.replace("https://", "").replace("http://", "");
+					let splits = this.apiDomain.split("/");
+					this.apiDomain = splits[0];
+				}
+			}
 		}
 
 		if ("name" in config) {
@@ -199,6 +217,10 @@ class Websom.Server {
 
 	string getConfigString(string route, string option) {
 		return this.configService.getString(route, option);
+	}
+
+	string getConfigPrimitive(string route, string option) {
+		return this.configService.getPrimitive(route, option);
 	}
 
 	void logException(Exception e) {
@@ -319,12 +341,107 @@ class Websom.Server {
 		return bucket;
 	}
 
+	void spawnRealServer() {
+		this.developmentServer = new Websom.Server(this.rawInputConfig);
+		this.developmentServer.start();
+
+		this.developmentServer.restartHandler = void () => {
+			Console.log("Restarting websom server");
+			this.developmentServer.stop();
+			this.spawnRealServer();
+		};
+	}
+
+	void startDevelopmentServer() {
+		this.spawnRealServer();
+		this.startWebpackServer(8080, 8970);
+	}
+
 	void start() {
 		this.start(8080, 8970);
 	}
 
+	void stop() {
+		native javascript {
+			if (this.expressServer !== null)
+				this.expressServer.close();
+		}
+
+		this.api.stop();
+		this.adaptation.stop();
+		this.database.stop();
+		this.session.stop();
+		this.security.stop();
+		this.module.stop();
+		this.theme.stop();
+		this.resource.stop();
+		this.view.stop();
+		this.router.stop();
+		this.pack.stop();
+		this.input.stop();
+		this.crypto.stop();
+		this.email.stop();
+		this.micro.stop();
+		this.render.stop();
+		this.notification.stop();
+		this.confirmation.stop();
+	}
+
 	void sendResponse(Websom.Response response) {
 
+	}
+
+	Websom.Request makeRequestFromExpress(void req) {
+		native javascript {
+			var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+			
+			client.family = req.socket.remoteFamily;
+			client.localAddress = req.socket.localAddress;
+			client.localPort = req.socket.localPort;
+
+			var websomRequest = new Websom.Request(this, client);
+			websomRequest.path = req.path;
+			websomRequest.cookies = req.cookies;
+			websomRequest.headers = req.headers;
+			websomRequest.body = req.body;
+			websomRequest.jsRequest = req;
+
+			return websomRequest;
+		}
+	}
+
+	void expressAPIOptionsRequest(void req, void res, string path) {
+		native javascript {
+			res.header("Access-Control-Allow-Origin", "*");
+			res.setHeader("Access-Control-Allow-Headers", "*");
+			res.setHeader("X-Powered-By", "Websom");
+			res.send("POST");
+		}
+	}
+
+	void expressAPIPostRequest(void req, void res, string path) {
+		native javascript {
+			var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
+			
+			client.family = req.socket.remoteFamily;
+			client.localAddress = req.socket.localAddress;
+			client.localPort = req.socket.localPort;
+
+			var websomRequest = new Websom.Request(this, client);
+			websomRequest.path = path;
+			websomRequest.cookies = req.cookies;
+			websomRequest.headers = req.headers;
+			websomRequest.body = req.body;
+			websomRequest.response.jsResponse = res;
+			websomRequest.jsRequest = req;
+			
+			res.setHeader("X-Powered-By", "Websom");
+			res.setHeader("Access-Control-Allow-Origin", "*");
+			res.setHeader("Access-Control-Allow-Headers", "*");
+			res.setHeader("Access-Control-Expose-Headers", "X-Set-Session");
+
+			this.processAPIRequest(websomRequest);
+		}
 	}
 
 	void startAPI(int port) {
@@ -340,36 +457,14 @@ class Websom.Server {
 			server.use(cookieParser());
 
 			server.options(/.*/, (req, res) => {
-				res.header("Access-Control-Allow-Origin", "*");
-				res.setHeader("Access-Control-Allow-Headers", "*");
-				res.setHeader("X-Powered-By", "Websom");
-				res.send("POST");
+				this.expressAPIOptionsRequest(req, res, req.path);
 			});
 
 			server.post(/.*/, (req, res) => {
-				var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
-				
-				client.family = req.socket.remoteFamily;
-				client.localAddress = req.socket.localAddress;
-				client.localPort = req.socket.localPort;
-
-				var websomRequest = new Websom.Request(this, client);
-				websomRequest.path = req.path;
-				websomRequest.cookies = req.cookies;
-				websomRequest.headers = req.headers;
-				websomRequest.body = req.body;
-				websomRequest.response.jsResponse = res;
-				websomRequest.jsRequest = req;
-				
-				res.setHeader("X-Powered-By", "Websom");
-				res.setHeader("Access-Control-Allow-Origin", "*");
-				res.setHeader("Access-Control-Allow-Headers", "*");
-				res.setHeader("Access-Control-Expose-Headers", "X-Set-Session");
-
-				this.processAPIRequest(websomRequest);
+				this.expressAPIPostRequest(req, res, req.path);
 			});
 
-			server.listen(port);
+			this.expressServer = server.listen(port);
 
 			console.log("API server listening on port " + port);
 		}
@@ -385,16 +480,22 @@ class Websom.Server {
 		}
 	}
 
+	void startWebpackServer(int uiPort, int apiPort) {
+		native javascript {
+			const nodeDevPlatform = require(_c_this.websomRoot + "/platform/node/index.js");
+			
+			if (!_c_this.config.headless)
+				nodeDevPlatform.startWebsomDevelopmentServer(() => {
+					return this.developmentServer || this;
+				}, uiPort, apiPort);
+		}
+	}
+
 	void start(int uiPort, int apiPort) {
 		this.startServices();
 
 		if (this.config.dev) {
 			native javascript {
-				const nodeDevPlatform = require(_c_this.websomRoot + "/platform/node/index.js");
-				
-				if (!_c_this.config.headless)
-					nodeDevPlatform.startWebsomDevelopmentServer(_c_this, uiPort, apiPort);
-				
 				this.startAPI(apiPort);
 			}
 
