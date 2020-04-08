@@ -1,14 +1,17 @@
 const path = require("path");
 const VueLoaderPlugin = require("vue-loader/lib/plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 
-module.exports = (websomServer, deployBundle) => {
+module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 	deployBundle = deployBundle || "default";
 
 	let gatherViews = () => {
 		let files = [];
 
-		for (let [i, mod] of websomServer.module.modules.entries()) {
-			let resources = websomServer.resource.compile(mod.name, mod.root, mod.baseConfig.resources);
+		for (let [i, mod] of websomServer().module.modules.entries()) {
+			let resources = websomServer().resource.compile(mod.name, mod.root, mod.baseConfig.resources);
 
 			for (let resource of resources) {
 				if (resource.type == "view") {
@@ -21,8 +24,8 @@ module.exports = (websomServer, deployBundle) => {
 			}
 		}
 
-		for (let [i, theme] of websomServer.theme.themes.entries()) {
-			let resources = websomServer.resource.compile(theme.name, theme.root, theme.config.resources);
+		for (let [i, theme] of websomServer().theme.themes.entries()) {
+			let resources = websomServer().resource.compile(theme.name, theme.root, theme.config.resources);
 
 			for (let resource of resources) {
 				if (resource.type == "view") {
@@ -38,7 +41,16 @@ module.exports = (websomServer, deployBundle) => {
 		return files;
 	};
 
-	return {
+	let styleLoaders = ["vue-style-loader"];
+
+	if (production) {
+		styleLoaders = [MiniCssExtractPlugin.loader];
+	}
+
+	if (production && isServerBundle)
+		styleLoaders = [];
+
+	let cnf = {
 		entry: "./entry.js",
 		mode: "development",
 		module: {
@@ -131,7 +143,7 @@ module.exports = (websomServer, deployBundle) => {
 				{
 					test: /\.websom-styles$/,
 					use: [
-						"vue-style-loader",
+						...styleLoaders,
 						"css-loader",
 						"less-loader",
 						{
@@ -147,7 +159,7 @@ module.exports = (websomServer, deployBundle) => {
 				{
 					test: /\.css$/,
 					use: [
-						"vue-style-loader",
+						...styleLoaders,
 						"css-loader",
 						"less-loader"
 					]
@@ -155,7 +167,7 @@ module.exports = (websomServer, deployBundle) => {
 				{
 					test: /\.less$/,
 					use: [
-						"vue-style-loader",
+						...styleLoaders,
 						"css-loader",
 						"less-loader"
 					]
@@ -165,7 +177,23 @@ module.exports = (websomServer, deployBundle) => {
 					loader: "babel-loader",
 					options: {
 						plugins: [
-							require.resolve("@babel/plugin-syntax-dynamic-import")
+							require.resolve("@babel/plugin-syntax-dynamic-import"),
+							/*require.resolve("@babel/plugin-transform-async-to-generator"),
+							[
+								require.resolve("@babel/plugin-transform-runtime"),
+								{
+									regenerator: true
+								}
+							]*/
+						],
+						presets: [
+							/*[
+								require.resolve("@babel/preset-env"),
+								{
+									targets: "> 0.25%, not dead",
+									useBuiltIns: "usage"
+								}
+							]*/
 						]
 					}
 				},
@@ -180,8 +208,8 @@ module.exports = (websomServer, deployBundle) => {
 			]
 		},
 		output: {
-			path: websomServer.config.javascriptOutput,
-			filename: websomServer.config.jsBundle,
+			path: websomServer().config.javascriptOutput,
+			filename: websomServer().config.jsBundle,
 			publicPath: "/"
 		},
 		plugins: [
@@ -197,4 +225,27 @@ module.exports = (websomServer, deployBundle) => {
 			}
 		}
 	};
+
+	if (production && !isServerBundle) {
+		cnf.optimization = {
+			minimizer: [
+				new TerserPlugin(),
+				new OptimizeCSSAssetsPlugin({})
+			],
+			/*splitChunks: {
+				cacheGroups: {
+					styles: {
+						name: "styles",
+						test: /\.css$/,
+						chunks: "all",
+						enforce: true
+					}
+				}
+			}*/
+		};
+
+		cnf.plugins.push(new MiniCssExtractPlugin());
+	}
+
+	return cnf;
 };
