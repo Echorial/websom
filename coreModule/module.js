@@ -332,6 +332,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			}
 
 			this.database.loki.saveDatabase(() => {
+				if (this.database.server.config.verbose)
 				console.log("Saved db");
 			});
 		
@@ -360,6 +361,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			}
 		
 			this.database.loki.saveDatabase(() => {
+				if (this.database.server.config.verbose)
 				console.log("Saved db");
 			});
 		
@@ -372,6 +374,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 		
 			id = this.lokiCollection.insert(query.sets).$loki.toString();
 			this.database.loki.saveDatabase(() => {
+				if (this.database.server.config.verbose)
 				console.log("Saved db");
 			});
 		
@@ -515,6 +518,7 @@ return new Promise((_c_resolve, _c_reject) => {
 				autosaveInterval: 5000,
 				autoload: true,
 				autoloadCallback: () => {
+					if (this.server.config.verbose)
 					console.log("Loaded loki db");
 					_c_resolve(); return;
 				}
@@ -524,10 +528,11 @@ return new Promise((_c_resolve, _c_reject) => {
 }
 
 /*i async*/CoreModule.LokiDB.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (this.server.config.verbose)
 		console.log("Saving loki DB");
 		
 			this.loki.saveDatabase(() => {
-				_c_resolve(); return;
+				//_c_resolve(); return;
 			});
 		}
 
@@ -943,20 +948,33 @@ CoreModule.Firestore = function (server) {var _c_this = this;
 			if (!!process.env.GCP_PROJECT) {
 				const functions = require("firebase-functions");
 
-				admin.initializeApp(functions.config().firebase);
+				try {
+					admin.initializeApp(functions.config().firebase);
+				} catch (e) {
+
+				}
 
 			}else{
 				let serviceAccount = require(path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials")));
 
-				admin.initializeApp({
-					credential: admin.credential.cert(serviceAccount)
-				});
+				try {
+					admin.initializeApp({
+						credential: admin.credential.cert(serviceAccount)
+					});
+				} catch (e) {
+
+				}
 			}
 			
 			this.firestore = admin.firestore();
-			this.firestore.settings({
-				timestampsInSnapshots: true
-			});
+			
+			try {
+				this.firestore.settings({
+					timestampsInSnapshots: true
+				});
+			} catch (e) {
+
+			}
 		}
 
 /*i async*/CoreModule.Firestore.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
