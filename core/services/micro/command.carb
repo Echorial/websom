@@ -15,10 +15,11 @@ class Websom.Micro.Command inherits Websom.MicroService {
 				}else{
 					for (var int i in that.commands) {
 						var cmd = that.commands[i];
-						invo.output("\t\t- <b>" + cmd.name + "</b>");
+						invo.output("\t\t- " + invo.bold(cmd.name));
 						for (var int j in cmd.patterns) {
 							var ptrn = cmd.patterns[j];
-							invo.output("\t\t\t- " + ptrn.pattern.regularReplace("<([^>]*)>", "<span style='color: lime'>&lt;$1&gt;</span>").replace("[", "<span style='color: #9fd0ff'>[").replace("]", "]</span>"));
+							//invo.output("\t\t\t- " + ptrn.pattern.regularReplace("<([^>]*)>", invo.color("#00FF00", "&lt;$1&gt;")).replace("[", invo.color("#9fd0ff", "[")).replace("]", invo.color("#9fd0ff", "]")));
+							invo.output("\t\t\t- " +  ptrn.pattern.replace("[", invo.color("#9fd0ff", "[")).replace("]", invo.color("#9fd0ff", "]")));
 						}
 					}
 				}
@@ -31,7 +32,13 @@ class Websom.Micro.Command inherits Websom.MicroService {
 			.on(void (Websom.CommandInvocation invo) => {
 				that.server.resource.deploy(invo.get("name"), void (string msg) => {
 					invo.output(msg);
-				}, void () => { invo.output("<span style='color: lime;'>Complete</span>"); invo.finish(); });
+				}, void () => { invo.finish(); });
+			});
+
+		this.register("analyze")
+			.command("")
+			.on(void (Websom.CommandInvocation invo) => {
+				that.server.resource.analyze();
 			});
 
 		this.register("theme")
@@ -91,16 +98,54 @@ class Websom.Micro.Command inherits Websom.MicroService {
 		}
 	}
 
-	void exec(string command) {
+	void exec(string command, <void>function completedHook) {
 		var inv = new Websom.CommandInvocation(this.server, command);
+		inv.completedHook = completedHook;
 		inv.parse();
+		let outputChain = "";
 		var found = inv.search(this.commands);
+
+		inv.color = string (string color, string content) => {
+			native javascript {
+				const chalk = require("chalk");
+				return chalk.hex(color)(content);
+			}
+
+			return content;
+		};
+
+		inv.bold = string (string content) => {
+			native javascript {
+				const chalk = require("chalk");
+				return chalk.bold(content);
+			}
+
+			return content;
+		};
+
+		inv.handler = void (bool status, string msg) => {
+			native javascript {
+				const chalk = require("chalk");
+
+				if (status)
+					outputChain += chalk.red(msg) + "\n";
+				else
+					outputChain += msg + "\n";
+				
+				return;
+			}
+			
+			outputChain += msg + "\n";
+		};
 
 		if (found != null) {
 			found.cook();
 			var output = found.run(inv);
 			found.handler(inv);
-			Console.log(output);
+			Console.log(outputChain);
+		}else{
+			Console.log("[ERROR] Unknown command");
+			completedHook();
 		}
 	}
 }
@@ -326,6 +371,11 @@ class Websom.CommandInvocation {
 
 	<void, bool, string>function handler = null;
 
+	<void>function completedHook = null;
+
+	<string, string, string>function color = null;
+	<string, string>function bold = null;
+
 	Websom.CommandPattern pattern = null;
 	Websom.Server server = null;
 
@@ -374,6 +424,9 @@ class Websom.CommandInvocation {
 		if (this.local == false) {
 			this.request.send("[" + this.rawOutput.join(", ") + "]");
 		}
+
+		if (this.completedHook != null)
+			this.completedHook();
 	}
 	
 	Websom.CommandPattern searchPatterns(<Websom.CommandPattern>array patterns) {
