@@ -7,11 +7,11 @@ template {
 	<div class="input-text form-field" :style="'--line-count: ' + lines" :class="{'input-text-invalid input-invalid': error, ['text-' + type]: true, focus: focus, placeholder: myValue.length == 0, icon, 'icon-left': side != 'right', 'icon-right': side == 'right', 'input-error': error, 'input-success': success}">
 		<div class="input-text-wrap">
 			<div class="input-text-before"></div>
-			<label class="input-text-placeholder">{{placeholder}}</label>
 			<icon v-if="icon && side != 'right'" :icon="icon" class="input-text-icon start" />
 			<input v-if="type != 'area'" type="text" class="input-text-input" @input="input" v-model="myValue" :type="type"></input>
 			<textarea v-else class="input-text-input" @input="input" v-model="myValue"></textarea>
 			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
+			<label class="input-text-placeholder">{{placeholder}}</label>
 			<div class="input-text-after"></div>
 		</div>
 
@@ -220,6 +220,8 @@ style {
 			white-space: nowrap;
 
 			color: var(--mute-contrast-blend);
+
+			pointer-events: none;
 		}
 
 		&.icon.icon-left {
