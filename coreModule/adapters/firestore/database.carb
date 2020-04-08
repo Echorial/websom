@@ -21,20 +21,33 @@ class CoreModule.Firestore inherits Websom.Adapters.Database.Adapter {
 			if (!!process.env.GCP_PROJECT) {
 				const functions = require("firebase-functions");
 
-				admin.initializeApp(functions.config().firebase);
+				try {
+					admin.initializeApp(functions.config().firebase);
+				} catch (e) {
+
+				}
 
 			}else{
 				let serviceAccount = require(path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials")));
 
-				admin.initializeApp({
-					credential: admin.credential.cert(serviceAccount)
-				});
+				try {
+					admin.initializeApp({
+						credential: admin.credential.cert(serviceAccount)
+					});
+				} catch (e) {
+
+				}
 			}
 			
 			this.firestore = admin.firestore();
-			this.firestore.settings({
-				timestampsInSnapshots: true
-			});
+			
+			try {
+				this.firestore.settings({
+					timestampsInSnapshots: true
+				});
+			} catch (e) {
+
+			}
 		}
 	}
 
