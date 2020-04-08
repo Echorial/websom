@@ -8,6 +8,7 @@ module.exports = (data) =>
 		{{{ renderStyles() }}}
 		<title>{{title}}</title>
 		{{{ renderHeadElements() }}}
+		${data.style ? `<link rel="stylesheet" type="text/css" href="${data.style}"></link>` : ``}
 	</head>
 
 	<body>
