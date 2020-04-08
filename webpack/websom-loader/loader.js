@@ -19,6 +19,11 @@ module.exports = function (source) {
 
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
+
+			if (!blocks.info) {
+				imports.push(`import blank_imports${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}";`);
+				continue;
+			}
 			
 			let info = JSON.parse(`{${blocks.info.block}}`);
 			let type = info.type;
@@ -33,6 +38,9 @@ module.exports = function (source) {
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
 			
+			if (!blocks.info)
+				continue;
+
 			let info = JSON.parse(`{${blocks.info.block}}`);
 			let add = true;
 			if (info.type == "page" && ((info.bundle || "default") != deployBundle) && info.bundle !== "*")
@@ -49,6 +57,9 @@ module.exports = function (source) {
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
 			
+			if (!blocks.info)
+				continue;
+
 			let type = JSON.parse(`{${blocks.info.block}}`).type;
 			if (type != "effect")
 				continue;
@@ -73,6 +84,9 @@ module.exports = function (source) {
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
 			
+			if (!blocks.info)
+				continue;
+
 			let type = JSON.parse(`{${blocks.info.block}}`).type;
 			if (type != "state")
 				continue;
@@ -97,6 +111,9 @@ module.exports = function (source) {
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
 			
+			if (!blocks.info)
+				continue;
+
 			let info = JSON.parse(`{${blocks.info.block}}`);
 
 			let type = info.type;
