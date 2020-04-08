@@ -10,8 +10,9 @@ const targets = {
 	component: {
 		listen(config, event, cb) {
 			document.addEventListener(event, (e) => {
-				if (e.target && (e.target.closest("." + config.name) || (virtualComponents[config.name] && virtualComponents[config.name](e)))) {
-					cb(e);
+				if (e.target && ((e.target.closest && e.target.closest("." + config.name)) || (virtualComponents[config.name] && virtualComponents[config.name](e)))) {
+
+					cb(e, e.target.closest("." + config.name) || virtualComponents[config.name](e));
 				}
 			}, true);
 		}
@@ -20,7 +21,7 @@ const targets = {
 		listen(config, event, cb) {
 			document.addEventListener(event, (e) => {
 				if (e.target && e.target.closest(config.selector)) {
-					cb(e);
+					cb(e, e.target.closest(config.selector));
 				}
 			}, true);
 		}
@@ -45,9 +46,7 @@ class Effect {
 				throw new Event("The effect event property must be an array or string.");
 			
 			for (let event of events)
-			targets[target.type].listen(target, event, async (e) => {
-				let el = e.target;
-				
+			targets[target.type].listen(target, event, async (e, el) => {
 				let key = "effect_mounted_" + this.effect.info.name.replace(/[-]/g, "_");
 				
 				if (!el.dataset[key]) {
