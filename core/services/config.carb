@@ -24,9 +24,12 @@ class Websom.Services.Config inherits Websom.Service {
 		if (this.loaded == false)
 			this.load();
 
-		if (this.optionValues[route]) {
+		let map optionValuesFromDatabase = this.optionValuesFromDatabase[route];
+		let map optionValues = this.optionValues[route];
+
+		if (optionValues != null and optionValues.hasKey(option)) {
 			return this.optionValues[route][option];
-		}else if (this.optionValuesFromDatabase[route]) {
+		}else if (optionValuesFromDatabase != null and optionValuesFromDatabase.hasKey(option)) {
 			return this.optionValuesFromDatabase[route][option];
 		}else{
 			return this.optionDefaults[route + "." + option];
@@ -87,8 +90,10 @@ class Websom.Services.Config inherits Websom.Service {
 			this.fillDefaults(configs);
 		}else{
 			if (this.server.config.dev) {
-				Console.log("No options cache found. Websom will (re)build it.");
-				Console.log("Note: This is always rebuilt while in dev mode.");
+				if (this.server.config.verbose) {
+					Console.log("No options cache found. Websom will (re)build it.");
+					Console.log("Note: This is always rebuilt while in dev mode.");
+				}
 
 				this.fillDefaults(this.cacheOptions());
 			}else{
