@@ -60,6 +60,36 @@ class Websom.Services.API inherits Websom.Service {
 		return null;
 	}
 
+	async map hit(Websom.Request identity, string route, map body) {
+		native javascript {
+			let sink = new Websom.SinkRequest(this.server, identity.client, (raw) => {
+				let body = JSON.parse(raw);
+				@return(body);
+			});
+
+			sink.copyIdentity(identity);
+
+			sink.path = route;
+			sink.body = body;
+
+			this.request(sink);
+		}
+	}
+
+	async map hit(string route, map body) {
+		native javascript {
+			let sink = new Websom.SinkRequest(this.server, new Websom.Client("::1", ""), (raw) => {
+				let body = JSON.parse(raw);
+				@return(body);
+			});
+
+			sink.path = route;
+			sink.body = body;
+
+			this.request(sink);
+		}
+	}
+
 	bool request(Websom.Request req) {
 		for (let int i in this.interfaces) {
 			let interface = this.interfaces[i];
