@@ -1,0 +1,11 @@
+info {
+	"name": "label",
+	"type": "style"
+}
+
+style {
+	label {
+		color: rgba(127, 127, 127, 0.95);
+		font-size: 12px;
+	}
+}
