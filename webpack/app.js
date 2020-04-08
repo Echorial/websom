@@ -22,7 +22,9 @@ import "normalize.css";
 import WebsomLogo from "../base-theme/assets/logo.svg";
 import WebsomLogoRaster from "../base-theme/assets/logo.png";
 
-export async function createApp (api, websomServer) {
+export async function createApp (api, context) {
+	let websomServer = context ? context.server : null;
+
 	const router = createRouter(Packages);
 
 	Vue.use(WebsomVue);
@@ -125,7 +127,7 @@ export async function createApp (api, websomServer) {
 		}
 	});
 
-	var websomUtils = WebsomUtils(store, Packages);
+	var websomUtils = WebsomUtils(store, Packages, context);
 
 	State.forEach(s =>
 		store.registerModule(s.info.name, s.script(websomUtils))
@@ -148,23 +150,28 @@ export async function createApp (api, websomServer) {
 		darkModeMediaQuery.addListener((e) => {
 			store.commit("setColorScheme", e.matches ? "dark" : "light")
 		});
+		
+		if (!store.state.websom.data.loaded)
+			store.dispatch("fetchWebsomData").then(() => {}).catch((e) => {});
+		else
+			console.log("Websom data is already loaded");
+	}else{
+		if (!store.state.websom.data.loaded) {
+			store.commit("setWebsomData", await websomServer.configService.computeClientData());
+		}
 	}
 
-	if (!store.state.websom.data.loaded)
-		store.dispatch("fetchWebsomData").then(() => {}).catch((e) => {});
-	else
-		console.log("Websom data is already loaded");
-
-	store.commit("addNavItem",
-		{
-			type: "component",
-			component: "user-nav",
-			align: "right",
-			props: {
-				name: "Test"
+	if (!store.state.websom.data.navigation.navbar.find((v) => v.props.name == "login-bar"))
+		store.commit("addNavItem",
+			{
+				type: "component",
+				component: "user-nav",
+				align: "right",
+				props: {
+					name: "login-bar"
+				}
 			}
-		}
-	);
+		);
 	
 	let formats = {
 		"single-line": new RegExp("^([^\\n]*)$"),
@@ -191,7 +198,7 @@ export async function createApp (api, websomServer) {
 
 		return true;
 	}});
-
+	
 	for (let v of Packages) {
 		Vue.component(v.info.name, v.vue);
 	}
@@ -207,9 +214,9 @@ export async function createApp (api, websomServer) {
 		let effectLoader = new EffectLoader(Effects);
 		effectLoader.initialize();
 	}
-
+	
 	for (let s of Scripts)
-		s.script({
+		await s.script({
 			app,
 			websom: websomUtils,
 			store,
@@ -219,6 +226,6 @@ export async function createApp (api, websomServer) {
 	
 	if (typeof __websom_route === "string")
 		router.push(__websom_route);
-
+	
 	return { app, router, store };
 }
