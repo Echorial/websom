@@ -284,3 +284,42 @@ class Websom.Session {
 		return this.data[key];
 	}
 }
+
+class Websom.SinkRequest extends Websom.Request {
+	<void, string>function handler = null;
+
+	void @construct(Websom.Server server, Websom.Client client, <void, string>function handler) {
+		this.server = server;
+		this.client = client;
+		this.response = new Websom.Response();
+		this.session = new Websom.Session(this);
+		this.handler = handler;
+	}
+
+	void copyIdentity(Websom.Request req) {
+		this.session = req.session;
+		this.client = req.client;
+		this.userCache = req.userCache;
+		this.cachedUser = req.cachedUser;
+		this.external = req.external;
+	}
+
+	override void header(string name, primitive value) {
+		
+	}
+
+	override void code(int code) {
+		
+	}
+
+	void end(string content) {
+		if (this.sent)
+			return null; //TODO: Setup throw
+		
+		this.sent = true;
+
+		this.server.session.beforeSend(this);
+
+		this.handler(content);
+	}
+}
