@@ -20,21 +20,27 @@ class CoreModule.LokiDB inherits Websom.Adapters.Database.Adapter {
 				autosaveInterval: 5000,
 				autoload: true,
 				autoloadCallback: () => {
-					console.log("Loaded loki db");
+					if (this.server.config.verbose)
+						console.log("Loaded loki db");
 					@return();
 				}
 			});
 		}
 	}
 
-	async override void shutdown() {
-		Console.log("Saving loki DB");
+	async void stopLoki() {
+		if (this.server.config.verbose)
+			Console.log("Saving loki DB");
 
 		native javascript {
 			this.loki.saveDatabase(() => {
 				@return();
 			});
 		}
+	}
+
+	override void shutdown() {
+		this.stopLoki();
 	}
 
 	override Websom.Adapters.Database.Collection collection(string name) {
