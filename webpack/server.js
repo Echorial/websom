@@ -1,6 +1,7 @@
 const Vue = require("vue");
 const fs = require("fs");
 const express = require("express");
+const cookieParser = require("cookie-parser");
 
 const path = require("path");
 
@@ -20,13 +21,14 @@ const deploys = require("./deploys");
 module.exports = async (websomServer, apiServer) => {
 	const app = express();
 	app.use(compression());
+	app.use(cookieParser());
 
-	const dist = websomServer.config.javascriptOutput;
+	const dist = websomServer().config.javascriptOutput;
 
 	const ssrServer = path.resolve(dist, "./vue-ssr-server-bundle.json");
 	const ssrClient = path.resolve(dist, "./vue-ssr-client-manifest.json");
 
-	let deploy = websomServer.getDeploy(websomServer.devDeploy);
+	let deploy = websomServer().getDeploy(websomServer().devDeploy);
 
 	let deployBundle = deploy ? deploy.bundle : "default";
 
@@ -42,7 +44,7 @@ module.exports = async (websomServer, apiServer) => {
 		}
 
 		let outs = await ((deploys[deploy.type])({
-			server: websomServer,
+			server: websomServer(),
 			deploy,
 			api: apiServer,
 			template,
@@ -96,8 +98,6 @@ module.exports = async (websomServer, apiServer) => {
 	let renderer = null;
 
 	let updateRenderer = () => {
-		console.log("WEBSOM: Updated renderer");
-
 		renderer = createBundleRenderer(serverBundle, {
 			runInNewContext: false,
 			template: template({}),
@@ -181,16 +181,17 @@ module.exports = async (websomServer, apiServer) => {
 			updateRenderer();
 		});
 
-		websomServer.devBuildWatcher = () => {
+		websomServer().devBuildWatcher = () => {
 			serverCompiler.run(() => {});
 			compiler.run(() => {});
 		};
 
 		app.get("*", (req, res) => {
-			const context = { 
+			const context = {
+				ssrRequest: req,
 				url: req.url,
 				api: apiServer,
-				server: websomServer,
+				server: websomServer(),
 				title: req.route.path,
 				renderHeadElements() {
 					return `
@@ -225,7 +226,7 @@ module.exports = async (websomServer, apiServer) => {
 			if (stats.errors.length) return;
 		});
 
-		websomServer.devBuildWatcher = () => {
+		websomServer().devBuildWatcher = () => {
 			compiler.run(() => {
 				console.log("Deploy built");
 			});
