@@ -178,7 +178,11 @@ export default {
 				// TODO: Add support for pro icons
 				this.iconClass = `${mappings["font-awesome"].styles.free[style]} fa-${iconName}`;
 
-				import(/* webpackPrefetch: true */ "@fortawesome/fontawesome-free/css/all.css").then(() => {
+				import(
+					/* webpackMode: "lazy" */
+					/* webpackPreload: true */
+					/* webpackChunkName: "font-awesome" */
+					"@fortawesome/fontawesome-free/css/all.css").then(() => {
 
 				});
 			}else if (pack == "material") {
@@ -186,7 +190,11 @@ export default {
 				this.iconClass = mappings.material.styles.all[style];
 
 				if (style == "fill") {
-					import(/* webpackPrefetch: true */ "material-icons/iconfont/material-icons.css").then(() => {});
+					import(
+						/* webpackMode: "lazy" */
+						/* webpackPreload: true */
+						/* webpackChunkName: "material" */
+						"material-icons/iconfont/material-icons.css").then(() => {});
 				}else{
 					this.websom.linkStyle("https://fonts.googleapis.com/css?family=Material+Icons+Outlined|Material+Icons+Sharp|Material+Icons+Round|Material+Icons+Two+Tone");
 				}
@@ -194,7 +202,11 @@ export default {
 				this.ligature = "";
 				this.iconClass = `remix-icons ri-${iconName}${mappings.remix.styles.all[style]}`;
 
-				import(/* webpackPrefetch: true */ "remixicon/fonts/remixicon.css").then(() => {
+				import(
+					/* webpackMode: "lazy" */
+					/* webpackPreload: true */
+					/* webpackChunkName: "remix" */
+					"remixicon/fonts/remixicon.css").then(() => {
 
 				});
 			}
@@ -208,7 +220,7 @@ export default {
 			this.recomputeIcon();
 		}
 	},
-	mounted() {
+	created() {
 		this.recomputeIcon();
 	}
 }
