@@ -143,7 +143,8 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 			}
 
 			this.database.loki.saveDatabase(() => {
-				console.log("Saved db");
+				if (this.database.server.config.verbose)
+					console.log("Saved db");
 			});
 		}
 
@@ -176,7 +177,8 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 
 		native javascript {
 			this.database.loki.saveDatabase(() => {
-				console.log("Saved db");
+				if (this.database.server.config.verbose)
+					console.log("Saved db");
 			});
 		}
 
@@ -191,7 +193,8 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		native javascript {
 			id = this.lokiCollection.insert(query.sets).$loki.toString();
 			this.database.loki.saveDatabase(() => {
-				console.log("Saved db");
+				if (this.database.server.config.verbose)
+					console.log("Saved db");
 			});
 		}
 
