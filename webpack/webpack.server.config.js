@@ -4,8 +4,8 @@ const nodeExternals = require("webpack-node-externals");
 const baseConfig = require("./webpack.config.js");
 const VueSSRServerPlugin = require("vue-server-renderer/server-plugin");
 
-module.exports = (websomServer, bundle) => {
-	return merge(baseConfig(websomServer, bundle), {
+module.exports = (websomServer, bundle, production) => {
+	return merge(baseConfig(websomServer, bundle, production, true), {
 		// Point entry to your app"s server entry file
 		entry: "./entry.server.js",
 
