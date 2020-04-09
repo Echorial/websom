@@ -27,6 +27,38 @@ class Websom.Micro.Command inherits Websom.MicroService {
 				invo.finish();
 			});
 
+		this.register("install")
+			.command("<name>")
+			.on(void (Websom.CommandInvocation invo) => {
+				let string package = invo.get("name");
+
+				if (this.server.config.dev) {
+					native javascript {
+						const packageManager = require("../../platform/node/packageManager.js");
+
+						packageManager.install(_c_this.server.config.root, package).then(() => {
+							invo.finish();
+						});
+					}
+				}
+			});
+
+		this.register("link")
+			.command("<name>")
+			.on(void (Websom.CommandInvocation invo) => {
+				let string package = invo.get("name");
+
+				if (this.server.config.dev) {
+					native javascript {
+						const packageManager = require("../../platform/node/packageManager.js");
+
+						packageManager.install(_c_this.server.config.root, package, true).then(() => {
+							invo.finish();
+						});
+					}
+				}
+			});
+
 		this.register("deploy")
 			.command("<name>")
 			.on(void (Websom.CommandInvocation invo) => {

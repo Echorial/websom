@@ -12050,6 +12050,30 @@ Websom.Micro.Command.prototype.start = function () {var _c_this = this; var _c_r
 				}
 			invo.finish();
 			});
+		_c_this.register("install").command("<name>").on(function (invo) {
+			var package = invo.get("name");
+			if (_c_this.server.config.dev) {
+				
+						const packageManager = require("../../platform/node/packageManager.js");
+
+						packageManager.install(_c_this.server.config.root, package).then(() => {
+							invo.finish();
+						});
+					
+				}
+			});
+		_c_this.register("link").command("<name>").on(function (invo) {
+			var package = invo.get("name");
+			if (_c_this.server.config.dev) {
+				
+						const packageManager = require("../../platform/node/packageManager.js");
+
+						packageManager.install(_c_this.server.config.root, package, true).then(() => {
+							invo.finish();
+						});
+					
+				}
+			});
 		_c_this.register("deploy").command("<name>").on(function (invo) {
 			that.server.resource.deploy(invo.get("name"), function (msg) {
 				invo.output(msg);
