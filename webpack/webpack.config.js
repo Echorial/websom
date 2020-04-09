@@ -65,14 +65,20 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 									loader: "vue-loader"
 								},
 								{
-									loader: path.resolve(__dirname, "./view-loader/loader.js")
+									loader: path.resolve(__dirname, "./view-loader/loader.js"),
+									options: {
+										server: websomServer()
+									}
 								}
 							]
 						},
 						{
 							use: [
 								{
-									loader: path.resolve(__dirname, "./view-loader/loader.js")
+									loader: path.resolve(__dirname, "./view-loader/loader.js"),
+									options: {
+										server: websomServer()
+									}
 								}
 							]
 						}
@@ -86,7 +92,10 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 							loader: "vue-loader"
 						},
 						{
-							loader: path.resolve(__dirname, "./view-loader/loader.js")
+							loader: path.resolve(__dirname, "./view-loader/loader.js"),
+							options: {
+								server: websomServer()
+							}
 						}
 					]
 				},
