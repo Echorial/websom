@@ -91,7 +91,8 @@ export default {
 						loading: "sync",
 						refresh: "sync",
 						"user-add": "user-plus",
-						"user-subtract": "user-minus"
+						"user-subtract": "user-minus",
+						back: "arrow-left"
 					},
 					styles: {
 						free: {
@@ -130,7 +131,8 @@ export default {
 						upload: "cloud_upload",
 						loading: "refresh",
 						key: "vpn_key",
-						wrench: "build"
+						wrench: "build",
+						back: "keyboard_backspace"
 					},
 					styles: {
 						all: {
@@ -158,7 +160,8 @@ export default {
 						clock: "time",
 						loading: "refresh",
 						"user-subtract": "user-unfollow",
-						wrench: "tools"
+						wrench: "tools",
+						back: "arrow-go-back"
 					},
 					styles: {
 						all: {
