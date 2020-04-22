@@ -92,7 +92,8 @@ export default {
 						refresh: "sync",
 						"user-add": "user-plus",
 						"user-subtract": "user-minus",
-						back: "arrow-left"
+						back: "arrow-left",
+						movie: "film"
 					},
 					styles: {
 						free: {
@@ -132,7 +133,8 @@ export default {
 						loading: "refresh",
 						key: "vpn_key",
 						wrench: "build",
-						back: "keyboard_backspace"
+						back: "keyboard_backspace",
+						video: "videocam"
 					},
 					styles: {
 						all: {
