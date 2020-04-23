@@ -1,0 +1,81 @@
+info {
+	"name": "websom-dashboard-home",
+	"type": "page",
+	"route": "",
+	"nested": "/websom.dashboard"
+}
+
+template {
+	<g-l class="space dashboard-layout">
+		<g-h>
+			<g-v m="6">
+				<card>
+					<h2 slot="title">Site Info</h2>
+					<div slot="body">
+						<table class="dashboard-table">
+							<tbody>
+								<tr>
+									<td>
+										Server
+									</td>
+									<td>
+										Websom v1.2
+									</td>
+								</tr>
+								<tr>
+									<td>
+										Runtime
+									</td>
+									<td>
+										Node.js v10
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</card>
+			</g-v>
+			<g-v m="6">
+				<card href="colors">
+					<h2 slot="title">Colors</h2>
+					<div slot="body">
+						<action-bar>
+							<button class="primary">primary</button>
+							<button class="secondary">secondary</button>
+							<button class="tertiary">tertiary</button>
+						</action-bar>
+					</div>
+				</card>
+			</g-v>
+		</g-h>
+	</g-l>
+}
+
+script {
+	export default {
+		methods: {
+			
+		}
+	}
+}
+
+style {
+	.dashboard-table {
+		width: 100%;
+
+		td:last-child {
+			text-align: right;
+			color: var(--primary);
+		}
+
+		tr:nth-child(2n) > td:last-child {
+			color: var(--primary-dark);
+		}
+	}
+
+	.dashboard-layout {
+		h2 {
+			font-weight: var(--heading-weight) !important;
+		}
+	}
+}
