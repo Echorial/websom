@@ -187,6 +187,9 @@ script {
 				this.$set(this.selected, id, e);
 			},
 			async refresh() {
+				for (let k in this.selected)
+					this.$delete(this.selected, k);
+
 				this.error = false;
 				this.message = "";
 				this.loading = true;
