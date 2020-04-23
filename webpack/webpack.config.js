@@ -18,7 +18,8 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 					files.push({
 						file: resource.file,
 						type: "view",
-						package: mod.name
+						package: mod.name,
+						packageType: "module"
 					});
 				}
 			}
@@ -32,7 +33,8 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 					files.push({
 						file: resource.file,
 						type: "view",
-						package: theme.name
+						package: theme.name,
+						packageType: "theme"
 					});
 				}
 			}
@@ -107,7 +109,8 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 							options: {
 								type: "components",
 								files: gatherViews,
-								bundle: deployBundle
+								bundle: deployBundle,
+								server: websomServer()
 							}
 						}
 					]
@@ -160,7 +163,21 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 							options: {
 								type: "styles",
 								files: gatherViews,
-								bundle: deployBundle
+								bundle: deployBundle,
+								server: websomServer()
+							}
+						}
+					]
+				},
+				{
+					test: /\.json$/,
+					issuer: /\.websom-styles$/,
+					use: [
+						{
+							loader: path.resolve(__dirname, "./websom-loader/loader.js"),
+							options: {
+								type: "empty",
+								files: () => []
 							}
 						}
 					]
@@ -231,6 +248,11 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 			],
 			alias: {
 				Util: path.resolve(__dirname, './')
+			}
+		},
+		resolveLoader: {
+			alias: {
+				"websom-loader": path.resolve(__dirname, "./websom-loader/loader.js")
 			}
 		}
 	};
