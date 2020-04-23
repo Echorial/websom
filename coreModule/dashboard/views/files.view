@@ -125,8 +125,8 @@ script {
 					}
 				}
 
-				for (let i = this.uploading.length - 1; i > 0; i--)
-					if (file.completed)
+				for (let i = this.uploading.length - 1; i >= 0; i--)
+					if (this.uploading[i].completed)
 						this.uploading.splice(i, 1);
 				
 				this.$refs.mediaView.refresh();
