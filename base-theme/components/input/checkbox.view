@@ -47,9 +47,11 @@ script {
 			},
 			on() {
 				this.myValue = true;
+				this.$emit("input", true);
 			},
 			off() {
 				this.myValue = false;
+				this.$emit("input", false);
 			}
 		},
 		mounted() {
@@ -70,7 +72,7 @@ style {
 	.input-checkbox {
 		display: flex;
 
-		justify-content: center;
+		justify-content: flex-start;
 		align-items: center;
 
 		& > input {
