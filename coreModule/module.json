@@ -25,7 +25,10 @@
 		},
 		{
 			"path": "./scripts"
-		}
+		},
+		{ "path": "./dashboard/styles" },
+		{ "path": "./dashboard/scripts" },
+		{ "path": "./dashboard/views" }
 	],
 	"adapters": {
 		"loki": {
@@ -59,6 +62,14 @@
 				"php": true
 			},
 			"class": "CoreModule.reCaptcha"
+		},
+		"fileSystem": {
+			"type": "bucket",
+			"supports": {
+				"javascript": true,
+				"php": true
+			},
+			"class": "CoreModule.FileSystemBucket"
 		}
 	},
 	"config": {
