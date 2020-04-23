@@ -3,6 +3,12 @@ export default (store, context) => {
 		if (typeof window === "undefined")
 			return context.server.api.hit(context.server.makeRequestFromExpress(context.ssrRequest), route, body);
 		
+		let fetchURL = route;
+
+		if (route[0] == "/") {
+			fetchURL = store.state.websom.api + route;
+		}
+
 		opts = opts || {};
 
 		let session = sessionStorage.getItem("Websom-Session");
@@ -15,17 +21,24 @@ export default (store, context) => {
 		if (session) {
 			addHeaders["X-Session"] = session;
 		}
-		
-		return fetch(store.state.websom.api + route, {
+
+		let fetchBody = {
 			method: opts.method || "POST",
-			body: JSON.stringify(body),
 			credentials: "same-origin",
 			headers: {
-				"Content-Type": "application/json",
 				...(opts.headers || {}),
 				...addHeaders
 			}
-		}).then(res => {
+		};
+		
+		if (body instanceof FormData) {
+			fetchBody.body = body;
+		}else{
+			fetchBody.body = JSON.stringify(body);
+			fetchBody.headers["Content-Type"] = "application/json";
+		}
+		
+		return fetch(fetchURL, fetchBody).then(res => {
 			if (res.headers.get("X-Set-Session")) {
 				if (opts.useLocalStorage)
 					localStorage.setItem("Websom-Session", res.headers.get("X-Set-Session"));
