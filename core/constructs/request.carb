@@ -9,6 +9,8 @@ class Websom.Request {
 
 	map body = new map();
 
+	map files = new map();
+
 	Websom.Standard.UserSystem.User userCache = null;
 	bool cachedUser = false;
 
@@ -68,6 +70,16 @@ class Websom.Request {
 		let res = new map();
 		res["status"] = "success";
 		res["message"] = successMessage;
+
+		this.header("Content-Type", "application/json");
+
+		this.end(Websom.Json.encode(res));
+	}
+
+	void endWithData(map data) {
+		let res = new map();
+		res["status"] = "success";
+		res["data"] = data;
 
 		this.header("Content-Type", "application/json");
 
@@ -166,16 +178,33 @@ class Websom.Request {
 		}
 	}
 
-	void download(string name, string path, string type) {
+	void serve(string path) {
 		native javascript {
 			const fs = require("fs");
-			this.response.jsResponse.type(type);
+			const mime = require("mime");
+			this.response.jsResponse.type(mime.getType(path));
+			fs.createReadStream(path).pipe(this.response.jsResponse);
+		}
+
+		native php {
+			header('Content-Type: ' . mime_content_type($path));
+			header("Content-Length: " . filesize($path));
+
+			readfile($path);
+		}
+	}
+
+	void download(string name, string path) {
+		native javascript {
+			const fs = require("fs");
+			const mime = require("mime");
+			this.response.jsResponse.type(mime.getType(path));
 			this.response.jsResponse.setHeader("Content-disposition", "attachment; filename=" + name);
 			fs.createReadStream(path).pipe(this.response.jsResponse);
 		}
 
 		native php {
-			header('Content-Type: application/pdf');
+			header('Content-Type: ' . mime_content_type($path));
 			header("Content-Disposition: attachment; filename=" . $name);
 			header("Content-Length: " . filesize($path));
 
