@@ -12,7 +12,9 @@ template {
 			<textarea v-else class="input-text-input" @input="input" v-model="myValue"></textarea>
 			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
 			<label class="input-text-placeholder">{{placeholder}}</label>
-			<div class="input-text-after"></div>
+			<div class="input-text-after">
+				<icon class="input-text-search-icon" icon="search" v-if="type == 'search'" />
+			</div>
 		</div>
 
 		<popover v-if="error && errorMessage" :activated="displayingInvalidPopover" :activate-on-hover="!displayingInvalidPopover" edge="left">
@@ -152,10 +154,22 @@ style {
 
 		position: relative;
 
+		&.text-search {
+			.input-text-after {
+				display: flex;
+				align-items: center;
+				height: 100%;
+			}
+
+			.input-text-search-icon {
+				--icon-size: 20px;
+				margin-left: auto;
+			}
+		}
+
 		&.placeholder {
 			.input-text-placeholder {
 				opacity: 1;
-				font-size: 16px;
 			}
 		}
 
@@ -223,6 +237,8 @@ style {
 			color: var(--mute-contrast-blend);
 
 			pointer-events: none;
+			
+			font-size: 16px;
 		}
 
 		&.icon.icon-left {
