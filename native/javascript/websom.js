@@ -78,6 +78,12 @@ Websom.Server = function () {var _c_this = this;
 
 	this.expressServer = null;
 
+	this.bucketAdapter = null;
+
+	this.bucket = null;
+
+	this.buckets = [];
+
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Config) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var config = arguments[0];
 		
@@ -179,6 +185,11 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof ar
 
 }
 
+Websom.Server.prototype.registerBucket = function (bucket) {var _c_this = this; var _c_root_method_arguments = arguments;
+		if (_c_this.config.dev) {
+			_c_this.bucket.registerBucket(bucket);
+			}}
+
 /*i async*/Websom.Server.prototype.registerServiceCollection = async function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		if (_c_this.config.dev) {
@@ -243,9 +254,15 @@ Websom.Server.prototype.logException = function (e) {var _c_this = this; var _c_
 		_c_this.render = new Websom.Services.Render(_c_this);
 		_c_this.notification = new Websom.Services.Notification(_c_this);
 		_c_this.confirmation = new Websom.Services.Confirmation(_c_this);
+		_c_this.bucketAdapter = _c_this.adapt("bucket");
 		_c_this.status.inherit(_c_this.confirmation.start());
 		_c_this.status.inherit(_c_this.session.start());
 		_c_this.status.inherit((await _c_this.module.start/* async call */()));
+		if ((await _c_this.bucketAdapter.loadFromConfig/* async call */()) == false) {
+/*async*/
+			(await _c_this.bucketAdapter.load/* async call */(_c_this.module.getModule("coreModule"), "CoreModule.FileSystemBucket"));
+			}
+		_c_this.bucket = _c_this.bucketAdapter.adapter;
 		(await _c_this.database.loadAdapter/* async call */());
 		_c_this.status.inherit(_c_this.database.start());
 		_c_this.configService.loadFromDatabase();
@@ -397,7 +414,7 @@ Websom.Server.prototype.expressAPIOptionsRequest = function (req, res, path) {va
 			res.send("POST");
 		}
 
-Websom.Server.prototype.expressAPIPostRequest = function (req, res, path) {var _c_this = this; var _c_root_method_arguments = arguments;
+Websom.Server.prototype.expressAPIRequest = function (req, res, path, method) {var _c_this = this; var _c_root_method_arguments = arguments;
 		
 			var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
 			
@@ -406,10 +423,12 @@ Websom.Server.prototype.expressAPIPostRequest = function (req, res, path) {var _
 			client.localPort = req.socket.localPort;
 
 			var websomRequest = new Websom.Request(this, client);
-			websomRequest.path = path;
+			websomRequest.path = decodeURIComponent(path);
 			websomRequest.cookies = req.cookies;
 			websomRequest.headers = req.headers;
 			websomRequest.body = req.body;
+			websomRequest.files = {};
+			for (let file in req.files) websomRequest.files[file] = req.files[file].file;
 			websomRequest.response.jsResponse = res;
 			websomRequest.jsRequest = req;
 			
@@ -418,19 +437,23 @@ Websom.Server.prototype.expressAPIPostRequest = function (req, res, path) {var _
 			res.setHeader("Access-Control-Allow-Headers", "*");
 			res.setHeader("Access-Control-Expose-Headers", "X-Set-Session");
 
-			this.processAPIRequest(websomRequest);
+			this.processAPIRequest(websomRequest, method);
 		}
 
 Websom.Server.prototype.startAPI = function (port) {var _c_this = this; var _c_root_method_arguments = arguments;
 		
 			const express = require("express");
-			const bodyParser = require("body-parser");
+			const busboy = require("express-busboy");
 			const cookieParser = require("cookie-parser");
 			const crypto = require("crypto");
 
 			let server = express();
 			
-			server.use(bodyParser.json());
+			                                
+			busboy.extend(server, {
+				upload: true
+			});
+
 			server.use(cookieParser());
 
 			server.options(/.*/, (req, res) => {
@@ -438,7 +461,11 @@ Websom.Server.prototype.startAPI = function (port) {var _c_this = this; var _c_r
 			});
 
 			server.post(/.*/, (req, res) => {
-				this.expressAPIPostRequest(req, res, req.path);
+				this.expressAPIRequest(req, res, req.path, "post");
+			});
+
+			server.get(/.*/, (req, res) => {
+				this.expressAPIRequest(req, res, req.path, "get");
 			});
 
 			this.expressServer = server.listen(port);
@@ -446,9 +473,16 @@ Websom.Server.prototype.startAPI = function (port) {var _c_this = this; var _c_r
 			console.log("API server listening on port " + port);
 		}
 
-/*i async*/Websom.Server.prototype.processAPIRequest = async function (req) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Server.prototype.processAPIRequest = async function (req, method) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
-		var apiPass = (await _c_this.api.request/* async call */(req));
+		var apiPass = false;
+		if (method == "post") {
+/*async*/
+			apiPass = (await _c_this.api.request/* async call */(req));
+			}else if (method == "get") {
+/*async*/
+			apiPass = (await _c_this.api.getRequest/* async call */(req));
+			}
 		if (apiPass == false) {
 /*async*/
 			(await req.end/* async call */("No endpoint here..."));
@@ -824,9 +858,10 @@ Websom.AdapterInterface = function (server, name) {var _c_this = this;
 			if (_c_this.server.config.verbose) {
 				console.log("No adapter found for '" + _c_this.name + "'");
 				}
-			return null;
+			return false;
 			}
-		(await _c_this.load/* async call */(selectedModule, selectedClass));}
+		(await _c_this.load/* async call */(selectedModule, selectedClass));
+		return true;}
 
 Websom.Services.API = function (server) {var _c_this = this;
 	this.baseRoute = "/api/v1";
@@ -835,7 +870,11 @@ Websom.Services.API = function (server) {var _c_this = this;
 
 	this.interfaces = [];
 
+	this.getInterfaces = [];
+
 	this.chains = [];
+
+	this.getChains = [];
 
 	this.handlers = {};
 
@@ -926,11 +965,52 @@ return new Promise((_c_resolve, _c_reject) => {
  }); }
 }
 
+Websom.Services.API.prototype.compareRoute = function (base, request) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var splits = base.split("/");
+		var reqSplits = request.split("/");
+		for (var i = 0; i < splits.length; i++) {
+			if (splits[i].length == 0) {
+				continue;
+				}
+			if (reqSplits.length < i) {
+				return false;
+				}
+			if (splits[i] == "*") {
+				return true;
+				}
+			if (splits[i][0] != ":") {
+				if (splits[i] != reqSplits[i]) {
+					return false;
+					}
+				}
+			}
+		return true;}
+
+/*i async*/Websom.Services.API.prototype.getRequest = async function (req) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		for (var i = 0; i < _c_this.getInterfaces.length; i++) {
+			var interface = _c_this.getInterfaces[i];
+			if (_c_this.compareRoute(interface.route, req.path)) {
+				interface.handler(req);
+				return true;
+				}
+			}
+		for (var i = 0; i < _c_this.getChains.length; i++) {
+/*async*/
+			var chain = _c_this.getChains[i];
+			if (_c_this.compareRoute(chain.route, req.path)) {
+/*async*/
+				(await chain.handle/* async call */(req));
+				return true;
+				}
+			}
+		return false;}
+
 /*i async*/Websom.Services.API.prototype.request = async function (req) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		for (var i = 0; i < _c_this.interfaces.length; i++) {
 			var interface = _c_this.interfaces[i];
-			if (interface.route == req.path) {
+			if (_c_this.compareRoute(interface.route, req.path)) {
 				interface.handler(req);
 				return true;
 				}
@@ -938,7 +1018,7 @@ return new Promise((_c_resolve, _c_reject) => {
 		for (var i = 0; i < _c_this.chains.length; i++) {
 /*async*/
 			var chain = _c_this.chains[i];
-			if (chain.route == req.path) {
+			if (_c_this.compareRoute(chain.route, req.path)) {
 /*async*/
 				(await chain.handle/* async call */(req));
 				return true;
@@ -977,6 +1057,20 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof ar
 		var route = arguments[0];
 		var chain = new Websom.APIChain(_c_this.server, route);
 		_c_this.chains.push(chain);
+		return chain;
+	}
+}
+
+Websom.Services.API.prototype.get = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
+		var route = arguments[0];
+		var handler = arguments[1];
+		_c_this.getInterfaces.push(new Websom.PlainInterface(route, handler));
+	}
+else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var route = arguments[0];
+		var chain = new Websom.APIChain(_c_this.server, route);
+		_c_this.getChains.push(chain);
 		return chain;
 	}
 }
@@ -1040,12 +1134,16 @@ Websom.APIChain = function (server, route) {var _c_this = this;
 Websom.APIChain.prototype.auth = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Permission) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var permission = arguments[0];
-		_c_this.authenticators.push(new Websom.PermissionAuthenticator(permission));
+		var perm = new Websom.PermissionAuthenticator(permission);
+		perm.server = _c_this.server;
+		_c_this.authenticators.push(perm);
 		return _c_this;
 	}
 else 	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var func = arguments[0];
-		_c_this.authenticators.push(new Websom.FunctionAuthenticator(func));
+		var auth = new Websom.FunctionAuthenticator(func);
+		auth.server = _c_this.server;
+		_c_this.authenticators.push(auth);
 		return _c_this;
 	}
 }
@@ -1202,6 +1300,10 @@ Websom.Services.Config = function (server) {var _c_this = this;
 
 	this.optionDefaults = {};
 
+	this.colorProfiles = {};
+
+	this.navigation = {};
+
 	this.publicDefaults = [];
 
 	this.publicValueCache = false;
@@ -1234,6 +1336,19 @@ Websom.Services.Config.prototype.getPrimitive = function (route, option) {var _c
 			}else{
 				return _c_this.optionDefaults[route + "." + option];
 			}}
+
+Websom.Services.Config.prototype.getPrimitiveNonDefault = function (route, option) {var _c_this = this; var _c_root_method_arguments = arguments;
+		if (_c_this.loaded == false) {
+			_c_this.load();
+			}
+		var optionValuesFromDatabase = _c_this.optionValuesFromDatabase[route];
+		var optionValues = _c_this.optionValues[route];
+		if (optionValues != null && (option in optionValues)) {
+			return _c_this.optionValues[route][option];
+			}else if (optionValuesFromDatabase != null && (option in optionValuesFromDatabase)) {
+			return _c_this.optionValuesFromDatabase[route][option];
+			}
+		return null;}
 
 Websom.Services.Config.prototype.loadFromDatabase = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.server.api.route("/data", async function (req) {
@@ -1285,6 +1400,25 @@ Websom.Services.Config.prototype.gatherOptions = function () {var _c_this = this
 					}
 			}}
 
+Websom.Services.Config.prototype.parseViewOptionsIntoMap = function (base, route, path) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var parse = function (file) {
+
+			};
+		
+			parse = require(this.server.websomRoot + "/webpack/view-loader/parser.js");
+		
+		var parsed = parse(Oxygen.FileSystem.readSync(path, "utf8"));
+		if ("config" in parsed) {
+			var info = Websom.Json.parse("{" + parsed["info"]["block"] + "}");
+			var name = info["name"];
+			var parsedConfig = Websom.Json.parse("{" + parsed["config"]["block"] + "}");
+			base[route + "." + name] = parsedConfig["options"];
+			var opts = base[route + "." + name];
+			for (var k in opts) {
+				opts[k]["publicView"] = true;
+				}
+			}}
+
 Websom.Services.Config.prototype.cacheOptionsFromPackage = function (ptype, pid, baseConfig, root) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var baseOptions = {};
 		var parse = function (file) {
@@ -1301,6 +1435,10 @@ Websom.Services.Config.prototype.cacheOptionsFromPackage = function (ptype, pid,
 					var name = info["name"];
 					var parsedConfig = Websom.Json.parse("{" + parsed["config"]["block"] + "}");
 					baseOptions[route + "." + name] = parsedConfig["options"];
+					var opts = baseOptions[route + "." + name];
+					for (var k in opts) {
+						opts[k]["publicView"] = true;
+						}
 					}
 				}
 			};
@@ -1341,7 +1479,7 @@ Websom.Services.Config.prototype.cacheOptions = function () {var _c_this = this;
 		var cache = {};
 		for (var i = 0; i < _c_this.server.module.modules.length; i++) {
 			var mod = _c_this.server.module.modules[i];
-			cache[mod.id] = _c_this.cacheOptionsFromPackage("module", mod.id, mod.baseConfig, mod.root);
+			cache[mod.id] = _c_this.cacheOptionsFromPackage("module", mod.id.toLowerCase(), mod.baseConfig, mod.root);
 			}
 		for (var i = 0; i < _c_this.server.theme.themes.length; i++) {
 			var theme = _c_this.server.theme.themes[i];
@@ -1349,8 +1487,9 @@ Websom.Services.Config.prototype.cacheOptions = function () {var _c_this = this;
 			if (key.length == 0) {
 				key = "theme";
 				}
-			cache[key] = _c_this.cacheOptionsFromPackage("theme", key, theme.config, theme.root);
+			cache[key] = _c_this.cacheOptionsFromPackage("theme", key.toLowerCase(), theme.config, theme.root);
 			}
+		_c_this.parseViewOptionsIntoMap(cache["theme"], "theme.theme", _c_this.server.websomRoot + "/webpack/app.view");
 		var cacheFile = _c_this.server.config.configOverrides + "/optionsCache.json";
 		Oxygen.FileSystem.writeSync(cacheFile, Websom.Json.encode(cache));
 		return cache;}
@@ -1367,9 +1506,17 @@ Websom.Services.Config.prototype.fillDefaults = function (configs) {var _c_this 
 					if ("public" in opt) {
 						public = opt["public"];
 						}
+					if ("publicView" in opt) {
+						public = true;
+						}
 					var arr = [];
 					arr.push(route);
 					arr.push(option);
+					if (opt["publicView"]) {
+						arr.push("view");
+						}else{
+							arr.push("package");
+						}
 					if (public) {
 						_c_this.publicDefaults.push(arr);
 						}
@@ -1377,12 +1524,50 @@ Websom.Services.Config.prototype.fillDefaults = function (configs) {var _c_this 
 				}
 			}}
 
+Websom.Services.Config.prototype.getCustomization = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var path = _c_this.server.config.configOverrides + "/customization.json";
+		if (Oxygen.FileSystem.exists(path)) {
+			return Websom.Json.parse(Oxygen.FileSystem.readSync(path, "utf8"));
+			}else{
+				return {};
+			}}
+
+Websom.Services.Config.prototype.getColorProfiles = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var custom = _c_this.getCustomization();
+		if ("color" in custom) {
+			return custom["color"];
+			}else{
+				return {};
+			}}
+
+Websom.Services.Config.prototype.getNavigationConfig = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var custom = _c_this.getCustomization();
+		if ("navigation" in custom) {
+			return custom["navigation"];
+			}else{
+				return {};
+			}}
+
+Websom.Services.Config.prototype.getConfiguredOptions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var data = JSON.parse(JSON.stringify(_c_this.optionValuesFromDatabase));
+		for (var k in _c_this.optionValues) {
+			data[k] = _c_this.optionValues[k];
+			}
+		return data;}
+
 Websom.Services.Config.prototype.computeClientData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		var mp = {};
 		if (_c_this.publicValueCache == false) {
 			for (var i = 0; i < _c_this.publicDefaults.length; i++) {
 				var p = _c_this.publicDefaults[i];
-				_c_this.publicValues[p[0] + "." + p[1]] = _c_this.getPrimitive(p[0], p[1]);
+				if (p[2] == "package") {
+					_c_this.publicValues[p[0] + "." + p[1]] = _c_this.getPrimitive(p[0], p[1]);
+					}else{
+						var val = _c_this.getPrimitiveNonDefault(p[0], p[1]);
+						if (val != null) {
+							_c_this.publicValues[p[0] + "." + p[1]] = val;
+							}
+					}
 				}
 			_c_this.publicValueCache = true;
 			}
@@ -1390,8 +1575,13 @@ Websom.Services.Config.prototype.computeClientData = function () {var _c_this = 
 		mp["routes"] = {};
 		mp["endpoints"] = _c_this.server.api.gatherEndpoints();
 		mp["navigation"] = {};
+		var data = _c_this.getNavigationConfig();
+		if ("navbar" in data) {
+			mp["navigation"]["config"] = data["navbar"];
+			}else{
+				mp["navigation"]["config"] = {};
+			}
 		mp["navigation"]["navbar"] = [];
-		mp["config"]["test"] = true;
 		return mp;}
 
 Websom.Services.Config.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -2155,16 +2345,20 @@ Websom.Services.Module.prototype.load = function (modDir, config, single) {var _
 							}
 						}
 						if (!single) {
-							for (var i = that.watchers.length - 1; i >= 0; i--) {
-								that.watchers[i].close();
-								that.watchers.pop();
+							if (that.server.config.legacy) {
+								for (var i = that.watchers.length - 1; i >= 0; i--) {
+									that.watchers[i].close();
+									that.watchers.pop();
+								}
+							
+								for (var i = that.modules.length - 1; i >= 0; i--) {
+									that.modules[i].stop();                       
+									that.modules.pop();
+								}
+							
+								that.reload(require("path").resolve(modDir + slash + ".." + slash) + slash);
+								that.server.resource.buildViews();
 							}
-							for (var i = that.modules.length - 1; i >= 0; i--) {
-								that.modules[i].stop();                       
-								that.modules.pop();
-							}
-							that.reload(require("path").resolve(modDir + slash + ".." + slash) + slash);
-							that.server.resource.buildViews();
 						}else{
 							console.log("Reloading single module");
 							this.close();
@@ -2297,6 +2491,11 @@ Websom.Services.Module.prototype.checkContainers = function (module) {var _c_thi
 				return status;
 				}
 			}}
+
+Websom.Services.Module.prototype.getModule = function (name) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.modules.find(function (mod) {
+			return mod.name == name;
+			});}
 
 Websom.Services.Module.prototype.buildModule = function (dir, config) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var name = config["name"];
@@ -2591,13 +2790,7 @@ Websom.Services.Resource.prototype.start = function () {var _c_this = this; var 
 		_c_this.deployHandlers.push(new Websom.LocalHandler(_c_this.server));}
 
 Websom.Services.Resource.prototype.loadDeployConfig = function () {var _c_this = this; var _c_root_method_arguments = arguments;
-		if (_c_this.deployConfig == null) {
-			var path = _c_this.server.config.root + "/deploy.json";
-			if (Oxygen.FileSystem.exists(path) == false) {
-				Oxygen.FileSystem.writeSync(path, "{\n	\"deploys\": []\n}");
-				}
-			_c_this.deployConfig = Websom.Json.parse(Oxygen.FileSystem.readSync(path, "utf8"));
-			}}
+}
 
 Websom.Services.Resource.prototype.deploy = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'function' || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
@@ -2838,6 +3031,38 @@ callback(error, errMsg);
 						}
 				}
 			}}
+
+Websom.Services.Resource.prototype.fetchViewConfigs = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var views = _c_this.fetchViews();
+		for (var i = 0; i < views.length; i++) {
+
+			}}
+
+Websom.Services.Resource.prototype.fetchViews = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var files = [];
+		var modules = _c_this.server.module.modules;
+		var themes = _c_this.server.theme.themes;
+		for (var i = 0; i < modules.length; i++) {
+			var mod = modules[i];
+			var resources = _c_this.compile(mod.name, mod.root, mod.baseConfig["resources"]);
+			for (var j = 0; j < resources.length; j++) {
+				var res = resources[j];
+				if (res.type == "view") {
+					files.push(res.file);
+					}
+				}
+			}
+		for (var i = 0; i < themes.length; i++) {
+			var mod = themes[i];
+			var resources = _c_this.compile(mod.name, mod.root, mod.config["resources"]);
+			for (var j = 0; j < resources.length; j++) {
+				var res = resources[j];
+				if (res.type == "view") {
+					files.push(res.file);
+					}
+				}
+			}
+		return files;}
 
 Websom.Services.Resource.prototype.collect = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		var that = _c_this;
@@ -4582,17 +4807,34 @@ Websom.Bridge.prototype.getServerMethods = function () {var _c_this = this; var 
 		
 		}
 
-Websom.Bucket = function (server, name, raw) {var _c_this = this;
+Websom.Bucket = function () {var _c_this = this;
 	this.server = null;
 
 	this.raw = null;
 
 	this.name = "";
 
+	this.owner = "";
+
+	if (arguments.length == 3 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'object' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var server = arguments[0];
+		var name = arguments[1];
+		var raw = arguments[2];
 		_c_this.server = server;
 		_c_this.raw = raw;
 		_c_this.name = name;
 		_c_this.created();
+	}
+else 	if (arguments.length == 3 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'string' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var server = arguments[0];
+		var name = arguments[1];
+		var ownerModule = arguments[2];
+		_c_this.server = server;
+		_c_this.owner = ownerModule;
+		_c_this.name = name;
+		_c_this.created();
+	}
+
 }
 
 Websom.Bucket.prototype.created = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -4603,12 +4845,31 @@ Websom.Bucket.make = function (server, name, type, raw) {var _c_this = this; var
 			return new Websom.Buckets.Local(server, name, raw);
 			}}
 
+Websom.Bucket.prototype.uploadObject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.BucketUpload(_c_this);}
+
+/*i async*/Websom.Bucket.prototype.deleteObject = async function (filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.deleteObject/* async call */(_c_this, filename));}
+
+/*i async*/Websom.Bucket.prototype.createDirectory = async function (path) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.createDirectory/* async call */(_c_this, path));}
+
+/*i async*/Websom.Bucket.prototype.setObjectACL = async function (filename, acl) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.setObjectACL/* async call */(_c_this, filename, acl));}
+
+/*i async*/Websom.Bucket.prototype.serve = async function (filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		return (await _c_this.server.bucket.serve/* async call */(_c_this, filename));}
+
 Websom.Buckets = function () {var _c_this = this;
 
 
 }
 
-Websom.Buckets.Local = function (server, name, raw) {var _c_this = this;
+Websom.Buckets.Local = function () {var _c_this = this;
 	this.realPath = "";
 
 	this.server = null;
@@ -4617,10 +4878,27 @@ Websom.Buckets.Local = function (server, name, raw) {var _c_this = this;
 
 	this.name = "";
 
+	this.owner = "";
+
+	if (arguments.length == 3 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'object' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var server = arguments[0];
+		var name = arguments[1];
+		var raw = arguments[2];
 		_c_this.server = server;
 		_c_this.raw = raw;
 		_c_this.name = name;
 		_c_this.created();
+	}
+else 	if (arguments.length == 3 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'string' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
+		var server = arguments[0];
+		var name = arguments[1];
+		var ownerModule = arguments[2];
+		_c_this.server = server;
+		_c_this.owner = ownerModule;
+		_c_this.name = name;
+		_c_this.created();
+	}
+
 }
 
 Websom.Buckets.Local.prototype.created = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -4644,6 +4922,53 @@ Websom.Buckets.Local.make = function (server, name, type, raw) {var _c_this = th
 		if (type == "local") {
 			return new Websom.Buckets.Local(server, name, raw);
 			}}
+
+Websom.Buckets.Local.prototype.uploadObject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.BucketUpload(_c_this);}
+
+/*i async*/Websom.Buckets.Local.prototype.deleteObject = async function (filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.deleteObject/* async call */(_c_this, filename));}
+
+/*i async*/Websom.Buckets.Local.prototype.createDirectory = async function (path) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.createDirectory/* async call */(_c_this, path));}
+
+/*i async*/Websom.Buckets.Local.prototype.setObjectACL = async function (filename, acl) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.setObjectACL/* async call */(_c_this, filename, acl));}
+
+/*i async*/Websom.Buckets.Local.prototype.serve = async function (filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		return (await _c_this.server.bucket.serve/* async call */(_c_this, filename));}
+
+Websom.BucketUpload = function (bucket) {var _c_this = this;
+	this.bucket = null;
+
+	this.acl = "";
+
+	this.fileSizeLimit = 0;
+
+	this.filename = "";
+
+		_c_this.bucket = bucket;
+}
+
+Websom.BucketUpload.prototype.access = function (acl) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.acl = acl;
+		return _c_this;}
+
+Websom.BucketUpload.prototype.limit = function (fileSize) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.fileSizeLimit = fileSize;
+		return _c_this;}
+
+Websom.BucketUpload.prototype.name = function (filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.filename = filename;
+		return _c_this;}
+
+/*i async*/Websom.BucketUpload.prototype.generateUploadURL = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		return (await _c_this.bucket.server.bucket.generateUploadURL/* async call */(_c_this));}
 
 Websom.Client = function (address, port) {var _c_this = this;
 	this.address = "";
@@ -4678,12 +5003,16 @@ Websom.CollectionInterface.prototype.route = function (route) {var _c_this = thi
 Websom.CollectionInterface.prototype.auth = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Permission) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var permission = arguments[0];
-		_c_this.routes[_c_this.routes.length - 1].authenticators.push(new Websom.PermissionAuthenticator(permission));
+		var perm = new Websom.PermissionAuthenticator(permission);
+		perm.server = _c_this.collection.database.server;
+		_c_this.routes[_c_this.routes.length - 1].authenticators.push(perm);
 		return _c_this;
 	}
 else 	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var func = arguments[0];
-		_c_this.routes[_c_this.routes.length - 1].authenticators.push(new Websom.FunctionAuthenticator(func));
+		var auth = new Websom.FunctionAuthenticator(func);
+		auth.server = _c_this.collection.database.server;
+		_c_this.routes[_c_this.routes.length - 1].authenticators.push(auth);
 		return _c_this;
 	}
 }
@@ -4811,6 +5140,10 @@ else 	if (arguments.length == 3 && (typeof arguments[0] == 'string' || typeof ar
 	}
 }
 
+Websom.CollectionInterface.prototype.on = function (hook, func) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.routes[_c_this.routes.length - 1].hooks[hook] = func;
+		return _c_this;}
+
 Websom.CollectionInterfaceRoute = function (collection, route) {var _c_this = this;
 	this.collection = null;
 
@@ -4826,6 +5159,8 @@ Websom.CollectionInterfaceRoute = function (collection, route) {var _c_this = th
 
 	this.filters = [];
 
+	this.hooks = {};
+
 	this.route = "";
 
 	this.executes = "";
@@ -4838,6 +5173,11 @@ Websom.CollectionInterfaceRoute.prototype.findFilter = function (name) {var _c_t
 		return _c_this.filters.find(function (filter) {
 			return filter.name == name;
 			});}
+
+Websom.CollectionInterfaceRoute.prototype.trigger = function (hook, req, docs) {var _c_this = this; var _c_root_method_arguments = arguments;
+		if ((hook in _c_this.hooks)) {
+			_c_this.hooks[hook](req, docs);
+			}}
 
 Websom.Restriction = function () {var _c_this = this;
 
@@ -5078,6 +5418,7 @@ else 	if (arguments.length == 0) {
 		}
 
 Websom.Authenticator = function () {var _c_this = this;
+	this.server = null;
 
 
 }
@@ -5090,6 +5431,8 @@ Websom.Authenticator.prototype.errorMessage = function (req) {var _c_this = this
 
 Websom.PermissionAuthenticator = function () {var _c_this = this;
 	this.permission = null;
+
+	this.server = null;
 
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Permission) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var permission = arguments[0];
@@ -5104,7 +5447,8 @@ else 	if (arguments.length == 0) {
 /*i async*/Websom.PermissionAuthenticator.prototype.authenticate = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Request || (arguments[0] instanceof Websom.SinkRequest)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var req = arguments[0];
-		return true;
+/*async*/
+		return (await _c_this.server.security.authenticateRequest/* async call */(req, _c_this.permission));
 	}
 else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Request || (arguments[0] instanceof Websom.SinkRequest)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var req = arguments[0];
@@ -5117,6 +5461,8 @@ Websom.PermissionAuthenticator.prototype.errorMessage = function (req) {var _c_t
 
 Websom.FunctionAuthenticator = function () {var _c_this = this;
 	this.func = null;
+
+	this.server = null;
 
 	if (arguments.length == 1 && (typeof arguments[0] == 'function' || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var func = arguments[0];
@@ -7840,6 +8186,8 @@ Websom.Module = function (server) {var _c_this = this;
 
 	this.registeredPermissions = [];
 
+	this.registeredBuckets = [];
+
 	this.name = "";
 
 	this.id = "";
@@ -7907,6 +8255,12 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof ar
 		return perm;
 	}
 }
+
+Websom.Module.prototype.registerBucket = function (name) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var bucket = new Websom.Bucket(_c_this.server, name, _c_this.name);
+		_c_this.registeredBuckets.push(bucket);
+		_c_this.server.registerBucket(bucket);
+		return bucket;}
 
 Websom.Module.prototype.setupData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
@@ -8090,6 +8444,8 @@ Websom.Request = function (server, client) {var _c_this = this;
 
 	this.body = {};
 
+	this.files = {};
+
 	this.userCache = null;
 
 	this.cachedUser = false;
@@ -8137,6 +8493,14 @@ Websom.Request.prototype.code = function (code) {var _c_this = this; var _c_root
 		var res = {};
 		res["status"] = "success";
 		res["message"] = successMessage;
+		_c_this.header("Content-Type", "application/json");
+		(await _c_this.end/* async call */(Websom.Json.encode(res)));}
+
+/*i async*/Websom.Request.prototype.endWithData = async function (data) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var res = {};
+		res["status"] = "success";
+		res["data"] = data;
 		_c_this.header("Content-Type", "application/json");
 		(await _c_this.end/* async call */(Websom.Json.encode(res)));}
 
@@ -8206,10 +8570,20 @@ Websom.Request.prototype.redirect = function (route) {var _c_this = this; var _c
 		
 		}
 
-Websom.Request.prototype.download = function (name, path, type) {var _c_this = this; var _c_root_method_arguments = arguments;
+Websom.Request.prototype.serve = function (path) {var _c_this = this; var _c_root_method_arguments = arguments;
 		
 			const fs = require("fs");
-			this.response.jsResponse.type(type);
+			const mime = require("mime");
+			this.response.jsResponse.type(mime.getType(path));
+			fs.createReadStream(path).pipe(this.response.jsResponse);
+		
+		}
+
+Websom.Request.prototype.download = function (name, path) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			const fs = require("fs");
+			const mime = require("mime");
+			this.response.jsResponse.type(mime.getType(path));
 			this.response.jsResponse.setHeader("Content-disposition", "attachment; filename=" + name);
 			fs.createReadStream(path).pipe(this.response.jsResponse);
 		
@@ -8314,6 +8688,8 @@ Websom.SinkRequest = function () {var _c_this = this;
 
 	this.body = {};
 
+	this.files = {};
+
 	this.userCache = null;
 
 	this.cachedUser = false;
@@ -8409,6 +8785,14 @@ Websom.SinkRequest.prototype.cookie = function (name, value) {var _c_this = this
 		_c_this.header("Content-Type", "application/json");
 		(await _c_this.end/* async call */(Websom.Json.encode(res)));}
 
+/*i async*/Websom.SinkRequest.prototype.endWithData = async function (data) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var res = {};
+		res["status"] = "success";
+		res["data"] = data;
+		_c_this.header("Content-Type", "application/json");
+		(await _c_this.end/* async call */(Websom.Json.encode(res)));}
+
 /*i async*/Websom.SinkRequest.prototype.endWithError = async function (errorMessage) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		var res = {};
@@ -8453,10 +8837,20 @@ Websom.SinkRequest.prototype.redirect = function (route) {var _c_this = this; va
 		
 		}
 
-Websom.SinkRequest.prototype.download = function (name, path, type) {var _c_this = this; var _c_root_method_arguments = arguments;
+Websom.SinkRequest.prototype.serve = function (path) {var _c_this = this; var _c_root_method_arguments = arguments;
 		
 			const fs = require("fs");
-			this.response.jsResponse.type(type);
+			const mime = require("mime");
+			this.response.jsResponse.type(mime.getType(path));
+			fs.createReadStream(path).pipe(this.response.jsResponse);
+		
+		}
+
+Websom.SinkRequest.prototype.download = function (name, path) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			const fs = require("fs");
+			const mime = require("mime");
+			this.response.jsResponse.type(mime.getType(path));
 			this.response.jsResponse.setHeader("Content-disposition", "attachment; filename=" + name);
 			fs.createReadStream(path).pipe(this.response.jsResponse);
 		
@@ -10991,7 +11385,7 @@ Websom.Adapters.Database.UpdateQuery.prototype.orderBy = function (field, order)
 
 /*i async*/Websom.Adapters.Database.UpdateQuery.prototype.run = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
-		(await _c_this.collection.executeUpdate/* async call */(_c_this));}
+		return (await _c_this.collection.executeUpdate/* async call */(_c_this));}
 
 Websom.Adapters.Database.UpdateQuery.prototype.limit = function (limit) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.documentLimit = limit;
@@ -11011,6 +11405,8 @@ Websom.Adapters.Database.UpdateQueryResult = function (success, message) {var _c
 	this.message = "";
 
 	this.updateCount = 0;
+
+	this.documents = null;
 
 		_c_this.success = success;
 		_c_this.message = message;
@@ -11032,7 +11428,7 @@ Websom.Adapters.Database.DeleteQuery = function (collection) {var _c_this = this
 
 /*i async*/Websom.Adapters.Database.DeleteQuery.prototype.run = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
-		(await _c_this.collection.executeDelete/* async call */(_c_this));}
+		return (await _c_this.collection.executeDelete/* async call */(_c_this));}
 
 Websom.Adapters.Database.DeleteQuery.prototype.where = function (field, operator, value) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.conditions.push(new Websom.Adapters.Database.SelectCondition(field, operator, value, "where"));
@@ -11058,6 +11454,8 @@ Websom.Adapters.Database.DeleteQueryResult = function (success, message) {var _c
 	this.success = false;
 
 	this.message = "";
+
+	this.documents = null;
 
 		_c_this.success = success;
 		_c_this.message = message;
@@ -11455,6 +11853,41 @@ Websom.Adapters.Captcha.Report = function () {var _c_this = this;
 
 }
 
+Websom.Adapters.Bucket = function () {var _c_this = this;
+
+
+}
+
+Websom.Adapters.Bucket.Adapter = function (server) {var _c_this = this;
+	this.server = null;
+
+		_c_this.server = server;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.generateUploadURL = async function (upload) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.deleteObject = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.createDirectory = async function (bucket, path) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.setObjectACL = async function (bucket, filename, acl) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+Websom.Adapters.Bucket.Adapter.prototype.registerBucket = function (bucket) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.serve = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
 Websom.DeleteHandler = function (server) {var _c_this = this;
 	this.server = null;
 
@@ -11480,6 +11913,7 @@ Websom.DeleteHandler = function (server) {var _c_this = this;
 			return null;
 			}
 		var deleteResults = (await query.run/* async call */());
+		cir.trigger("success", req, deleteResults.documents);
 		(await req.endWithSuccess/* async call */("Deleted"));}
 
 /*i async*/Websom.DeleteHandler.prototype.buildQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -11609,6 +12043,7 @@ Websom.DeleteHandler = function (server) {var _c_this = this;
 			output.push(mp);
 			}
 		res["documents"] = output;
+		cir.trigger("success", req, results.documents);
 		req.header("Content-Type", "application/json");
 		(await req.end/* async call */(Websom.Json.encode(res)));}
 
@@ -11721,6 +12156,7 @@ Websom.InsertHandler = function (server) {var _c_this = this;
 			}
 		(await query.run/* async call */());
 		var res = {};
+		cir.trigger("success", req, []);
 		res["status"] = "success";
 		res["message"] = "Document inserted";
 		req.header("Content-Type", "application/json");
@@ -11883,6 +12319,7 @@ Websom.SelectHandler = function (server) {var _c_this = this;
 			output.push(mp);
 			}
 		res["documents"] = output;
+		cir.trigger("success", req, results.documents);
 		req.header("Content-Type", "application/json");
 		(await req.end/* async call */(Websom.Json.encode(res)));}
 
@@ -11943,6 +12380,9 @@ return require('path').basename(arguments[0])}
 
 Oxygen.FileSystem.makeDir = function (location) {var _c_this = this; var _c_root_method_arguments = arguments;
 require('fs').mkdirSync(arguments[0])}
+
+Oxygen.FileSystem.unlink = function (path) {var _c_this = this; var _c_root_method_arguments = arguments;
+require('fs').unlinkSync(arguments[0])}
 
 Oxygen.FileSystem.Stat = function () {var _c_this = this;
 	this.dev = 0;
@@ -12050,6 +12490,17 @@ Websom.Micro.Command.prototype.start = function () {var _c_this = this; var _c_r
 				}
 			invo.finish();
 			});
+		_c_this.register("promote").command("<username> <role>").on(async function (invo) {
+/*async*/
+			var role = invo.get("role");
+			var username = invo.get("username");
+			if (_c_this.server.userSystem != null) {
+/*async*/
+				(await _c_this.server.userSystem.users.update().where("username", "==", username).set("role", role).run/* async call */());
+				console.log("Promoted to " + role);
+				invo.finish();
+				}
+			});
 		_c_this.register("install").command("<name>").on(function (invo) {
 			var package = invo.get("name");
 			if (_c_this.server.config.dev) {
@@ -12104,7 +12555,7 @@ Websom.Micro.Command.prototype.register = function (topName) {var _c_this = this
 		_c_this.commands.push(cmd);
 		return cmd;}
 
-Websom.Micro.Command.prototype.exec = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Micro.Command.prototype.exec = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof arguments[0] == 'undefined' || arguments[0] === null) && ((arguments[1] instanceof Websom.Request || (arguments[1] instanceof Websom.SinkRequest)) || typeof arguments[1] == 'undefined' || arguments[1] === null)) {
 		var command = arguments[0];
 		var req = arguments[1];
@@ -12164,7 +12615,10 @@ else 	if (arguments.length == 2 && (typeof arguments[0] == 'string' || typeof ar
 		if (found != null) {
 			found.cook();
 			var output = found.run(inv);
-			found.handler(inv);
+			
+			
+				await found.handler(inv);
+			
 			console.log(outputChain);
 			}else{
 				console.log("[ERROR] Unknown command");
