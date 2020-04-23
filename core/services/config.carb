@@ -3,6 +3,9 @@ class Websom.Services.Config inherits Websom.Service {
 	map optionValuesFromDatabase = new map();
 	map optionDefaults = new map();
 
+	map colorProfiles = new map();
+	map navigation = new map();
+
 	<<string>array>array publicDefaults = new <<string>array>array();
 	bool publicValueCache = false;
 	map publicValues = new map();
@@ -34,6 +37,22 @@ class Websom.Services.Config inherits Websom.Service {
 		}else{
 			return this.optionDefaults[route + "." + option];
 		}
+	}
+
+	primitive getPrimitiveNonDefault(string route, string option) {
+		if (this.loaded == false)
+			this.load();
+
+		let map optionValuesFromDatabase = this.optionValuesFromDatabase[route];
+		let map optionValues = this.optionValues[route];
+
+		if (optionValues != null and optionValues.hasKey(option)) {
+			return this.optionValues[route][option];
+		}else if (optionValuesFromDatabase != null and optionValuesFromDatabase.hasKey(option)) {
+			return this.optionValuesFromDatabase[route][option];
+		}
+
+		return null;
 	}
 
 	`Executed after starting the database service`
@@ -102,6 +121,28 @@ class Websom.Services.Config inherits Websom.Service {
 		}
 	}
 
+	void parseViewOptionsIntoMap(map base, string route, string path) {
+		let parse = map (string file) => {};
+
+		native javascript {
+			parse = require(this.server.websomRoot + "/webpack/view-loader/parser.js");
+		}
+
+		let parsed = parse(FileSystem.readSync(path, "utf8"));
+
+		if ("config" in parsed) {
+			let map info = Websom.Json.parse("{" + parsed["info"]["block"] + "}");
+			let string name = info["name"];
+			let parsedConfig = Websom.Json.parse("{" + parsed["config"]["block"] + "}");
+			base[route + "." + name] = parsedConfig["options"];
+			let opts = base[route + "." + name];
+
+			for (let string k in opts) {
+				opts[k]["publicView"] = true;
+			}
+		}
+	}
+
 	map cacheOptionsFromPackage(string ptype, string pid, map baseConfig, string root) {
 		let map baseOptions = new map();
 
@@ -120,6 +161,11 @@ class Websom.Services.Config inherits Websom.Service {
 					let string name = info["name"];
 					let parsedConfig = Websom.Json.parse("{" + parsed["config"]["block"] + "}");
 					baseOptions[route + "." + name] = parsedConfig["options"];
+					let opts = baseOptions[route + "." + name];
+
+					for (let string k in opts) {
+						opts[k]["publicView"] = true;
+					}
 				}
 			}
 		};
@@ -172,7 +218,7 @@ class Websom.Services.Config inherits Websom.Service {
 
 		for (let int i in this.server.module.modules) {
 			let mod = this.server.module.modules[i];
-			cache[mod.id] = this.cacheOptionsFromPackage("module", mod.id, mod.baseConfig, mod.root);
+			cache[mod.id] = this.cacheOptionsFromPackage("module", mod.id.toLower(), mod.baseConfig, mod.root);
 		}
 
 		for (let int i in this.server.theme.themes) {
@@ -181,8 +227,10 @@ class Websom.Services.Config inherits Websom.Service {
 			if (key.length == 0)
 				key = "theme";
 
-			cache[key] = this.cacheOptionsFromPackage("theme", key, theme.config, theme.root);
+			cache[key] = this.cacheOptionsFromPackage("theme", key.toLower(), theme.config, theme.root);
 		}
+
+		this.parseViewOptionsIntoMap(cache["theme"], "theme.theme", this.server.websomRoot + "/webpack/app.view");
 
 		let cacheFile = this.server.config.configOverrides + "/optionsCache.json";
 		FileSystem.writeSync(cacheFile, Websom.Json.encode(cache));
@@ -205,9 +253,17 @@ class Websom.Services.Config inherits Websom.Service {
 					if ("public" in opt)
 						public = opt["public"];
 
+					if ("publicView" in opt)
+						public = true;
+
 					let arr = new <string>array();
 					arr.push(route);
 					arr.push(option);
+
+					if (opt["publicView"])
+						arr.push("view");
+					else
+						arr.push("package");
 
 					if (public)
 						this.publicDefaults.push(arr);
@@ -216,12 +272,60 @@ class Websom.Services.Config inherits Websom.Service {
 		}
 	}
 
+	map getCustomization() {
+		let path = this.server.config.configOverrides + "/customization.json";
+
+		if (FileSystem.exists(path)) {
+			return Websom.Json.parse(FileSystem.readSync(path, "utf8"));
+		}else{
+			return new map();
+		}
+	}
+
+	map getColorProfiles() {
+		let custom = this.getCustomization();
+
+		if ("color" in custom) {
+			return custom["color"];
+		}else{
+			return new map();
+		}
+	}
+
+	map getNavigationConfig() {
+		let custom = this.getCustomization();
+
+		if ("navigation" in custom) {
+			return custom["navigation"];
+		}else{
+			return new map();
+		}
+	}
+
+	map getConfiguredOptions() {
+		let map data = this.optionValuesFromDatabase.clone();
+
+		for (let string k in this.optionValues) {
+			data[k] = this.optionValues[k];
+		}
+
+		return data;
+	}
+
 	map computeClientData() {
 		let mp = new map();
 		if (this.publicValueCache == false) {
 			for (let int i in this.publicDefaults) {
 				let p = this.publicDefaults[i];
-				this.publicValues[p[0] + "." + p[1]] = this.getPrimitive(p[0], p[1]);
+				if (p[2] == "package") {
+					this.publicValues[p[0] + "." + p[1]] = this.getPrimitive(p[0], p[1]);
+				}else{
+					let val = this.getPrimitiveNonDefault(p[0], p[1]);
+					
+					if (val != null) {
+						this.publicValues[p[0] + "." + p[1]] = val;
+					}
+				}
 			}
 
 			this.publicValueCache = true;
@@ -232,9 +336,15 @@ class Websom.Services.Config inherits Websom.Service {
 		mp["routes"] = new map();
 		mp["endpoints"] = this.server.api.gatherEndpoints();
 		mp["navigation"] = new map();
-		mp["navigation"]["navbar"] = new <map>array();
 
-		mp["config"]["test"] = true;
+		let data = this.getNavigationConfig();
+
+		if ("navbar" in data)
+			mp["navigation"]["config"] = data["navbar"];
+		else
+			mp["navigation"]["config"] = new map();
+
+		mp["navigation"]["navbar"] = new <map>array();
 
 		return mp;
 	}
