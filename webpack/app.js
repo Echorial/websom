@@ -1,6 +1,6 @@
 import Vue from "vue";
 import Vuex from "vuex";
-import App from "./app.view";
+import App from "./app.view?package=theme&packageType=theme";
 import { createRouter } from "./router";
 
 import EffectLoader from "./effect-loader.js";
@@ -62,8 +62,10 @@ export async function createApp (api, context) {
 			},
 			entities: {},
 			assets: {
-				logo: WebsomLogo,
-				logoRaster: WebsomLogoRaster
+				websom: {
+					logo: WebsomLogo,
+					logoRaster: WebsomLogoRaster
+				}
 			},
 			title: "Websom Page",
 			metaDescription: "This is a websom page."
@@ -90,6 +92,12 @@ export async function createApp (api, context) {
 			}
 		},
 		mutations: {
+			registerAsset(store, data) {
+				if (!store.assets[data.package])
+					store.assets[data.package] = {};
+				
+				store.assets[data.package][data.name] = data.value;
+			},
 			setWebsomData(state, data) {
 				state.websom.data = data;
 				state.websom.data.loaded = true;
@@ -199,15 +207,38 @@ export async function createApp (api, context) {
 		return true;
 	}});
 	
+	let injects = {};
+	let overrides = {};
+	
 	for (let v of Packages) {
-		Vue.component(v.info.name, v.vue);
+		if (v.info.overrides) {
+			overrides[v.info.overrides] = v;
+		}
+	}
+
+	for (let v of Packages) {
+		if (overrides[v.info.name])
+			Vue.component(v.info.name, overrides[v.info.name].vue);
+		else
+			Vue.component(v.info.name, v.vue);
+
+		if (v.info.injects) {
+			let component = v.info.injects;
+
+			if (!injects[component])
+				injects[component] = [];
+			
+			injects[component].push(v);
+		}
 	}
 	
 	const app = new Vue({
 		router,
 		render: h => h(App.vue),
 		store,
-		websomUtils
+		websomUtils,
+		injects,
+		overrides
 	});
 
 	if (!ssr) {
@@ -221,7 +252,8 @@ export async function createApp (api, context) {
 			websom: websomUtils,
 			store,
 			packages: Packages,
-			ssr
+			ssr,
+			fillState: typeof __INITIAL_STATE__ === "undefined"
 		});
 	
 	if (typeof __websom_route === "string")
