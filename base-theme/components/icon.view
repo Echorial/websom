@@ -93,7 +93,9 @@ export default {
 						"user-add": "user-plus",
 						"user-subtract": "user-minus",
 						back: "arrow-left",
-						movie: "film"
+						movie: "film",
+						document: "file",
+						audio: "music"
 					},
 					styles: {
 						free: {
@@ -134,7 +136,11 @@ export default {
 						key: "vpn_key",
 						wrench: "build",
 						back: "keyboard_backspace",
-						video: "videocam"
+						video: "videocam",
+						document: "description",
+						file: "description",
+						audio: "audiotrack",
+						music: "music_note"
 					},
 					styles: {
 						all: {
@@ -163,7 +169,9 @@ export default {
 						loading: "refresh",
 						"user-subtract": "user-unfollow",
 						wrench: "tools",
-						back: "arrow-go-back"
+						back: "arrow-go-back",
+						document: "file",
+						audio: "music"
 					},
 					styles: {
 						all: {
