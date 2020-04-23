@@ -1,0 +1,64 @@
+info {
+	"name": "websom-config-option",
+	"type": "component"
+}
+
+template {
+	<div>
+		<label>
+			{{name}}
+		</label>
+		<template v-if="option.type == 'string'">
+			<input-text v-if="!option.options" type="text" :value="value" @input="input($event)" placeholder=""/>
+			<input-select v-else :options="selectOptions(option.options)" :value="value" @input="input($event)"/>
+		</template>
+		<template v-else-if="option.type == 'boolean'">
+			<input-checkbox v-if="!option.switch" :value="value" @input="input($event)" text="" />
+			<input-switch v-else :value="value" @input="input($event)" text="" />
+		</template>
+		<template v-else-if="option.type == 'number'">
+			<input-text v-if="!option.range" type="number" :value="value" @input="input($event)" placeholder=""/>
+			<input-range v-else :min="option.range.min" :max="option.range.max" :value="value" @input="input($event)"/>
+		</template>
+
+		<popover edge="left">
+			{{option.description || "No description"}}
+		</popover>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			option: {
+				type: Object
+			},
+			name: {
+				type: String
+			},
+			value: {}
+		},
+		data: () => ({
+			myValue: null
+		}),
+		methods: {
+			input(val) {
+				this.$emit("input", val);
+			},
+			selectOptions(options) {
+				let opts = [];
+				for (let k in options) {
+					opts.push({
+						value: k,
+						...options[k]
+					});
+				}
+
+				return opts;
+			}
+		},
+		created() {
+			this.myValue = this.value;
+		}
+	}
+}
