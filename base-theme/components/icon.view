@@ -95,7 +95,9 @@ export default {
 						back: "arrow-left",
 						movie: "film",
 						document: "file",
-						audio: "music"
+						audio: "music",
+						grid: "border-all",
+						rows: "list"
 					},
 					styles: {
 						free: {
@@ -140,7 +142,10 @@ export default {
 						document: "description",
 						file: "description",
 						audio: "audiotrack",
-						music: "music_note"
+						music: "music_note",
+						grid: "grid_on",
+						rows: "toc",
+						table: "table_chart"
 					},
 					styles: {
 						all: {
@@ -171,7 +176,9 @@ export default {
 						wrench: "tools",
 						back: "arrow-go-back",
 						document: "file",
-						audio: "music"
+						audio: "music",
+						rows: "list-check-2",
+						grid: "layout-grid"
 					},
 					styles: {
 						all: {
