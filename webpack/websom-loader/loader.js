@@ -2,6 +2,7 @@ const parse = require("../view-loader/parser");
 const qs = require('querystring');
 
 const fs = require("fs");
+const path = require("path");
 
 module.exports = function (source) {
 	let resourceQuery = this.resourceQuery;
@@ -14,21 +15,27 @@ module.exports = function (source) {
 	let files = this.query.files();
 	let deployBundle = this.query.bundle;
 
-	if (this.query.type == "components") {
+	if (this.query.type == "empty") {
+		return "";
+	}else if (this.query.type == "components") {
 		let imports = [];
 
 		for (let [i, file] of files.entries()) {
 			let blocks = parse(fs.readFileSync(file.file, "utf8"), "info");
 
 			if (!blocks.info) {
-				imports.push(`import blank_imports${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}";`);
+				imports.push(`import blank_imports${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&packageType=${file.packageType}";`);
 				continue;
 			}
 			
 			let info = JSON.parse(`{${blocks.info.block}}`);
 			let type = info.type;
 			if (type == "component" || (type == "page" && ((info.bundle || "default") == deployBundle) || info.bundle === "*"))
-				imports.push(`import imports${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}"; \n imports.push(imports${i});`);
+				imports.push(`import imports${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&packageType=${file.packageType}"; \n imports.push(imports${i});`);
+		}
+		
+		if (this.query.server.config.dev) {
+			imports.push(`import "${path.join(this.query.server.config.configOverrides, "customization.json").replace(/\\/g, "\\\\")}";`);
 		}
 
 		return `let imports = [];\n${imports.join("\n")}\nexport default imports;`;
@@ -47,7 +54,11 @@ module.exports = function (source) {
 				add = false;
 			
 			if (add)
-				imports.push(`@import "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-style=true";`);
+				imports.push(`@import "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&packageType=${file.packageType}&extract-style=true";`);
+		}
+		
+		if (this.query.server.config.dev) {
+			imports.push(`@import "${path.join(this.query.server.config.configOverrides, "customization.json").replace(/\\/g, "\\\\")}";`);
 		}
 
 		return `${imports.join("\n")}`;
@@ -65,9 +76,9 @@ module.exports = function (source) {
 				continue;
 
 			imports.push(`
-				import effectInfo${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-info=true";
-				import effectConfig${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-config=true";
-				import effectScript${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-script=true";
+				import effectInfo${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&packageType=${file.packageType}&extract-info=true";
+				import effectConfig${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&packageType=${file.packageType}&extract-config=true";
+				import effectScript${i} from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&packageType=${file.packageType}&extract-script=true";
 
 				imports.push({
 					info: effectInfo${i},
