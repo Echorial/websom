@@ -557,7 +557,7 @@ header class Websom.Adapters.Database.UpdateQuery extends Websom.Adapters.Databa
 	}
 
 	async Websom.Adapters.Database.UpdateQueryResult run() {
-		this.collection.executeUpdate(this);
+		return this.collection.executeUpdate(this);
 	}
 }
 
@@ -565,6 +565,8 @@ header class Websom.Adapters.Database.UpdateQueryResult {
 	bool success = false;
 	string message = "";
 	int updateCount = 0;
+
+	<Websom.Adapters.Database.Document>array documents = null;
 
 	void @construct(bool success, string message) {
 		this.success = success;
@@ -580,13 +582,15 @@ header class Websom.Adapters.Database.DeleteQuery extends Websom.Adapters.Databa
 	}
 
 	async Websom.Adapters.Database.DeleteQueryResult run() {
-		this.collection.executeDelete(this);
+		return this.collection.executeDelete(this);
 	}
 }
 
 header class Websom.Adapters.Database.DeleteQueryResult {
 	bool success = false;
 	string message = "";
+
+	<Websom.Adapters.Database.Document>array documents = null;
 
 	void @construct(bool success, string message) {
 		this.success = success;
