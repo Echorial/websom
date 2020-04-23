@@ -1,0 +1,122 @@
+class CoreModule.FileSystemBucket extends Websom.Adapters.Bucket.Adapter {
+	CoreModule.Module coreModule = null;
+
+	override void initialize() {
+		this.coreModule = this.server.module.getModule("coreModule");
+
+		this.server.api.route("/objects/upload/:token", void (Websom.Request req) => {
+			let splits = req.path.split("/");
+
+			if (splits.length == 4) {
+				let token = splits[3];
+
+				if (token.length != 256) {
+					req.endWithError("Invalid token");
+					return null;
+				}
+
+				this.handleUpload(req, token);
+			}else{
+				req.endWithError("Invalid path");
+			}
+		});
+
+		this.server.api.get("/buckets/*", void (Websom.Request req) => {
+			let splits = req.path.split("/");
+
+			if (splits.length < 4) {
+				req.endWithError("Invalid filename");
+				return null;
+			}
+
+			let bucket = splits[2];
+			let filename = splits.slice(3, splits.length).join("/");
+
+			filename = filename.replace("../", "");
+
+			let realFile = this.server.config.devBuckets + "/" + bucket + "/" + filename;
+			let name = splits[splits.length - 1];
+
+			if (FileSystem.exists(realFile)) {
+				req.serve(realFile);
+			}else{
+				req.endWithError("Unknown file " + name);
+			}
+		});
+	}
+
+	void handleUpload(Websom.Request req, string token) {
+		let objects = this.coreModule.objects.where("token", "==", token).get();
+
+		if (objects.documents.length == 1) {
+			let obj = objects.documents[0];
+
+			if (obj.get("uploaded") == true) {
+				req.endWithError("Object already uploaded");
+				return null;
+			}
+
+			let objectPath = this.server.config.devBuckets + "/" + obj.get("bucket") + "/" + obj.get("filename");
+
+			if (req.files["upload"] != null) {
+				FileSystem.writeSync(objectPath, FileSystem.readSync(req.files["upload"], null));
+
+				this.coreModule.objects.update()
+					.where("id", "==", obj.get("id"))
+					.set("uploaded", true)
+					.run();
+				
+				req.endWithSuccess("Uploaded");
+			}else{
+				req.endWithError("Invalid payload");
+			}
+		}else{
+			req.endWithError("Invalid token");
+		}
+	}
+
+	override string generateUploadURL(Websom.BucketUpload upload) {
+		let token = this.server.crypto.getRandomHex(256 / 2);
+
+		this.coreModule.objects.insert()
+			.set("filename", upload.filename)
+			.set("bucket", upload.bucket.name)
+			.set("acl", upload.acl)
+			.set("uploaded", false)
+			.set("token", token)
+			.set("sizeLimit", upload.fileSizeLimit)
+			.run();
+
+		return this.server.apiHost + "/objects/upload/" + token;
+	}
+
+	override void deleteObject(Websom.Bucket bucket, string filename) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+
+		FileSystem.unlink(bucketPath + "/" + filename);
+	}
+
+	override void createDirectory(Websom.Bucket bucket, string path) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+
+		if (FileSystem.exists(bucketPath + "/" + path) == false)
+			FileSystem.makeDir(bucketPath + "/" + path);
+	}
+
+	override void setObjectACL(Websom.Bucket bucket, string filename, string acl) {
+		this.coreModule.objects.update()
+			.where("filename", "==", filename)
+			.set("acl", acl)
+			.run();
+	}
+
+	override void registerBucket(Websom.Bucket bucket) {
+		if (FileSystem.exists(this.server.config.devBuckets + "/" + bucket.name) == false) {
+			FileSystem.makeDir(this.server.config.devBuckets + "/" + bucket.name);
+		}
+	}
+
+	override string serve(Websom.Bucket bucket, string filename) {
+		return this.server.apiHost + "/buckets/" + bucket.name + "/" + filename;
+	}
+}

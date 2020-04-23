@@ -5,9 +5,12 @@ namespace CoreModule {}
 #end script
 
 class CoreModule.Module inherits Websom.Module {
-	Websom.Adapters.Database.Collection test = null;
 	Websom.Adapters.Database.Collection groups = null;
 	Websom.Adapters.Database.Collection confirmations = null;
+	Websom.Adapters.Database.Collection objects = null;
+	Websom.Adapters.Database.Collection mediaFiles = null;
+
+	public Websom.Permission dashboardView = null;
 
 	public Websom.Permission commentEdit = null;
 	public Websom.Permission commentCreate = null;
@@ -17,7 +20,11 @@ class CoreModule.Module inherits Websom.Module {
 	Websom.Permission groupCreate = null;
 	Websom.Permission groupEdit = null;
 
+	Websom.Bucket media = null;
+
 	override void permissions() {
+		this.dashboardView = new Websom.Permission("Dashboard.View");
+
 		this.commentEdit = new Websom.Permission("Comment.Edit");
 		this.commentEdit.description = "Allows users to edit any comment";
 		
@@ -28,6 +35,7 @@ class CoreModule.Module inherits Websom.Module {
 		this.commentRead.description = "Read permissions on any comment anywhere";
 		this.commentRead.public = true;
 		
+		this.registerPermission(this.dashboardView);
 		this.registerPermission(this.commentEdit);
 		this.registerPermission(this.commentCreate);
 		this.registerPermission(this.commentRead);
@@ -44,6 +52,67 @@ class CoreModule.Module inherits Websom.Module {
 
 	override void collections() {
 		let db = this.server.database.central;
+
+		this.objects = db.collection("websom_bucket_objects");
+		this.objects.schema()
+			.field("filename", "string")
+			.field("bucket", "string")
+			.field("acl", "string")
+			.field("uploaded", "boolean")
+			.field("token", "string")
+			.field("sizeLimit", "int");
+		
+		this.registerCollection(this.objects);
+
+		this.mediaFiles = db.collection("websom_media");
+		this.mediaFiles.schema()
+			.field("name", "string")
+			.field("file", "string")
+			.field("size", "int")
+			.field("created", "time")
+			.field("owner", "string")
+			.field("type", "string");
+		
+		this.registerCollection(this.mediaFiles);
+
+		this.server.api.interface(this.mediaFiles, "/media")
+			.route("/insert")
+				.auth(this.dashboardView)
+				.executes("insert")
+					.write("name")
+					.write("file")
+					.write("size")
+					.write("type")
+					.setComputed("user", string (Websom.Request req) => {
+						return req.user().id;
+					})
+					.setComputed("created", uint64 (Websom.Request req) => {
+						return Websom.Time.now();
+					})
+			.route("/delete")
+				.auth(this.dashboardView)
+				.executes("delete")
+					.filter("default")
+						.field("id", "in")
+					.on("success", void (Websom.Request req, <Websom.Adapters.Database.Document>array docs) => {
+						for (let int i in docs) {
+							let doc = docs[i];
+
+							this.media.deleteObject(doc.get("name"));
+						}
+					})
+			.route("/view")
+				.auth(this.dashboardView)
+				.executes("select")
+					.read("*")
+					.filter("default")
+						.order("created", "dsc")
+			.route("/read")
+				.auth(this.dashboardView)
+				.executes("select")
+					.read("*")
+					.filter("default")
+						.field("file", "==");
 
 		this.confirmations = db.collection("confirmations");
 		let confirmationSchema = this.confirmations.schema()
@@ -90,47 +159,18 @@ class CoreModule.Module inherits Websom.Module {
 					.filter("default")
 						.field("id", "==");
 
-		this.test = db.collection("test");
+		this.server.api.route("/dashboard/view")
+			.auth(this.dashboardView)
+			.executes(void (Websom.APIContext ctx) => {
+				let data = new map();
 
-		let schema = this.test.schema()
-			.field("name", "string")
-			.field("balance", "float")
-			.calc("averageBalance", new Websom.Calculators.Average("balance"))
-			.index()
-				.field("name", "==")
-				.field("balance", "dsc");
-			
-		this.registerCollection(this.test);
-		let int x = Websom.Time.now();
-		this.test.insert()
-			.set("name", "Hello")
-			.set("balance", Math.sin(x))
-			.run();
+				data["website"] = this.server.config.name;
+				data["dev"] = this.server.config.dev;
+				data["config"] = this.server.configService.cacheOptions();
+				data["options"] = this.server.configService.getConfiguredOptions();
 
-		let res = this.test.where("name", "==", "Hello").get();
-
-		this.server.api.interface(this.test, "/testing")
-			.route("/create")
-				.auth(this.commentCreate)
-				.executes("insert")
-					.write("name")
-						.limit(3, 256)
-					.set("balance", 0)
-			.route("/edit")
-				.auth(this.commentEdit)
-				.executes("update")
-					.write("name")
-					.filter("default")
-						.field("id", "==")
-			.route("/find")
-				.auth(this.commentRead)
-				.executes("select")
-					.read("name")
-					.read("balance")
-					.filter("default")
-						.field("name", "==")
-						.force("balance", "<", 100)
-						.order("balance", "dsc");
+				ctx.request.endWithData(data);
+			});
 	}
 
 	override void registerWithServer() {
@@ -142,9 +182,39 @@ class CoreModule.Module inherits Websom.Module {
 	}
 
 	override Websom.Status start() {
-		this.server.api.route("/custom/endpoint", void (Websom.Request req) => {
-			req.end("Hello");
-		});
+		this.media = this.registerBucket("media");
+
+		this.server.api.route("/media/upload")
+			.auth(this.dashboardView)
+			.input("filename")
+				.type("string")
+			.input("type")
+				.type("string")
+			.input("size")
+				.type("integer")
+			.executes(void (Websom.APIContext ctx) => {
+				let string filename = ctx.get("filename");
+				let res = this.mediaFiles.where("name", "==", filename).get();
+
+				let data = new map();
+				data["uploadURL"] = this.media.uploadObject().name(filename).access("public").generateUploadURL();
+				data["conflict"] = false;
+
+				if (res.documents.length > 0) {
+					data["conflict"] = true;
+				}else{
+					this.mediaFiles.insert()
+						.set("name", filename)
+						.set("file", this.media.serve(filename))
+						.set("type", ctx.get("type"))
+						.set("size", ctx.get("size"))
+						.set("created", Websom.Time.now())
+						.set("owner", ctx.request.user().id)
+						.run();
+				}
+
+				ctx.request.endWithData(data);
+			});
 	}
 }
 
@@ -152,3 +222,4 @@ class CoreModule.Module inherits Websom.Module {
 #include "adapters/firestore"
 #include "adapters/sendGrid"
 #include "adapters/confirmation"
+#include "adapters/fileSystem"
