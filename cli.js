@@ -128,9 +128,9 @@ server.startDevelopmentServer().then(() => {});`;
 			});
 	
 			await server.startServices();
-	
-			await server.micro.command.exec(args.join(" "), () => {
-				server.stop();
+			
+			await server.micro.command.exec(args.join(" "), async () => {
+				await server.stop();
 
 				process.exit();
 			});
