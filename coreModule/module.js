@@ -8,11 +8,15 @@ CoreModule = function () {var _c_this = this;
 }
 
 CoreModule.Module = function (server) {var _c_this = this;
-	this.test = null;
-
 	this.groups = null;
 
 	this.confirmations = null;
+
+	this.objects = null;
+
+	this.mediaFiles = null;
+
+	this.dashboardView = null;
 
 	this.commentEdit = null;
 
@@ -26,6 +30,8 @@ CoreModule.Module = function (server) {var _c_this = this;
 
 	this.groupEdit = null;
 
+	this.media = null;
+
 	this.server = null;
 
 	this.baseConfig = null;
@@ -37,6 +43,8 @@ CoreModule.Module = function (server) {var _c_this = this;
 	this.registeredCollections = [];
 
 	this.registeredPermissions = [];
+
+	this.registeredBuckets = [];
 
 	this.name = "";
 
@@ -57,6 +65,7 @@ CoreModule.Module = function (server) {var _c_this = this;
 }
 
 CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.dashboardView = new Websom.Permission("Dashboard.View");
 		_c_this.commentEdit = new Websom.Permission("Comment.Edit");
 		_c_this.commentEdit.description = "Allows users to edit any comment";
 		_c_this.commentCreate = new Websom.Permission("Comment.Create");
@@ -64,6 +73,7 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		_c_this.commentRead = new Websom.Permission("Comment.Read");
 		_c_this.commentRead.description = "Read permissions on any comment anywhere";
 		_c_this.commentRead.public = true;
+		_c_this.registerPermission(_c_this.dashboardView);
 		_c_this.registerPermission(_c_this.commentEdit);
 		_c_this.registerPermission(_c_this.commentCreate);
 		_c_this.registerPermission(_c_this.commentRead);
@@ -74,6 +84,25 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 /*i async*/CoreModule.Module.prototype.collections = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		var db = _c_this.server.database.central;
+		_c_this.objects = db.collection("websom_bucket_objects");
+		_c_this.objects.schema().field("filename", "string").field("bucket", "string").field("acl", "string").field("uploaded", "boolean").field("token", "string").field("sizeLimit", "int");
+		(await _c_this.registerCollection/* async call */(_c_this.objects));
+		_c_this.mediaFiles = db.collection("websom_media");
+		_c_this.mediaFiles.schema().field("name", "string").field("file", "string").field("size", "int").field("created", "time").field("owner", "string").field("type", "string");
+		(await _c_this.registerCollection/* async call */(_c_this.mediaFiles));
+		_c_this.server.api.interface(_c_this.mediaFiles, "/media").route("/insert").auth(_c_this.dashboardView).executes("insert").write("name").write("file").write("size").write("type").setComputed("user", async function (req) {
+/*async*/
+			return (await req.user/* async call */()).id;
+			}).setComputed("created", function (req) {
+			return Websom.Time.now();
+			}).route("/delete").auth(_c_this.dashboardView).executes("delete").filter("default").field("id", "in").on("success", async function (req, docs) {
+/*async*/
+			for (var i = 0; i < docs.length; i++) {
+/*async*/
+				var doc = docs[i];
+				(await _c_this.media.deleteObject/* async call */(doc.get("name")));
+				}
+			}).route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").order("created", "dsc").route("/read").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("file", "==");
 		_c_this.confirmations = db.collection("confirmations");
 		var confirmationSchema = _c_this.confirmations.schema().field("secret", "string").field("key", "string").field("ip", "string").field("created", "time").field("storage", "string").field("expires", "time").field("confirmed", "boolean").field("service", "string").field("method", "string").field("to", "string");
 		(await _c_this.registerCollection/* async call */(_c_this.confirmations));
@@ -83,13 +112,15 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		_c_this.server.api.interface(_c_this.groups, "/groups").route("/create").auth(_c_this.groupCreate).executes("insert").write("name").write("description").write("permissions").write("rules").write("public").write("user").setComputed("created", function (req) {
 			return Websom.Time.now();
 			}).route("/find").auth(_c_this.groupRead).executes("select").read("*").filter("default").order("created", "dsc").route("/read").auth(_c_this.groupRead).executes("select").read("*").filter("default").field("id", "==");
-		_c_this.test = db.collection("test");
-		var schema = _c_this.test.schema().field("name", "string").field("balance", "float").calc("averageBalance", new Websom.Calculators.Average("balance")).index().field("name", "==").field("balance", "dsc");
-		(await _c_this.registerCollection/* async call */(_c_this.test));
-		var x = Websom.Time.now();
-		(await _c_this.test.insert().set("name", "Hello").set("balance", Math.sin(x)).run/* async call */());
-		var res = (await _c_this.test.where("name", "==", "Hello").get/* async call */());
-		_c_this.server.api.interface(_c_this.test, "/testing").route("/create").auth(_c_this.commentCreate).executes("insert").write("name").limit(3, 256).set("balance", 0).route("/edit").auth(_c_this.commentEdit).executes("update").write("name").filter("default").field("id", "==").route("/find").auth(_c_this.commentRead).executes("select").read("name").read("balance").filter("default").field("name", "==").force("balance", "<", 100).order("balance", "dsc");}
+		_c_this.server.api.route("/dashboard/view").auth(_c_this.dashboardView).executes(async function (ctx) {
+/*async*/
+			var data = {};
+			data["website"] = _c_this.server.config.name;
+			data["dev"] = _c_this.server.config.dev;
+			data["config"] = _c_this.server.configService.cacheOptions();
+			data["options"] = _c_this.server.configService.getConfiguredOptions();
+			(await ctx.request.endWithData/* async call */(data));
+			});}
 
 CoreModule.Module.prototype.registerWithServer = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		var adapter = new CoreModule.Confirmation(_c_this.server);
@@ -98,9 +129,21 @@ CoreModule.Module.prototype.registerWithServer = function () {var _c_this = this
 		adapter.registerCollection();}
 
 /*i async*/CoreModule.Module.prototype.start = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
-		_c_this.server.api.route("/custom/endpoint", async function (req) {
+		_c_this.media = _c_this.registerBucket("media");
+		_c_this.server.api.route("/media/upload").auth(_c_this.dashboardView).input("filename").type("string").input("type").type("string").input("size").type("integer").executes(async function (ctx) {
 /*async*/
-			(await req.end/* async call */("Hello"));
+			var filename = ctx.get("filename");
+			var res = (await _c_this.mediaFiles.where("name", "==", filename).get/* async call */());
+			var data = {};
+			data["uploadURL"] = (await _c_this.media.uploadObject().name(filename).access("public").generateUploadURL/* async call */());
+			data["conflict"] = false;
+			if (res.documents.length > 0) {
+				data["conflict"] = true;
+				}else{
+/*async*/
+					(await _c_this.mediaFiles.insert().set("name", filename).set("file", (await _c_this.media.serve/* async call */(filename))).set("type", ctx.get("type")).set("size", ctx.get("size")).set("created", Websom.Time.now()).set("owner", (await ctx.request.user/* async call */()).id).run/* async call */());
+				}
+			(await ctx.request.endWithData/* async call */(data));
 			});}
 
 CoreModule.Module.prototype.clientData = function (req, send) {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -140,6 +183,12 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof ar
 		return perm;
 	}
 }
+
+CoreModule.Module.prototype.registerBucket = function (name) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var bucket = new Websom.Bucket(_c_this.server, name, _c_this.name);
+		_c_this.registeredBuckets.push(bucket);
+		_c_this.server.registerBucket(bucket);
+		return bucket;}
 
 CoreModule.Module.prototype.setupData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
@@ -333,7 +382,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 
 			this.database.loki.saveDatabase(() => {
 				if (this.database.server.config.verbose)
-				console.log("Saved db");
+					console.log("Saved db");
 			});
 		
 		var res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
@@ -362,10 +411,12 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 		
 			this.database.loki.saveDatabase(() => {
 				if (this.database.server.config.verbose)
-				console.log("Saved db");
+					console.log("Saved db");
 			});
 		
-		return new Websom.Adapters.Database.DeleteQueryResult(true, "");}
+		var results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
+		results.documents = docs;
+		return results;}
 
 /*i async*/CoreModule.LokiCollection.prototype.executeInsert = async function (query) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
@@ -375,7 +426,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			id = this.lokiCollection.insert(query.sets).$loki.toString();
 			this.database.loki.saveDatabase(() => {
 				if (this.database.server.config.verbose)
-				console.log("Saved db");
+					console.log("Saved db");
 			});
 		
 		if (_c_this.appliedSchema != null) {
@@ -414,6 +465,16 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					if (condition.operator == "==" && condition.field == "id") {
 						qMap["$loki"] = {};
 						qMap["$loki"]["$aeq"] = condition.value;
+					}else if (condition.field == "id") {
+						qMap["$loki"] = {};
+
+						let val = condition.value;
+						if (Array.isArray(val))
+							val = val.map(a => parseInt(a));
+						else
+							val = parseInt(val);
+
+						qMap["$loki"][ops[condition.operator]] = val;
 					}else{
 						if (!qMap[condition.field])
 							qMap[condition.field] = {};
@@ -519,7 +580,7 @@ return new Promise((_c_resolve, _c_reject) => {
 				autoload: true,
 				autoloadCallback: () => {
 					if (this.server.config.verbose)
-					console.log("Loaded loki db");
+						console.log("Loaded loki db");
 					_c_resolve(); return;
 				}
 			});
@@ -527,14 +588,22 @@ return new Promise((_c_resolve, _c_reject) => {
  }); }
 }
 
-/*i async*/CoreModule.LokiDB.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
-	if (this.server.config.verbose)
-		console.log("Saving loki DB");
+CoreModule.LokiDB.prototype.stopLoki = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 0) { 
+return new Promise((_c_resolve, _c_reject) => {		if (_c_this.server.config.verbose) {
+			console.log("Saving loki DB");
+			}
 		
 			this.loki.saveDatabase(() => {
-				//_c_resolve(); return;
+				_c_resolve(); return;
 			});
-		}
+		
+ }); }
+}
+
+/*i async*/CoreModule.LokiDB.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.stopLoki/* async call */());}
 
 CoreModule.LokiDB.prototype.collection = function (name) {var _c_this = this; var _c_root_method_arguments = arguments;
 		return new CoreModule.LokiCollection(_c_this, name);}
@@ -791,7 +860,9 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					}
 				}
 			}
-		return new Websom.Adapters.Database.DeleteQueryResult(true, "");}
+		var results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
+		results.documents = docs;
+		return results;}
 
 /*i async*/CoreModule.FirestoreCollection.prototype.executeInsert = async function (query) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
@@ -1222,6 +1293,111 @@ CoreModule.Confirmation.prototype.handleConfirmation = function (key, handler) {
 }
 
 /*i async*/CoreModule.Confirmation.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+CoreModule.FileSystemBucket = function (server) {var _c_this = this;
+	this.coreModule = null;
+
+	this.server = null;
+
+		_c_this.server = server;
+}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.coreModule = _c_this.server.module.getModule("coreModule");
+		_c_this.server.api.route("/objects/upload/:token", async function (req) {
+/*async*/
+			var splits = req.path.split("/");
+			if (splits.length == 4) {
+/*async*/
+				var token = splits[3];
+				if (token.length != 256) {
+/*async*/
+					(await req.endWithError/* async call */("Invalid token"));
+					return null;
+					}
+				(await _c_this.handleUpload/* async call */(req, token));
+				}else{
+/*async*/
+					(await req.endWithError/* async call */("Invalid path"));
+				}
+			});
+		_c_this.server.api.get("/buckets/*", async function (req) {
+/*async*/
+			var splits = req.path.split("/");
+			if (splits.length < 4) {
+/*async*/
+				(await req.endWithError/* async call */("Invalid filename"));
+				return null;
+				}
+			var bucket = splits[2];
+			var filename = splits.slice(3, splits.length).join("/");
+			filename = filename.replace(new RegExp("../".replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'g'), "");
+			var realFile = _c_this.server.config.devBuckets + "/" + bucket + "/" + filename;
+			var name = splits[splits.length - 1];
+			if (Oxygen.FileSystem.exists(realFile)) {
+				req.serve(realFile);
+				}else{
+/*async*/
+					(await req.endWithError/* async call */("Unknown file " + name));
+				}
+			});}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.handleUpload = async function (req, token) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var objects = (await _c_this.coreModule.objects.where("token", "==", token).get/* async call */());
+		if (objects.documents.length == 1) {
+/*async*/
+			var obj = objects.documents[0];
+			if (obj.get("uploaded") == true) {
+/*async*/
+				(await req.endWithError/* async call */("Object already uploaded"));
+				return null;
+				}
+			var objectPath = _c_this.server.config.devBuckets + "/" + obj.get("bucket") + "/" + obj.get("filename");
+			if (req.files["upload"] != null) {
+/*async*/
+				Oxygen.FileSystem.writeSync(objectPath, Oxygen.FileSystem.readSync(req.files["upload"], null));
+				(await _c_this.coreModule.objects.update().where("id", "==", obj.get("id")).set("uploaded", true).run/* async call */());
+				(await req.endWithSuccess/* async call */("Uploaded"));
+				}else{
+/*async*/
+					(await req.endWithError/* async call */("Invalid payload"));
+				}
+			}else{
+/*async*/
+				(await req.endWithError/* async call */("Invalid token"));
+			}}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.generateUploadURL = async function (upload) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var token = (await _c_this.server.crypto.getRandomHex/* async call */(256 / 2));
+		(await _c_this.coreModule.objects.insert().set("filename", upload.filename).set("bucket", upload.bucket.name).set("acl", upload.acl).set("uploaded", false).set("token", token).set("sizeLimit", upload.fileSizeLimit).run/* async call */());
+		return _c_this.server.apiHost + "/objects/upload/" + token;}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.deleteObject = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;
+		Oxygen.FileSystem.unlink(bucketPath + "/" + filename);}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.createDirectory = async function (bucket, path) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;
+		if (Oxygen.FileSystem.exists(bucketPath + "/" + path) == false) {
+			Oxygen.FileSystem.makeDir(bucketPath + "/" + path);
+			}}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.setObjectACL = async function (bucket, filename, acl) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.coreModule.objects.update().where("filename", "==", filename).set("acl", acl).run/* async call */());}
+
+CoreModule.FileSystemBucket.prototype.registerBucket = function (bucket) {var _c_this = this; var _c_root_method_arguments = arguments;
+		if (Oxygen.FileSystem.exists(_c_this.server.config.devBuckets + "/" + bucket.name) == false) {
+			Oxygen.FileSystem.makeDir(_c_this.server.config.devBuckets + "/" + bucket.name);
+			}}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.serve = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.server.apiHost + "/buckets/" + bucket.name + "/" + filename;}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
 
