@@ -1,0 +1,86 @@
+info {
+	"name": "websom-dashboard-tabs",
+	"type": "script"
+}
+
+script {
+	import img from "../assets/analytics.svg";
+	import builder from "../assets/builder.svg";
+	import buckets from "../assets/buckets.svg";
+	import database from "../assets/database.svg";
+	import modules from "../assets/modules.svg";
+	import themes from "../assets/themes.svg";
+	import pages from "../assets/pages.svg";
+	import security from "../assets/security.svg";
+	import deploy from "../assets/deploy.svg";
+	import settings from "../assets/settings.svg";
+	import files from "../assets/files.svg";
+
+	export default ctx => {
+		const tabs = [
+			{
+				name: "Home",
+				route: "",
+				image: img
+			},
+			{
+				name: "Builder",
+				route: "builder",
+				image: builder
+			},
+			{
+				name: "Modules",
+				route: "modules",
+				image: modules
+			},
+			{
+				name: "Themes",
+				route: "themes",
+				image: themes
+			},
+			{
+				name: "Pages",
+				route: "pages",
+				image: pages
+			},
+			{
+				name: "Security",
+				route: "security",
+				image: security
+			},
+			{
+				name: "Deploy",
+				route: "deploy",
+				image: deploy,
+				advanced: true
+			},
+			{
+				name: "Configure",
+				route: "configure",
+				image: settings
+			},
+			{
+				name: "Files",
+				route: "files",
+				image: files,
+				advanced: true
+			},
+			{
+				name: "Buckets",
+				route: "buckets",
+				image: buckets,
+				advanced: true
+			},
+			{
+				name: "Database",
+				route: "database",
+				image: database,
+				advanced: true
+			}
+		];
+
+		if (ctx.fillState)
+			for (let tab of tabs)
+				ctx.store.commit("registerDashboardTab", tab);
+	}
+}

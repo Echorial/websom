@@ -1,0 +1,29 @@
+info {
+	"name": "dashboard",
+	"type": "state"
+}
+
+script {
+	export default websom => ({
+		state: {
+			tabs: [],
+			advanced: false,
+			authenticated: false,
+			data: {}
+		},
+		mutations: {
+			registerDashboardTab(state, tab) {
+				state.tabs.push(tab);
+			},
+			setDashboardMode(state, to) {
+				state.advanced = to;
+			},
+			setDashboardAuthenticated(state, to) {
+				state.authenticated = to;
+			},
+			setDashboardData(state, to) {
+				state.data = to;
+			}
+		}
+	})
+}

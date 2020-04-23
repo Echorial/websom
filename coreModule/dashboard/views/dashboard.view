@@ -1,0 +1,225 @@
+info {
+	"name": "websom-dashboard",
+	"type": "page",
+	"route": "/websom.dashboard"
+}
+
+template {
+	<div class="websom-dashboard" :class="{'websom-dashboard-advanced': advanced}" v-if="authenticated">
+		<div class="websom-dashboard-nav">
+			<div class="websom-dashboard-nav-banner">
+				<img class="websom-dashboard-logo" :src="logo"></img>
+				<div class="websom-dashboard-info fat-action">
+					<h1 class="truncate" :title="data.website">{{data.website}}</h1>
+					<div class="websom-dashboard-context">
+						<icon icon="down" />
+					</div>
+
+					<dropdown>
+						<router-link to="/"><icon icon="back" class="start" /> View Website</router-link>
+						<input-switch text="Advanced Mode" v-model="advanced" />
+					</dropdown>
+				</div>
+			</div>
+
+			<router-link class="websom-dashboard-nav-tab fat-action" v-for="tab in tabs" :key="tab.name" :to="'/websom.dashboard/' + tab.route" v-if="!tab.advanced || advanced">
+				<img class="websom-dashboard-tab-image" :src="tab.image" />
+				<div class="websom-dashboard-tab-name">{{tab.name}}</div>
+			</router-link>
+		</div>
+
+		<div class="websom-dashboard-main">
+			<router-view>
+
+			</router-view>
+		</div>
+	</div>
+	<main v-else class="center-content">
+		<card>
+			<h1 slot="title">Websom Dashboard</h1>
+			<div slot="body">
+				<action-bar>
+					<router-link to="/" class="button mute">Go Back</router-link>
+					<button @click="$refs.userModal.open()">Login</button>
+				</action-bar>
+			</div>
+		</card>
+		<user-modal ref="userModal" @success="checkAuthentication()" modal-class="dashboard-modal" />
+	</main>
+}
+
+script {
+	export default {
+		computed: {
+			logo() {
+				return this.websom.resolveAsset("websom", "logo");
+			},
+			tabs() {
+				return this.$store.state.dashboard.tabs;
+			},
+			advanced: {
+				get() {
+					return this.$store.state.dashboard.advanced;
+				},
+				set(val) {
+					this.$store.commit("setDashboardMode", val);
+				}
+			},
+			authenticated() {
+				return this.$store.state.dashboard.authenticated;
+			},
+			data() {
+				return this.$store.state.dashboard.data;
+			}
+		},
+		methods: {
+			async checkAuthentication() {
+				this.$refs.userModal.cancel();
+
+				let res = await this.websom.fetch("/dashboard/view", {});
+				console.log(res);
+
+				if (res.status == "success") {
+					this.$store.commit("setDashboardData", res.data);
+					this.$store.commit("setDashboardAuthenticated", true);
+				}else{
+					this.$refs.userModal.open();
+				}
+			}
+		},
+		mounted() {
+			if (!this.authenticated) {
+				this.checkAuthentication();
+			}
+		}
+	}
+}
+
+style {
+	.dashboard-modal {
+		background: linear-gradient(-151deg, #00BCD4, #009654) !important;
+	}
+
+	.websom-dashboard {
+		position: fixed;
+		left: 0;
+		top: 0;
+		width: 100%;
+		height: 100%;
+		
+		display: flex;
+		flex-direction: row;
+
+		&.websom-dashboard-advanced {
+			.websom-dashboard-logo {
+				filter: hue-rotate(110deg);
+			}
+
+			.websom-dashboard-nav-tab {
+				height: calc(var(--nav-height) / 1.5);
+				flex-direction: row-reverse;
+				
+				img {
+					max-width: calc(var(--nav-height) / 1.5);
+					margin-left: auto;
+				}
+
+				.websom-dashboard-tab-name {
+					
+				}
+			}
+		}
+	}
+
+	.websom-dashboard-nav {
+		background: var(--background-overlay);
+		max-width: 300px;
+		min-width: 250px;
+		overflow-y: auto;
+		flex: 1;
+	}
+
+	.websom-dashboard-main {
+		background: var(--background);
+		flex: 1;
+
+		overflow: auto;
+
+		> main {
+			padding: 0;
+		}
+	}
+
+	.websom-dashboard-nav-banner {
+		height: var(--nav-height);
+		background: var(--background-tint);
+
+		display: flex;
+		flex-direction: row;
+	}
+
+	.websom-dashboard-logo {
+		max-width: 50px;
+		padding: 11px;
+
+		background: rgba(0, 0, 0, 0.2);
+		transition: var(--transition);
+	}
+
+	.websom-dashboard-info {
+		flex: 2;
+		display: flex;
+		align-items: center;
+		padding-left: var(--base-size);
+
+		h1 > {
+			max-width: 160px;
+			font-size: 1.6em;
+		}
+	}
+
+	.websom-dashboard-context {
+		--icon-size: 32px;
+
+		margin: 0;
+		margin-left: auto;
+
+		margin-right: 18px;
+
+		overflow: hidden;
+	}
+
+	.websom-dashboard-nav-tab {
+		height: var(--nav-height);
+
+		display: flex;
+		flex-direction: row;
+
+		align-items: center;
+
+		transition: var(--transition-color);
+
+		img {
+			flex: 1;
+			max-width: 72px;
+		}
+
+		.websom-dashboard-tab-name {
+			font-size: 18px;
+			padding: var(--base-size);
+		}
+
+		&:hover {
+			background: var(--background-tint);
+		}
+
+		&.router-link-exact-active {
+			color: var(--contrast);
+			background: var(--primary);
+
+			img {
+				filter: dropshadow(0, 0, 3px, black);
+			}
+		}
+	}
+}
