@@ -32,8 +32,59 @@ module.exports = async function (source) {
 
 	const rawQuery = resourceQuery.slice(1);
 	const inheritQuery = `&${rawQuery}`;
-	const incomingQuery = qs.parse(rawQuery);
+	const incomingQuery = qs.parse(rawQuery || loaderContext.query);
 	const options = loaderUtils.getOptions(loaderContext) || {};
+
+	let server = options.server;
+
+	let profiles = server.configService.getColorProfiles();
+
+	const getColorSets = (profileName) => {
+		let unsetDefault = {
+			primary: "#2196f3",
+			secondary: "#03a9f4",
+			tertiary: "#00bcd4",
+			success: "#81c784",
+			warning: "#f4511e",
+			info: "#2196f3",
+			danger: "#e91e63",
+			background: {
+				dark: "#1a1a1a",
+				light: "#f5f5f5"
+			}
+		};
+
+		let mapping = {
+			primary: "websomPrimary",
+			secondary: "websomSecondary",
+			tertiary: "websomTertiary",
+			background: "websomBackground",
+			success: "websomSuccess",
+			danger: "websomDanger",
+			warning: "websomWarning",
+			info: "websomInfo"
+		};
+
+		let profile = profiles[profileName] || {};
+		let props = [];
+
+		for (let k in mapping) {
+			let col = profile[k] || unsetDefault[k];
+			let light, dark;
+
+			if (typeof col == "string") {
+				light = dark = col;
+			}else{
+				light = col.light;
+				dark = col.dark;
+			}
+
+			props.push(`@${mapping[k]}Dark: ${dark};`);
+			props.push(`@${mapping[k]}Light: ${light};`);
+		}
+
+		return props.join("\n");
+	};
 
 	const isServer = target === 'node';
 	const isShadow = !!options.shadowMode;
@@ -135,6 +186,8 @@ module.exports = async function (source) {
 
 					@component: ~"body:not(.${incomingQuery.package}-${info.name}-disabled):not(.${incomingQuery.package}-disabled).package-${incomingQuery.package}-${info.name}-on, body:not(.${incomingQuery.package}-${info.name}-disabled):not(.${incomingQuery.package}-disabled)";
 
+					${getColorSets("default")}
+
 					${blocks.style.block};
 				`;
 			}
@@ -220,6 +273,63 @@ ${blocks.script ? blocks.script.block : "export default {}"}
 	let oldRender = vvv.render;
 	
 	vvv.render = function (createElement) {
+		let that = this;
+
+		let configSets = {};
+		
+		for (let k in configOptions.options) {
+			let val = this.$store.state.websom.data.config["${incomingQuery.packageType}.${incomingQuery.package.toLowerCase()}.${info.name}." + k];
+
+			if (val)
+				configSets[k] = val;
+		}
+
+		if (!this.$createElementOverride) {
+			this.$createElementOverride = true;
+
+			let old = this._c;
+			this._c = function (a, b, c, d) {
+				let cls = {};
+
+				if (b && b.staticClass)
+					for (let n of b.staticClass.split(" "))
+						cls[n] = true;
+
+				/*else if (typeof obj.class == "object") {
+					cls = obj.class;
+				}else if (typeof obj.class == "array") {
+					for (let n of obj.class) {
+						if (typeof n == "object")
+							cls = {cls, ...n};
+						else
+							cls[n] = true;
+					}
+				}*/
+
+				if (that && that.$root.$options.injects && that.$root.$options.injects["${info.name}"]) {
+					let exts = that.$root.$options.injects["${info.name}"];
+					
+					for (let ext of exts) {
+						if (!cls[ext.info.prependTo.replace(".", "")])
+							continue;
+						
+						if (!that.$websomInjections) {
+							that.$websomInjections = {};
+						}
+
+						if (!that.$websomInjections[ext.info.name]) {
+							that.$websomInjections[ext.info.name] = new ext.vue._Ctor[0]();
+						}
+						
+						if (that.$websomInjections)
+							c.unshift(that.$websomInjections[ext.info.name]._render(createElement));
+					}
+				}
+
+				return old(a, b, c, d);
+			};
+		}
+
 		let res = oldRender.call(this, createElement);
 		if (!res.data)
 			res.data = {};
@@ -232,7 +342,7 @@ ${blocks.script ? blocks.script.block : "export default {}"}
 
 		let styles = "";
 		for (const [key, value] of Object.entries(configOptions.options || {})) {
-			let setValue = value.default || "";
+			let setValue = configSets[key] || value.default || "";
 			if (this.config) {
 				setValue = this.config[key] || setValue;
 			}
@@ -263,6 +373,7 @@ ${blocks.script ? blocks.script.block : "export default {}"}
 	const view = {
 		info: {${blocks.info.block}},
 		package: ${JSON.stringify(incomingQuery.package) || "\"unknown\""},
+		packageType: ${JSON.stringify(incomingQuery.packageType) || "\"unknown\""},
 		vue: vvv,
 		config: configOptions,
 		defaultConfigOptions: defaults
