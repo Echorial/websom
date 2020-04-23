@@ -1,0 +1,383 @@
+info {
+	"name": "rich-view",
+	"type": "component"
+}
+
+template {
+	<div class="rich-view">
+		<modal ref="deletionDialog" size="prompt" :dialog="true" dialog-title="Are you sure?" :dialog-body="`You are about to delete ${websom.plural(selectedCount, 'item')}.`" @confirm="deleteItems()"></modal>
+
+		<div class="rich-view-header">
+			<input-select placeholder="Filter Type" value="all" :options="['all', 'image', 'video', 'audio', 'document', 'other']" />
+
+			<button class="rich-bulk-button" :class="{'disabled': selectedCount == 0}"><icon icon="edit" :left="true" />
+				Bulk
+
+				<dropdown>
+					<button key="delete" @click="confirmDeletion" class="danger"><icon icon="delete" :left="true" /> Delete {{selectedCount}}</button>
+				</dropdown>
+			</button>
+		</div>
+		<div v-if="layout == 'table'" class="rich-table-columns" ref="head">
+			<th class="center-content table-bulk-checkbox table-bulk-checkbox-all" v-if="bulk">
+				<input-checkbox :value="allSelected" @input="checkAll($event)" text="" />
+			</th>
+			<th v-for="column in displayColumns" class="rich-table-column" :class="{'fat-action': sortable}">
+				<icon v-if="sortable && sortColumn == column" :icon="sortDirection == 'asc' ? 'up' : 'down'" />
+				{{column}}
+			</th>
+		</div>
+		<div class="rich-view-table-wrap">
+			<table class="rich-view-table">
+				<thead v-if="layout == 'table'" class="rich-table-hidden-columns">
+					<th class="center-content table-bulk-checkbox table-bulk-checkbox-all" v-if="bulk">
+						<input-checkbox :value="allSelected" @input="checkAll($event)" text="" />
+					</th>
+					<th v-for="column in displayColumns" class="rich-table-column" :class="{'fat-action': sortable}">
+						<icon v-if="sortable && sortColumn == column" :icon="sortDirection == 'asc' ? 'up' : 'down'" />
+						{{column}}
+					</th>
+				</thead>
+				<transition-group v-if="!error" tag="tbody" class="rich-view-collection" :class="'rich-view-layout-' + layout" :name="transition" :mode="transitionMode">
+					<template v-if="documents.length > 0">
+						<template v-for="(d, i) in documents">
+							<slot name="row" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" :selected="selected[d.id]">
+								<tr :key="d.id" :class="{selected: selected[d.id]}" ref="rows">
+									<td class="center-content table-bulk-checkbox" v-if="bulk">
+										<input-checkbox v-model="selected[d.id]" text="" />
+									</td>
+									<template v-for="(col, ci) in displayColumns">
+										<slot :column="col" :entity="d" :index="ci" :data="d[col]" :name="'column-' + col">
+											<td :key="col">{{d[col]}}</td>
+										</slot>
+									</template>
+								</tr>
+							</slot>
+						</template>
+					</template>
+					<template v-else-if="!loading">
+						<slot name="empty">
+							<div :index="0" :class="{'data-view': true, [transition]: true}" key="0">
+								Nothing here.
+							</div>
+						</slot>
+					</template>
+				</transition-group>
+				<div v-else>
+					<h3>Error</h3>
+					<p>{{message}}</p>
+					<button @click="refresh()">Retry</button>
+				</div>
+			</table>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			route: {
+				type: String,
+				required: true
+			},
+			filter: {
+				type: String,
+				default: "default"
+			},
+			query: {
+				type: Object,
+				default: () => ({})
+			},
+			transition: {
+				type: String,
+				default: "data-view"
+			},
+			transitionMode: {
+				type: String,
+				default: "out-in"
+			},
+			collection: {
+				type: String,
+				default: ""
+			},
+			limit: {
+				type: Number,
+				default: 15
+			},
+			page: {
+				type: Number,
+				default: 0
+			},
+			fetchOptions: {
+				type: Object,
+				default: () => ({})
+			},
+			columns: {
+				type: Object,
+				default: () => ({})
+			},
+			layout: {
+				type: String,
+				default: "table"
+			},
+			bulk: {
+				type: Boolean,
+				default: false
+			},
+			sortable: {
+				type: Boolean,
+				default: false
+			},
+			deleteRoute: {
+				type: String,
+				default: "/delete"
+			},
+			deleteFilter: {
+				type: String,
+				default: "default"
+			},
+			deleteOptions: {
+				type: Object,
+				default: () => ({})
+			}
+		},
+		data: () => ({
+			documents: [],
+			error: false,
+			message: "",
+			loading: true,
+			selected: {},
+			sortColumn: "id",
+			sortDirection: "dsc"
+		}),
+		methods: {
+			async deleteItems() {
+				let ids = [];
+
+				for (let id in this.selected)
+					if (this.selected[id])
+						ids.push(id);
+
+				let res = await this.websom.fetch(this.route + this.deleteRoute, {
+					filter: this.deleteFilter,
+					query: {
+						id: ids
+					}
+				}, this.deleteOptions);
+
+				if (res.status == "success") {
+					this.$toast({
+						text: "Deleted",
+						expires: 3000
+					});
+				}else{
+					this.$toast({
+						text: res.message,
+						expires: 6000,
+						icon: "error"
+					});
+				}
+
+				this.refresh();
+			},
+			confirmDeletion() {
+				this.$refs.deletionDialog.open();
+			},
+			setSelected(id, e) {
+				this.$set(this.selected, id, e);
+			},
+			async refresh() {
+				this.error = false;
+				this.message = "";
+				this.loading = true;
+
+				let res = await this.websom.fetch(this.route, {
+					filter: this.filter,
+					fields: {"*": true},
+					query: this.query,
+					page: this.page,
+					limit: this.limit
+				}, this.fetchOptions);
+
+				if (res.status == "error") {
+					if (!this.websom.ssr)
+						console.error("Error while fetching for data-view", res);
+
+					this.error = true;
+					this.message = res.message;
+
+					this.loading = false;
+
+					return false;
+				}
+
+				//this.documents.splice(0, this.documents.length);
+				let resDocs = [];
+
+				if (this.collection == "") {
+					for (let doc of res.documents) {
+						resDocs.push(doc);
+					}
+				}else{
+					for (let doc of res.documents) {
+						let entity = websom.makeEntity(this.collection, doc);
+						resDocs.push(this.$store.commit("setEntity", entity));
+					}
+				}
+
+				this.documents = resDocs;
+
+				if (this.bulk)
+					for (let doc of this.documents)
+						this.$set(this.selected, doc.id, false);
+
+				this.$emit("update", this.documents);
+
+				this.loading = false;
+
+				this.$nextTick(() => {
+					this.computeColumnSizes();
+				});
+
+				return true;
+			},
+			checkAll(set) {
+				for (let k in this.selected)
+					this.selected[k] = set;
+			},
+			computeColumnSizes() {
+				this.documents;
+
+				let sizes = new Array(this.displayColumns.length);
+
+				let calculateRow = (row) => {
+					for (let i = 0; i < row.children.length; i++) {
+						let el = row.children[i];
+						if (!sizes[i] || el.clientWidth > sizes[i])
+							sizes[i] = el.clientWidth;
+					}
+				};
+
+				let setColumnWidth = (i, width) => {
+					sizes[i] = width;
+
+					if (this.$refs.rows)
+					for (let row of this.$refs.rows) {
+						let el = row.children[i];
+
+						el.style.setProperty("--column-width", sizes[i] + "px");
+					}
+				};
+
+				let setRow = (row) => {
+					for (let i = 0; i < row.children.length; i++) {
+						let el = row.children[i];
+						if (el.clientWidth > sizes[i]) {
+							//setColumnWidth(i, el.clientWidth);
+						}
+
+						el.style.setProperty("--column-width", sizes[i] + "px");
+					}
+				};
+
+				if (this.$refs.rows)
+				for (let row of this.$refs.rows) {
+					calculateRow(row);
+				}
+
+				if (this.$refs.head)
+					setRow(this.$refs.head);
+
+				return sizes;
+			}
+		},
+		computed: {
+			displayColumns() {
+				let keys = Object.keys(this.columns);
+				
+				if (keys.length > 0) {
+					return keys;
+				}else{
+					if (this.documents.length > 0)
+						return Object.keys(this.documents[0]);
+					else
+						return [];
+				}
+			},
+			allSelected() {
+				for (let k in this.selected)
+					if (!this.selected[k])
+						return false;
+
+				return true;
+			},
+			selectedCount() {
+				let count = 0;
+
+				for (let k in this.selected)
+					if (this.selected[k])
+						count++;
+
+				return count;
+			}
+		},
+		serverPrefetch() {
+			return this.refresh();
+		},
+		mounted() {
+			if (this.documents.length == 0)
+				this.refresh();
+		}
+	}
+}
+
+style {
+	.rich-view {
+		display: flex;
+		flex-direction: column;
+
+		.rich-view-header {
+			min-height: calc(var(--base-size) * 4);
+		}
+	}
+
+	.table-bulk-checkbox {
+		height: 100%;
+	}
+
+	.rich-view-table {
+		width: 100%;
+
+		position: relative;
+		top: -24px;
+	}
+
+	.rich-table-hidden-columns {
+		opacity: 0;
+	}
+
+	.rich-table-columns {
+		display: flex;
+		flex-direction: row;
+
+		> th {
+			display: flex;
+			align-items: center;
+
+			min-width: var(--column-width);
+		}
+	}
+
+	.rich-view-table-wrap {
+		overflow: auto;
+	}
+
+	.rich-bulk-button {
+		margin-left: auto;
+	}
+
+	.rich-view-header {
+		display: flex;
+		align-items: center;
+	}
+}
