@@ -27,6 +27,25 @@ class Websom.Micro.Command inherits Websom.MicroService {
 				invo.finish();
 			});
 
+		this.register("promote")
+			.command("<username> <role>")
+			.on(void (Websom.CommandInvocation invo) => {
+				let string role = invo.get("role");
+				let string username = invo.get("username");
+
+				if (this.server.userSystem != null) {
+					this.server.userSystem.users
+						.update()
+						.where("username", "==", username)
+						.set("role", role)
+						.run();
+
+					Console.log("Promoted to " + role);
+					
+					invo.finish();
+				}
+			});
+
 		this.register("install")
 			.command("<name>")
 			.on(void (Websom.CommandInvocation invo) => {
@@ -109,6 +128,7 @@ class Websom.Micro.Command inherits Websom.MicroService {
 		return cmd;
 	}
 
+	[ForceAsync]
 	void exec(string command, Websom.Request req) {
 		var inv = new Websom.CommandInvocation(this.server, command);
 		inv.request = req;
@@ -130,6 +150,7 @@ class Websom.Micro.Command inherits Websom.MicroService {
 		}
 	}
 
+	[ForceAsync]
 	void exec(string command, <void>function completedHook) {
 		var inv = new Websom.CommandInvocation(this.server, command);
 		inv.completedHook = completedHook;
@@ -173,7 +194,15 @@ class Websom.Micro.Command inherits Websom.MicroService {
 		if (found != null) {
 			found.cook();
 			var output = found.run(inv);
-			found.handler(inv);
+			
+			native php {
+				$found->handler($inv);
+			}
+			
+			native javascript {
+				await found.handler(inv);
+			}
+
 			Console.log(outputChain);
 		}else{
 			Console.log("[ERROR] Unknown command");
