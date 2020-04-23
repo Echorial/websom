@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<div :class="{scaffold: true, 'sticky-nav': $config.stickyNavigationBar, scrolled, scrollStart, scrollEnd, 'scroll-start': scrollStart, 'scroll-end': scrollEnd}" :style="'--scroll-distance: ' + scrollDistance + 'px;'">
+	<div class="scaffold" :class="{'sticky-nav': $config.stickyNavigationBar, scrolled, scrollStart, scrollEnd, 'scroll-start': scrollStart, 'scroll-end': scrollEnd}" :style="'--scroll-distance: ' + scrollDistance + 'px;'">
 		<component :is="navigation" />
 
 		<div class="scaffold-main">
@@ -71,6 +71,8 @@ style {
 		flex-direction: column;
 
 		height: 100%;
+
+		overflow: auto;
 
 		.scaffold-main {
 			flex: 1;
