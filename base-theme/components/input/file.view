@@ -50,6 +50,8 @@ script {
 				this.fileSize = 0;
 				for (let file of this.files)
 					this.fileSize += file.size;
+
+				this.$emit("input", this.files);
 			},
 			enter() {
 				this.hovering = true;
