@@ -14,14 +14,14 @@ class Websom.Services.Resource inherits Websom.Service {
 	}
 
 	void loadDeployConfig() {
-		if (this.deployConfig == null) {
+		/*if (this.deployConfig == null) {
 			var path = this.server.config.root + "/deploy.json";
 			if (FileSystem.exists(path) == false) {
 				FileSystem.writeSync(path, '{\n	"deploys": []\n}');
 			}
 
 			this.deployConfig = Websom.Json.parse(FileSystem.readSync(path, "utf8"));
-		}
+		}*/
 	}
 
 	void deploy(string name, <void>function callback) {
@@ -311,6 +311,49 @@ class Websom.Services.Resource inherits Websom.Service {
 				}
 			}
 		}
+	}
+
+	map fetchViewConfigs() {
+		let views = this.fetchViews();
+
+		for (let int i in views) {
+
+		}
+	}
+
+	<string>array fetchViews() {
+		let files = new <string>array();
+
+		let modules = this.server.module.modules;
+		let themes = this.server.theme.themes;
+
+		for (let int i in modules) {
+			let mod = modules[i];
+
+			let resources = this.compile(mod.name, mod.root, mod.baseConfig["resources"]);
+
+			for (let int j in resources) {
+				let res = resources[j];
+
+				if (res.type == "view")
+					files.push(res.file);
+			}
+		}
+
+		for (let int i in themes) {
+			let mod = themes[i];
+
+			let resources = this.compile(mod.name, mod.root, mod.config["resources"]);
+
+			for (let int j in resources) {
+				let res = resources[j];
+
+				if (res.type == "view")
+					files.push(res.file);
+			}
+		}
+
+		return files;
 	}
 
 	`Builds an array of Websom.Resource objects from theme, module and server configs.`
