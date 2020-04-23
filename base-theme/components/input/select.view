@@ -40,7 +40,7 @@ script {
 	export default {
 		props: {
 			value: {
-				type: [String, Object],
+				type: [String, Object, Number, Boolean],
 				default: ""
 			},
 			placeholder: {
@@ -197,7 +197,18 @@ script {
 
 					return this.placeholder;
 				}else{
-					return this.myValue || this.placeholder;
+					let val = this.myValue;
+
+					for (let o of this.options) {
+						if (typeof o == "object") {
+							if (o.value == val) {
+								val = o.name;
+								break;
+							}
+						}
+					}
+
+					return val || this.placeholder;
 				}
 			}
 		}
