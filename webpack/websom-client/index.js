@@ -38,5 +38,23 @@ export default (store, packages, context) => ({
 		}
 
 		return e;
+	},
+	resolveAsset(_package, assetName) {
+		return store.state.assets[_package][assetName];
+	},
+	registerAsset(_package, assetName, value) {
+		store.commit("registerAsset", {package: _package, name: assetName, value});
+	},
+	resolveString(val) {
+		if (typeof val == "string")
+			return val;
+
+		if (typeof val == "object")
+			return this.resolveAsset(val.$from, val.$resolve);
+	},
+	plural(amount, base, append) {
+		append = append || "s";
+
+		return amount + " " + (amount > 1 ? `${base}${append}` : base);
 	}
 });
