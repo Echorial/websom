@@ -1,0 +1,127 @@
+info {
+	"name": "websom-dashboard-configure",
+	"type": "page",
+	"route": "configure",
+	"nested": "/websom.dashboard"
+}
+
+template {
+	<g-l class="space dashboard-layout">
+		<g-h>
+			<g-v>
+				<div class="space">
+					<input-text type="search" placeholder="Search all options" />
+				</div>
+				<card>
+					<h2 slot="title">Current Configuration</h2>
+					<div slot="body">
+						<div v-for="opt in currentConfiguration" :key="opt.option">
+							{{opt.option}}
+						</div>
+					</div>
+				</card>
+				<card>
+					<h2 slot="title">Additional Configuration</h2>
+				</card>
+				<div v-for="(options, pack) in data.config" :key="pack" class="websom-config-package space">
+					<card class="fat-action websom-config-card" @click.native="togglePack(pack)">
+						<h2 slot="title"><icon :icon="closed[pack] ? 'right' : 'down'" /> {{pack}}</h2>
+					</card>
+					<template v-if="Object.keys(options).length > 0">
+						<div v-if="!closed[pack]" class="websom-config-item" v-for="(item, name) in options" :key="name">
+							<card>
+								<h4 slot="title">{{name}}</h4>
+							</card>
+
+							<card v-for="(opt, optionName) in item" :key="optionName" class="websom-config-option">
+								<websom-config-option slot="body" :option="opt" :name="optionName" :value="opt.default" />
+							</card>
+						</div>
+					</template>
+					<card v-else-if="!closed[pack]" class="websom-config-item">
+						<h4 slot="title">No options</h4>
+					</card>
+				</div>
+			</g-v>
+		</g-h>
+	</g-l>
+}
+
+script {
+	export default {
+		data: () => ({
+			closed: {}
+		}),
+		computed: {
+			data() {
+				return this.$store.state.dashboard.data;
+			},
+			configuredOptions() {
+				return this.$store.state.dashboard.data.options;
+			},
+			configOptions() {
+				let data = this.data;
+
+				let options = [];
+
+				for (let k in data.config) {
+					for (let j in data.config[k]) {
+						options.push({
+							option: j,
+							config: data.config[k][j],
+							package: k
+						});
+					}
+				}
+
+				return options;
+			},
+			currentConfiguration() {
+				return this.configOptions.filter(a => a.option in this.configuredOptions);
+			}
+		},
+		methods: {
+			togglePack(pack) {
+				this.$set(this.closed, pack, !this.closed[pack]);
+			}
+		}
+	}
+}
+
+style {
+	.dashboard-table {
+		width: 100%;
+
+		td:last-child {
+			text-align: right;
+			color: var(--primary);
+		}
+
+		tr:nth-child(2n) > td:last-child {
+			color: var(--primary-dark);
+		}
+	}
+
+	.dashboard-layout {
+		h2 {
+			font-weight: var(--heading-weight) !important;
+		}
+	}
+
+	.websom-config-item {
+		margin: var(--base-size);
+		margin-left: 24px;
+		
+		> .websom-config-option {
+			margin: var(--base-size);
+			margin-left: 24px;
+			margin-right: 0px;
+
+			background: var(--background-overlay)
+		}
+	}
+
+	.websom-config-card {
+		background: var(--background-tint) !important;
+	}
+}
