@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<div v-if="!status && !hasSlot()" class="loader" :class="{'loader-active': active, ['loader-' + type]: true}">
+	<div v-if="!status && !hasSlot()" class="loader" :class="{'loader-active': active, ['loader-' + type]: true}" :style="`--progress: ${value * 100}%;`">
 		<div class="loader-before"></div>
 		<div class="loader-icon"><icon icon="loading" /></div>
 		<div class="loader-after"></div>
@@ -32,6 +32,10 @@ script {
 			active: {
 				type: Boolean,
 				default: true
+			},
+			value: {
+				type: Number,
+				default: 0.5
 			},
 			status: {
 				type: String,
@@ -101,6 +105,31 @@ style {
 	}
 
 	.loader {
+		&.loader-progress {
+			width: 100%;
+			height: calc(var(--base-size) / 2);
+
+			background: var(--background-overlay);
+
+			overflow: hidden;
+
+			position: relative;
+
+			&.loader-after, .loader-icon {
+				display: none;
+			}
+
+			.loader-before {
+				transition: var(--transition) var(--transition-easing-movement);
+				position: absolute;
+				top: 0%;
+				height: 100%;
+				width: var(--progress);
+
+				background: var(--color);
+			}
+		}
+
 		&.loader-long {
 			width: 100%;
 			height: calc(var(--base-size) / 2);
@@ -151,6 +180,12 @@ style {
 				--icon-size: calc(var(--base-size) * 6);
 			}
 		}
+	}
+
+	.card-loader {
+		position: absolute !important;
+		bottom: 0;
+		left: 0;
 	}
 
 	@keyframes loader-long-slide {
