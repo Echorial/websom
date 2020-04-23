@@ -131,6 +131,14 @@ style {
 
 		overflow: hidden;
 
+		&.card-grid {
+			display: inline-block;
+			width: calc(var(--base-size) * 12);
+			height: calc(var(--base-size) * 12);
+
+			margin: calc(var(--base-size) / 2);
+		}
+
 		&.card-has-reveal {
 			.card-main {
 				cursor: var(--cursor-action);
@@ -145,9 +153,29 @@ style {
 		&.fat-action:hover {
 			background: var(--background-tint);
 		}
+
+		&.full-image {
+			.card-images {
+				height: 100%;
+			}
+		}
+
+		&.hover-title {
+			h1, h2, h3, h4, h5, h6 {
+				transition: var(--transition) var(--transition-easing);
+				opacity: 0;
+			}
+
+			&:hover {
+				h1, h2, h3, h4, h5, h6 {
+					opacity: 1;
+				}
+			}
+		}
  
 		.card-main {
 			text-align: left;
+			height: 100%;
 
 			.card-content {
 				padding: var(--base-size);
