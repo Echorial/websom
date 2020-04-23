@@ -101,6 +101,12 @@ script {
 				else
 					this.open();
 			}
+		},
+		beforeDestroy() {
+			if (this.isOpen) {
+				this.$send("close-shade");
+				this.$send("set-css-var", '--slide-out-shift', "translate(0%, 0%)");
+			}
 		}
 	}
 }
