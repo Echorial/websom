@@ -12,14 +12,14 @@ style {
 		box-sizing: content-box;
 	}
 
-	@primary: rgba(#0288d1, 100%);
-		@dark-mode-primary: @primary;
+	@primary: @websomPrimaryLight;
+		@dark-mode-primary: @websomPrimaryDark;
 	
-	@tertiary: rgba(#5456ff, 100%);
-		@dark-mode-tertiary: @tertiary;
+	@tertiary: @websomTertiaryLight;
+		@dark-mode-tertiary: @websomTertiaryDark;
 
-	@secondary: rgba(#dddddd, 100%);
-		@dark-mode-secondary: @secondary;
+	@secondary: @websomSecondaryLight;
+		@dark-mode-secondary: @websomSecondaryDark;
 
 	@{important}:root {
 
@@ -95,11 +95,30 @@ style {
 			--dark-background-tint: #2b2b2b;
 			--dark-background-center: #525252;
 
+		--light-background: @websomBackgroundLight;
+			--light-background-contrast: contrast(@websomBackgroundLight);
+			--light-background-overlay: mix(contrast(@websomBackgroundLight), @websomBackgroundLight, 5%);
+			--light-background-tint: lighten(@websomBackgroundLight,7%);
+			--light-background-center: mix(contrast(@websomBackgroundLight), @websomBackgroundLight, 35%);
+			--light-background-diff: mix(contrast(@websomBackgroundLight), @websomBackgroundLight, 2%);
+		
+		--dark-background: @websomBackgroundDark;
+			--dark-background-contrast: contrast(@websomBackgroundDark);
+			--dark-background-overlay: mix(contrast(@websomBackgroundDark), @websomBackgroundDark, 5%);
+			--dark-background-tint: lighten(@websomBackgroundDark, 7%);
+			--dark-background-center: mix(contrast(@websomBackgroundDark), @websomBackgroundDark, 35%);
+			--dark-background-diff: mix(contrast(@websomBackgroundDark), @websomBackgroundDark, 2%);
+
 		--background: var(--light-background);
 		--background-contrast: var(--light-background-contrast);
 		--background-overlay: var(--light-background-overlay);
+		--background-overlay-contrast: var(--light-background-contrast);
 		--background-tint: var(--light-background-tint);
+		--background-tint-contrast: var(--light-background-contrast);
 		--background-center: var(--light-background-center);
+		--background-center-contrast: var(--light-background-contrast);
+		--background-diff: var(--light-background-diff);
+		--background-diff-contrast: var(--light-background-contrast);
 
 		.define-color(light-mode-mute, rgba(0, 0, 0, 0.1), @set-contrast-dark, $--light-background);
 		.define-color(dark-mode-mute, rgba(255, 255, 255, 0.1), @set-contrast-light, $--dark-background);
@@ -149,15 +168,15 @@ style {
 			--modal-width: 70%;
 		});
 
-		.define-color(light-mode-success, #62d662);
-		.define-color(light-mode-danger, red);
-		.define-color(light-mode-warning, orange);
-		.define-color(light-mode-info, dodgerblue);
+		.define-color(light-mode-success, @websomSuccessLight);
+		.define-color(light-mode-danger, @websomDangerLight);
+		.define-color(light-mode-warning, @websomWarningLight);
+		.define-color(light-mode-info, @websomInfoLight);
 
-		.define-color(dark-mode-success, #62d662);
-		.define-color(dark-mode-danger, red);
-		.define-color(dark-mode-warning, orange);
-		.define-color(dark-mode-info, dodgerblue);
+		.define-color(dark-mode-success, @websomSuccessDark);
+		.define-color(dark-mode-danger, @websomDangerDark);
+		.define-color(dark-mode-warning, @websomWarningDark);
+		.define-color(dark-mode-info, @websomInfoDark);
 	}
 
 	.define-color(@name, @value) {
@@ -226,6 +245,18 @@ style {
 		--base-size: 12px;
 	}
 
+	.transparent {
+		--color: transparent;
+		--color-dark: rgba(0, 0, 0, 0.1);
+		--color-light: rgba(255, 255, 255, 0.1);
+	}
+
+	.pure-transparent {
+		--color: transparent;
+		--color-dark: transparent;
+		--color-light: transparent;
+	}
+
 	/*.primary {
 		--color: var(--primary);
 		--color-light: var(--primary-light);
@@ -265,8 +296,13 @@ style {
 		--background: var(--dark-background);
 		--background-contrast: var(--dark-background-contrast);
 		--background-overlay: var(--dark-background-overlay);
+		--background-overlay-contrast: var(--dark-background-contrast);
 		--background-tint: var(--dark-background-tint);
+		--background-tint-contrast: var(--dark-background-contrast);
 		--background-center: var(--dark-background-center);
+		--background-center-contrast: var(--dark-background-contrast);
+		--background-diff: var(--dark-background-diff);
+		--background-diff-contrast: var(--dark-background-contrast);
 
 		.set-vars(primary, dark-mode-primary);
 
@@ -293,8 +329,13 @@ style {
 		--background: var(--light-background);
 		--background-contrast: var(--light-background-contrast);
 		--background-overlay: var(--light-background-overlay);
+		--background-overlay-contrast: var(--light-background-contrast);
 		--background-tint: var(--light-background-tint);
+		--background-tint-contrast: var(--light-background-contrast);
 		--background-center: var(--light-background-center);
+		--background-center-contrast: var(--light-background-contrast);
+		--background-diff: var(--light-background-diff);
+		--background-diff-contrast: var(--light-background-contrast);
 
 		.set-vars(primary, light-mode-primary);
 
