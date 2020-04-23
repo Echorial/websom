@@ -8,8 +8,8 @@ template {
 		<slot name="wrap" ref="slotWrap" @mouseenter="checkEnter()" @click="toggle()" @mouseleave="checkLeave()" />
 
 		<portal to="app-root">
-			<div class="popover" :class="{'popover-in-modal': popoverInModal, 'popover-open': isOpen, ['popover-edge-' + realEdge]: true, 'popover-full': full}" ref="popover" :style="{left, top, '--popover-color': 'var(--' + color + ')'}">
-				<div class="popover-edge-marker"></div>
+			<div class="popover" :class="{'popover-in-modal': popoverInModal, 'popover-open': isOpen, ['popover-edge-' + realEdge]: true, 'popover-full': full}" ref="popover" :style="{left, top, '--popover-color': 'var(--' + color + ')', '--popover-contrast': 'var(--' + color + '-contrast)'}">
+				<div class="popover-edge-marker" :style="{'--edge-slide': edgeSlide}"></div>
 				<div class="popover-content">
 					<slot />
 				</div>
@@ -40,6 +40,10 @@ script {
 			color: {
 				type: String,
 				default: "color"
+			},
+			margin: {
+				type: Number,
+				default: 12
 			}
 		},
 		watch: {
@@ -58,7 +62,10 @@ script {
 				left: 0,
 				realEdge: "",
 				boundEvents: {},
-				popoverInModal: false
+				popoverInModal: false,
+				edgeSlide: "0px",
+				documentEvent: null,
+				debounce: false
 			};
 		},
 		methods: {
@@ -165,6 +172,30 @@ script {
 						}
 					}
 
+					if (out.left + rect.width > window.innerWidth) {
+						let mainWrap = document.querySelector(".scaffold");
+						let add = 0;
+						if (window.innerWidth > 900 && mainWrap.scrollHeight > window.innerHeight)
+							add = 20;
+
+						let oldLeft = out.left;
+						out.left = window.innerWidth - rect.width - (this.margin + add);
+
+						this.edgeSlide = (oldLeft - out.left) + "px";
+					}
+
+					if (out.left < 0) {
+						out.left = this.margin;
+					}
+
+					if (out.top + rect.height > window.innerHeight) {
+						out.top = window.innerHeight - rect.height - this.margin;
+					}
+
+					if (out.top < 0) {
+						out.top = this.margin;
+					}
+
 					this.top = out.top + 'px';
 					this.left = out.left + 'px';
 					this.realEdge = e;
@@ -174,6 +205,19 @@ script {
 			}
 		},
 		mounted() {
+			this.documentEvent = (e) => {
+				if (this.debounce) {
+					this.debounce = false;
+					return;
+				}
+
+				if (!e.target.closest(".popover")) {
+					this.close();
+				}
+			};
+
+			document.addEventListener("click", this.documentEvent);
+
 			this.boundEvents.mouseenter = () => {
 				this.checkEnter();
 			};
@@ -183,6 +227,7 @@ script {
 			};
 
 			this.boundEvents.click = () => {
+				this.debounce = true;
 				this.toggle();
 			};
 			
@@ -200,6 +245,8 @@ script {
 			this.isOpen = false;
 
 			let target = this.getTarget();
+
+			document.removeEventListener("click", this.documentEvent);
 
 			if (target)
 				for (let k in this.boundEvents)
@@ -269,7 +316,7 @@ style {
 
 			width: var(--base-size);
 			height: var(--base-size);
-			transform: rotate(45deg);
+			transform: translateX(var(--edge-slide)) rotate(45deg);
 			background: var(--popover-color);
 		}
 
@@ -295,7 +342,7 @@ style {
 
 		.popover-content {
 			background: var(--popover-color);
-			color: var(--contrast);
+			color: var(--popover-contrast);
 			padding: var(--base-size);
 
 			position: relative;
