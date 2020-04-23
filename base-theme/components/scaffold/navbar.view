@@ -6,27 +6,60 @@ info {
 template {
 	<nav class="navbar">
 		<div class="navbar-align-left">
-			<nav-item v-for="(v, i) in nav.left" :item="v" :key="i"/>
+			<nav-item @open-mobile-nav="openMobileNav()" @close-mobile-nav="closeMobileNav()" v-for="(v, i) in nav.left" :item="v" :key="i"/>
 		</div>
 		<div class="navbar-align-center">
-			<nav-item v-for="(v, i) in nav.center" :item="v" :key="i"/>
+			<nav-item @open-mobile-nav="openMobileNav()" @close-mobile-nav="closeMobileNav()" v-for="(v, i) in nav.center" :item="v" :key="i"/>
 		</div>
 		<div class="navbar-align-right">
-			<nav-item v-for="(v, i) in nav.right" :item="v" :key="i"/>
+			<nav-item @open-mobile-nav="openMobileNav()" @close-mobile-nav="closeMobileNav()" v-for="(v, i) in nav.right" :item="v" :key="i"/>
 		</div>
+
+		<slide-out ref="mobile-nav">
+			<vertical-list>
+				<nav-item v-for="(v, i) in items" @open-mobile-nav="openMobileNav()" @close-mobile-nav="closeMobileNav()" v-if="v.mobile" :item="v" :key="i" :mobile="true" />
+			</vertical-list>
+		</slide-out>
 	</nav>
 }
 
 script {
 	export default {
 		computed: {
+			items() {
+				let defaultItems = (this.$store.state.websom.data.navigation.config.default
+					?
+					(this.$store.state.websom.data.navigation.config.default.items || [])
+					:
+					[]);
+
+				let items = [
+					...this.$store.state.websom.data.navigation.navbar,
+					...defaultItems
+				];
+
+				return items;
+			},
 			nav() {
+				let items = this.items;
+
 				return {
-					left: this.$store.state.websom.data.navigation.navbar.filter(i => i.align == "left" || !i.align),
-					center: this.$store.state.websom.data.navigation.navbar.filter(i => i.align == "center"),
-					right: this.$store.state.websom.data.navigation.navbar.filter(i => i.align == "right")
+					left: items.filter(i => i.align == "left" || !i.align),
+					center: items.filter(i => i.align == "center"),
+					right: items.filter(i => i.align == "right")
 				};
 			}
+		},
+		methods: {
+			closeMobileNav() {
+				this.$refs["mobile-nav"].close();
+			},
+			openMobileNav() {
+				this.$refs["mobile-nav"].open();
+			}
+		},
+		mounted() {
+			console.log(this.$refs["mobile-nav"]);
 		}
 	}
 }
