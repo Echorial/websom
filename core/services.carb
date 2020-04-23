@@ -61,5 +61,6 @@ namespace Websom.Services {}
 #include "constructs/adapters/notification"
 #include "constructs/adapters/confirmation"
 #include "constructs/adapters/captcha"
+#include "constructs/adapters/bucket"
 #include "constructs/endpointHandlers"
 #include "standard/standard.carb"
