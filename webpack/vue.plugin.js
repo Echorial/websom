@@ -35,8 +35,18 @@ const WebsomVue = {
 			computed: {
 				$config() {
 					if (this.websomView.defaultConfigOptions) {
+						let configSets = {};
+		
+						for (let k in this.websomView.config.options) {
+							let val = this.$store.state.websom.data.config[`${this.websomView.packageType}.${this.websomView.package.toLowerCase()}.${this.websomView.info.name}.` + k];
+
+							if (val)
+								configSets[k] = val;
+						}
+
 						return {
 							...this.websomView.defaultConfigOptions,
+							...configSets,
 							...this.config
 						};
 					}
