@@ -2,10 +2,18 @@ class Websom.Bucket {
 	Websom.Server server = null;
 	map raw = null;
 	string name = "";
+	string owner = "";
 
 	void @construct(Websom.Server server, string name, map raw) {
 		this.server = server;
 		this.raw = raw;
+		this.name = name;
+		this.created();
+	}
+
+	void @construct(Websom.Server server, string name, string ownerModule) {
+		this.server = server;
+		this.owner = ownerModule;
 		this.name = name;
 		this.created();
 	}
@@ -25,6 +33,30 @@ class Websom.Bucket {
 	void read(string file, <void, bool, string>function done);
 
 	void makeDir(string dir, <void, bool>function done);
+
+	Websom.BucketUpload uploadObject() {
+		return new Websom.BucketUpload(this);
+	}
+
+	[ForceAsync]
+	void deleteObject(string filename) {
+		this.server.bucket.deleteObject(this, filename);
+	}
+
+	[ForceAsync]
+	void createDirectory(string path) {
+		this.server.bucket.createDirectory(this, path);
+	}
+
+	[ForceAsync]
+	void setObjectACL(string filename, string acl) {
+		this.server.bucket.setObjectACL(this, filename, acl);
+	}
+
+	[ForceAsync]
+	string serve(string filename) {
+		return this.server.bucket.serve(this, filename);
+	}
 }
 
 namespace Websom.Buckets {}
@@ -50,5 +82,36 @@ class Websom.Buckets.Local inherits Websom.Bucket {
 		if (FileSystem.exists(this.realPath + dir) == false)
 			FileSystem.makeDir(this.realPath + dir);
 		done(true);
+	}
+}
+
+class Websom.BucketUpload {
+	Websom.Bucket bucket = null;
+	string acl = "";
+	int fileSizeLimit = 0;
+	string filename = "";
+
+	void @construct(Websom.Bucket bucket) {
+		this.bucket = bucket;
+	}
+
+	Websom.BucketUpload access(string acl) {
+		this.acl = acl;
+		return this;
+	}
+
+	Websom.BucketUpload limit(int fileSize) {
+		this.fileSizeLimit = fileSize;
+		return this;
+	}
+
+	Websom.BucketUpload name(string filename) {
+		this.filename = filename;
+		return this;
+	}
+
+	[ForceAsync]
+	string generateUploadURL() {
+		return this.bucket.server.bucket.generateUploadURL(this);
 	}
 }

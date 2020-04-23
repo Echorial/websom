@@ -1,0 +1,32 @@
+namespace Websom.Adapters.Bucket {}
+
+header class Websom.Adapters.Bucket.Adapter extends Websom.Adapter {
+	[ForceAsync]
+	string generateUploadURL(Websom.BucketUpload upload) {
+		
+	}
+
+	[ForceAsync]
+	void deleteObject(Websom.Bucket bucket, string filename) {
+		
+	}
+
+	[ForceAsync]
+	void createDirectory(Websom.Bucket bucket, string path) {
+		
+	}
+
+	[ForceAsync]
+	void setObjectACL(Websom.Bucket bucket, string filename, string acl) {
+		
+	}
+
+	void registerBucket(Websom.Bucket bucket) {
+
+	}
+
+	[ForceAsync]
+	string serve(Websom.Bucket bucket, string filename) {
+
+	}
+}

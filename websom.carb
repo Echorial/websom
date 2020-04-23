@@ -58,6 +58,12 @@ class Websom.Server {
 
 	void expressServer = null;
 
+	Websom.AdapterInterface bucketAdapter = null;
+
+	Websom.Adapters.Bucket.Adapter bucket = null;
+
+	<Websom.Bucket>array buckets = new <Websom.Bucket>array();
+
 	`This is the legacy constructor, use the construct(map config) overload instead.`
 	void @construct(Websom.Config config) {
 		native php {
@@ -194,6 +200,12 @@ class Websom.Server {
 		}
 	}
 
+	void registerBucket(Websom.Bucket bucket) {
+		if (this.config.dev) {
+			this.bucket.registerBucket(bucket);
+		}
+	}
+
 	trust void registerServiceCollection(Websom.Adapters.Database.Collection collection) {
 		if (this.config.dev)
 			if (collection.appliedSchema != null)
@@ -266,10 +278,18 @@ class Websom.Server {
 		this.notification = new Websom.Services.Notification(this);
 		this.confirmation = new Websom.Services.Confirmation(this);
 
+		this.bucketAdapter = this.adapt("bucket");
+
 		this.status.inherit(this.confirmation.start());
 
 		this.status.inherit(this.session.start());
 		this.status.inherit(this.module.start());
+
+		if (this.bucketAdapter.loadFromConfig() == false) {
+			this.bucketAdapter.load(this.module.getModule("coreModule"), "CoreModule.FileSystemBucket");
+		}
+
+		this.bucket = this.bucketAdapter.adapter;
 
 		this.database.loadAdapter();
 
@@ -419,7 +439,7 @@ class Websom.Server {
 		}
 	}
 
-	void expressAPIPostRequest(void req, void res, string path) {
+	void expressAPIRequest(void req, void res, string path, string method) {
 		native javascript {
 			var client = new Websom.Client(req.socket.remoteAddress, req.socket.remotePort);
 			
@@ -428,10 +448,12 @@ class Websom.Server {
 			client.localPort = req.socket.localPort;
 
 			var websomRequest = new Websom.Request(this, client);
-			websomRequest.path = path;
+			websomRequest.path = decodeURIComponent(path);
 			websomRequest.cookies = req.cookies;
 			websomRequest.headers = req.headers;
 			websomRequest.body = req.body;
+			websomRequest.files = {};
+			for (let file in req.files) websomRequest.files[file] = req.files[file].file;
 			websomRequest.response.jsResponse = res;
 			websomRequest.jsRequest = req;
 			
@@ -440,20 +462,24 @@ class Websom.Server {
 			res.setHeader("Access-Control-Allow-Headers", "*");
 			res.setHeader("Access-Control-Expose-Headers", "X-Set-Session");
 
-			this.processAPIRequest(websomRequest);
+			this.processAPIRequest(websomRequest, method);
 		}
 	}
 
 	void startAPI(int port) {
 		native javascript {
 			const express = require("express");
-			const bodyParser = require("body-parser");
+			const busboy = require("express-busboy");
 			const cookieParser = require("cookie-parser");
 			const crypto = require("crypto");
 
 			let server = express();
 			
-			server.use(bodyParser.json());
+			//server.use(bodyParser.json());
+			busboy.extend(server, {
+				upload: true
+			});
+
 			server.use(cookieParser());
 
 			server.options(/.*/, (req, res) => {
@@ -461,7 +487,11 @@ class Websom.Server {
 			});
 
 			server.post(/.*/, (req, res) => {
-				this.expressAPIPostRequest(req, res, req.path);
+				this.expressAPIRequest(req, res, req.path, "post");
+			});
+
+			server.get(/.*/, (req, res) => {
+				this.expressAPIRequest(req, res, req.path, "get");
 			});
 
 			this.expressServer = server.listen(port);
@@ -470,8 +500,14 @@ class Websom.Server {
 		}
 	}
 
-	void processAPIRequest(Websom.Request req) {
-		let apiPass = this.api.request(req);
+	void processAPIRequest(Websom.Request req, string method) {
+		let apiPass = false;
+
+		if (method == "post") {
+			apiPass = this.api.request(req);
+		}else if (method == "get") {
+			apiPass = this.api.getRequest(req);
+		}
 
 		if (apiPass == false) {
 			// Handle routes
