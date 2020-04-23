@@ -15,12 +15,16 @@ class Websom.CollectionInterface {
 	}
 
 	Websom.CollectionInterface auth(Websom.Permission permission) {
-		this.routes[this.routes.length - 1].authenticators.push(new Websom.PermissionAuthenticator(permission));
+		let perm = new Websom.PermissionAuthenticator(permission);
+		perm.server = this.collection.database.server;
+		this.routes[this.routes.length - 1].authenticators.push(perm);
 		return this;
 	}
 
 	Websom.CollectionInterface auth(<bool, Websom.Request>function func) {
-		this.routes[this.routes.length - 1].authenticators.push(new Websom.FunctionAuthenticator(func));
+		let auth = new Websom.FunctionAuthenticator(func);
+		auth.server = this.collection.database.server;
+		this.routes[this.routes.length - 1].authenticators.push(auth);
 		return this;
 	}
 
@@ -136,6 +140,11 @@ class Websom.CollectionInterface {
 		filters[filters.length - 1].orders.push(new Websom.CollectionInterfaceFieldSet(name, order, clientControlled));
 		return this;
 	}
+
+	Websom.CollectionInterface on(string hook, <void, Websom.Request, <Websom.Adapters.Database.Document>array>function func) {
+		this.routes[this.routes.length - 1].hooks[hook] = func;
+		return this;
+	}
 }
 
 class Websom.CollectionInterfaceRoute {
@@ -147,6 +156,7 @@ class Websom.CollectionInterfaceRoute {
 	<Websom.CollectionInterfaceWriteSet>array sets = new <Websom.CollectionInterfaceWriteSet>array();
 	<Websom.CollectionInterfaceWriteSetComputed>array computedSets = new <Websom.CollectionInterfaceWriteSetComputed>array();
 	<Websom.CollectionInterfaceFilter>array filters = new <Websom.CollectionInterfaceFilter>array();
+	<<void, Websom.Request, <Websom.Adapters.Database.Document>array>function>map hooks = new <<void, Websom.Request, <Websom.Adapters.Database.Document>array>function>map();
 
 	string route = "";
 
@@ -161,7 +171,11 @@ class Websom.CollectionInterfaceRoute {
 		return this.filters.find(bool (Websom.CollectionInterfaceFilter filter) => {
 			return filter.name == name;
 		});
-		
+	}
+
+	void trigger(string hook, Websom.Request req, <Websom.Adapters.Database.Document>array docs) {
+		if (this.hooks.hasKey(hook))
+			this.hooks[hook](req, docs);
 	}
 }
 
@@ -376,6 +390,8 @@ header class Websom.Mutators.Function inherits Websom.Mutator {
 }
 
 header class Websom.Authenticator {
+	Websom.Server server = null;
+
 	void @construct() {}
 
 	[ForceAsync]
@@ -395,7 +411,7 @@ class Websom.PermissionAuthenticator inherits Websom.Authenticator {
 
 	[ForceAsync]
 	bool authenticate(Websom.Request req) {
-		return true;
+		return this.server.security.authenticateRequest(req, this.permission);
 	}
 }
 
