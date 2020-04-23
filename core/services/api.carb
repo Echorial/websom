@@ -3,7 +3,9 @@ class Websom.Services.API inherits Websom.Service {
 
 	<Websom.CollectionInterface>array collections = new <Websom.CollectionInterface>array();
 	<Websom.PlainInterface>array interfaces = new <Websom.PlainInterface>array();
+	<Websom.PlainInterface>array getInterfaces = new <Websom.PlainInterface>array();
 	<Websom.APIChain>array chains = new <Websom.APIChain>array();
+	<Websom.APIChain>array getChains = new <Websom.APIChain>array();
 
 	<Websom.EndpointHandler>map handlers = new <Websom.EndpointHandler>map();
 
@@ -90,11 +92,55 @@ class Websom.Services.API inherits Websom.Service {
 		}
 	}
 
+	bool compareRoute(string base, string request) {
+		let splits = base.split("/");
+		let reqSplits = request.split("/");
+
+		for (let int i in splits) {
+			if (splits[i].length == 0)
+				continue;
+
+			if (reqSplits.length < i)
+				return false;
+			
+			if (splits[i] == "*")
+				return true;
+
+			if (splits[i][0] != ":")
+				if (splits[i] != reqSplits[i])
+					return false;
+		}
+
+		return true;
+	}
+
+	bool getRequest(Websom.Request req) {
+		for (let int i in this.getInterfaces) {
+			let interface = this.getInterfaces[i];
+
+			if (this.compareRoute(interface.route, req.path)) {
+				interface.handler(req);
+				return true;
+			}
+		}
+
+		for (let int i in this.getChains) {
+			let chain = this.getChains[i];
+
+			if (this.compareRoute(chain.route, req.path)) {
+				chain.handle(req);
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
 	bool request(Websom.Request req) {
 		for (let int i in this.interfaces) {
 			let interface = this.interfaces[i];
 
-			if (interface.route == req.path) {
+			if (this.compareRoute(interface.route, req.path)) {
 				interface.handler(req);
 				return true;
 			}
@@ -103,7 +149,7 @@ class Websom.Services.API inherits Websom.Service {
 		for (let int i in this.chains) {
 			let chain = this.chains[i];
 
-			if (chain.route == req.path) {
+			if (this.compareRoute(chain.route, req.path)) {
 				chain.handle(req);
 				return true;
 			}
@@ -140,9 +186,19 @@ class Websom.Services.API inherits Websom.Service {
 		this.interfaces.push(new Websom.PlainInterface(route, handler));
 	}
 
+	void get(string route, <void, Websom.Request>function handler) {
+		this.getInterfaces.push(new Websom.PlainInterface(route, handler));
+	}
+
 	Websom.APIChain route(string route) {
 		let chain = new Websom.APIChain(this.server, route);
 		this.chains.push(chain);
+		return chain;
+	}
+
+	Websom.APIChain get(string route) {
+		let chain = new Websom.APIChain(this.server, route);
+		this.getChains.push(chain);
 		return chain;
 	}
 
@@ -206,12 +262,16 @@ class Websom.APIChain {
 	}
 
 	Websom.APIChain auth(Websom.Permission permission) {
-		this.authenticators.push(new Websom.PermissionAuthenticator(permission));
+		let perm = new Websom.PermissionAuthenticator(permission);
+		perm.server = this.server;
+		this.authenticators.push(perm);
 		return this;
 	}
 
 	Websom.APIChain auth(<bool, Websom.Request>function func) {
-		this.authenticators.push(new Websom.FunctionAuthenticator(func));
+		let auth = new Websom.FunctionAuthenticator(func);
+		auth.server = this.server;
+		this.authenticators.push(auth);
 		return this;
 	}
 
