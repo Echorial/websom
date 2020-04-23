@@ -6,7 +6,7 @@ info {
 template {
 	<div class="dropdown">
 		<portal to="app-root" key="list">
-			<ul class="dropdown-list" :id="rng" key="list-sub" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': width + 'px'}">
+			<ul class="dropdown-list" :id="rng" :key="'list-sub-' + rng" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': width + 'px'}">
 				<slot />
 			</ul>
 		</portal>
