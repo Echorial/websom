@@ -184,7 +184,10 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 			}
 		}
 
-		return new Websom.Adapters.Database.DeleteQueryResult(true, "");
+		let results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
+		results.documents = docs;
+
+		return results;
 	}
 
 	override Websom.Adapters.Database.InsertQueryResult executeInsert(Websom.Adapters.Database.InsertQuery query) {
