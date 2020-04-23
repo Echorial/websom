@@ -48,9 +48,11 @@ script {
 			},
 			on() {
 				this.myValue = true;
+				this.$emit("input", this.myValue);
 			},
 			off() {
 				this.myValue = false;
+				this.$emit("input", this.myValue);
 			},
 			mouse(isDown) {
 				if (this.downText && !isDown)
@@ -68,10 +70,16 @@ script {
 					limit: ".input-switch-wrap",
 					position: "relative-absolute",
 					move: (e) => {
+						let oldValue = this.myValue;
+
 						if (e.percentageX > 0.5) {
 							this.myValue = true;
 						}else{
 							this.myValue = false;
+						}
+
+						if (this.myValue != oldValue) {
+							this.$emit("input", this.myValue);
 						}
 					},
 					end: (e) => {
