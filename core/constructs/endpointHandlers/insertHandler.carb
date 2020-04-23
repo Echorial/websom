@@ -90,6 +90,8 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 
 		let res = new map();
 
+		cir.trigger("success", req, new <Websom.Adapters.Database.Document>array());
+
 		res["status"] = "success";
 		res["message"] = "Document inserted";
 

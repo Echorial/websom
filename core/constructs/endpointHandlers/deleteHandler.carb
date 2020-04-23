@@ -23,6 +23,8 @@ class Websom.DeleteHandler inherits Websom.SelectHandler {
 
 		let deleteResults = query.run();
 
+		cir.trigger("success", req, deleteResults.documents);
+
 		req.endWithSuccess("Deleted");
 	}
 }
