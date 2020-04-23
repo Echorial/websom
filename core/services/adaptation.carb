@@ -94,7 +94,7 @@ class Websom.AdapterInterface {
 		return true;
 	}
 
-	void loadFromConfig() {
+	bool loadFromConfig() {
 		let adapterName = this.server.configService.getString("adapters", this.name);
 		
 		if (this.server.config.verbose)
@@ -123,9 +123,11 @@ class Websom.AdapterInterface {
 			if (this.server.config.verbose)
 				Console.log("No adapter found for '" + this.name + "'");
 				
-			return null;
+			return false;
 		}
 
 		this.load(selectedModule, selectedClass);
+
+		return true;
 	}
 }
