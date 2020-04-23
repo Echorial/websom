@@ -74,6 +74,7 @@ style {
 	.toaster {
 		position: fixed;
 		pointer-events: none;
+		z-index: var(--z-above-modal);
 
 		& > div {
 			display: flex;
