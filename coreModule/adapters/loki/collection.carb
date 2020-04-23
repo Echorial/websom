@@ -182,7 +182,10 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 			});
 		}
 
-		return new Websom.Adapters.Database.DeleteQueryResult(true, "");
+		let results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
+		results.documents = docs;
+
+		return results;
 	}
 
 	override Websom.Adapters.Database.InsertQueryResult executeInsert(Websom.Adapters.Database.InsertQuery query) {
@@ -238,6 +241,16 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 					if (condition.operator == "==" && condition.field == "id") {
 						qMap["$loki"] = {};
 						qMap["$loki"]["$aeq"] = condition.value;
+					}else if (condition.field == "id") {
+						qMap["$loki"] = {};
+
+						let val = condition.value;
+						if (Array.isArray(val))
+							val = val.map(a => parseInt(a));
+						else
+							val = parseInt(val);
+
+						qMap["$loki"][ops[condition.operator]] = val;
 					}else{
 						if (!qMap[condition.field])
 							qMap[condition.field] = {};
