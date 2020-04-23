@@ -124,16 +124,20 @@ class Websom.Services.Module inherits Websom.Service {
 							}
 						}
 						if (!single) {
-							for (var i = that.watchers.length - 1; i >= 0; i--) {
-								that.watchers[i].close();
-								that.watchers.pop();
+							if (that.server.config.legacy) {
+								for (var i = that.watchers.length - 1; i >= 0; i--) {
+									that.watchers[i].close();
+									that.watchers.pop();
+								}
+							
+								for (var i = that.modules.length - 1; i >= 0; i--) {
+									that.modules[i].stop();//TODO: Add async stops
+									that.modules.pop();
+								}
+							
+								that.reload(require("path").resolve(modDir + slash + ".." + slash) + slash);
+								that.server.resource.buildViews();
 							}
-							for (var i = that.modules.length - 1; i >= 0; i--) {
-								that.modules[i].stop();//TODO: Add async stops
-								that.modules.pop();
-							}
-							that.reload(require("path").resolve(modDir + slash + ".." + slash) + slash);
-							that.server.resource.buildViews();
 						}else{
 							console.log("Reloading single module");
 							this.close();
@@ -296,6 +300,12 @@ class Websom.Services.Module inherits Websom.Service {
 			if (status != null)
 				return status;
 		}
+	}
+
+	Websom.Module getModule(string name) {
+		return this.modules.find(bool (Websom.Module mod) => {
+			return mod.name == name;
+		});
 	}
 
 	Websom.Status buildModule(string dir, map config) {
