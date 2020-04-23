@@ -13,6 +13,7 @@ header class Websom.Module {
 	<Websom.Bridge>array bridges = new <Websom.Bridge>array();
 	<Websom.Adapters.Database.Collection>array registeredCollections = new <Websom.Adapters.Database.Collection>array();
 	<Websom.Permission>array registeredPermissions = new <Websom.Permission>array();
+	<Websom.Bucket>array registeredBuckets = new <Websom.Bucket>array();
 
 	`Display name of module`
 	string name = "";
@@ -88,6 +89,14 @@ header class Websom.Module {
 
 	void registerPermission(Websom.Permission permission) {
 		this.registeredPermissions.push(permission);
+	}
+
+	Websom.Bucket registerBucket(string name) {
+		let bucket = new Websom.Bucket(this.server, name, this.name);
+		this.registeredBuckets.push(bucket);
+		this.server.registerBucket(bucket);
+
+		return bucket;
 	}
 
 	Websom.Permission registerPermission(string permission) {
