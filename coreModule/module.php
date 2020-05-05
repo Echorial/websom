@@ -121,14 +121,14 @@ $this->mediaFiles->schema()->field("name", "string")->field("file", "string")->f
 $this->registerCollection($this->mediaFiles);
 $this->server->api->_c__interface($this->mediaFiles, "/media")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("file")->write("size")->write("type")->setComputed("user", function ($req) use (&$db, &$confirmationSchema) {return $req->user()->id;})->setComputed("created", function ($req) use (&$db, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->on("success", function ($req, $docs) use (&$db, &$confirmationSchema) {for ($i = 0; $i < count($docs); $i++) {
 $doc = _c_lib__arrUtils::readIndex($docs, $i);
-$this->media->deleteObject($doc->get("name"));}})->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->order("created", "dsc")->route("/read")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("file", "==");
+$this->media->deleteObject($doc->get("name"));}})->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->order("*", "dsc")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("file", "==");
 $this->confirmations = $db->collection("confirmations");
 $confirmationSchema = $this->confirmations->schema()->field("secret", "string")->field("key", "string")->field("ip", "string")->field("created", "time")->field("storage", "string")->field("expires", "time")->field("confirmed", "boolean")->field("service", "string")->field("method", "string")->field("to", "string");
 $this->registerCollection($this->confirmations);
 $this->groups = $db->collection("groups");
 Websom_Group::applySchema($this->groups);
 $this->registerCollection($this->groups);
-$this->server->api->_c__interface($this->groups, "/groups")->route("/create")->auth($this->groupCreate)->executes("insert")->write("name")->write("description")->write("permissions")->write("rules")->write("public")->write("user")->setComputed("created", function ($req) use (&$db, &$confirmationSchema) {return Websom_Time::now();})->route("/find")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->order("created", "dsc")->route("/read")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->field("id", "==");
+$this->server->api->_c__interface($this->groups, "/groups")->route("/create")->auth($this->groupCreate)->executes("insert")->write("name")->write("description")->write("permissions")->write("rules")->write("public")->write("user")->setComputed("created", function ($req) use (&$db, &$confirmationSchema) {return Websom_Time::now();})->route("/find")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->order("created", "dsc", true)->route("/read")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->field("id", "==");
 $this->server->api->route("/dashboard/view")->auth($this->dashboardView)->executes(function ($ctx) use (&$db, &$confirmationSchema) {$data = new _carb_map();
 $data["website"] = $this->server->config->name;
 $data["dev"] = $this->server->config->dev;
@@ -296,7 +296,7 @@ return $meta;}
 function documentFromRaw($raw) {
 $idVal = $raw["\$loki"];
 $doc = new CoreModule_LokiDocument($this, strval($idVal));
-$raw["id"] = $raw["\$loki"];
+$raw["id"] = strval($idVal);
 $doc->rawData = $raw;
 return $doc;}
 

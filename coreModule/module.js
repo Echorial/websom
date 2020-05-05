@@ -102,7 +102,7 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 				var doc = docs[i];
 				(await _c_this.media.deleteObject/* async call */(doc.get("name")));
 				}
-			}).route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").order("created", "dsc").route("/read").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("file", "==");
+			}).route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").order("*", "dsc").route("/get").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("file", "==");
 		_c_this.confirmations = db.collection("confirmations");
 		var confirmationSchema = _c_this.confirmations.schema().field("secret", "string").field("key", "string").field("ip", "string").field("created", "time").field("storage", "string").field("expires", "time").field("confirmed", "boolean").field("service", "string").field("method", "string").field("to", "string");
 		(await _c_this.registerCollection/* async call */(_c_this.confirmations));
@@ -111,7 +111,7 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		(await _c_this.registerCollection/* async call */(_c_this.groups));
 		_c_this.server.api.interface(_c_this.groups, "/groups").route("/create").auth(_c_this.groupCreate).executes("insert").write("name").write("description").write("permissions").write("rules").write("public").write("user").setComputed("created", function (req) {
 			return Websom.Time.now();
-			}).route("/find").auth(_c_this.groupRead).executes("select").read("*").filter("default").order("created", "dsc").route("/read").auth(_c_this.groupRead).executes("select").read("*").filter("default").field("id", "==");
+			}).route("/find").auth(_c_this.groupRead).executes("select").read("*").filter("default").order("created", "dsc", true).route("/read").auth(_c_this.groupRead).executes("select").read("*").filter("default").field("id", "==");
 		_c_this.server.api.route("/dashboard/view").auth(_c_this.dashboardView).executes(async function (ctx) {
 /*async*/
 			var data = {};
@@ -318,7 +318,7 @@ CoreModule.LokiCollection.prototype.lazilyGetCollection = function () {var _c_th
 CoreModule.LokiCollection.prototype.documentFromRaw = function (raw) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var idVal = raw["$loki"];
 		var doc = new CoreModule.LokiDocument(_c_this, idVal.toString());
-		raw["id"] = raw["$loki"];
+		raw["id"] = idVal.toString();
 		doc.rawData = raw;
 		return doc;}
 
