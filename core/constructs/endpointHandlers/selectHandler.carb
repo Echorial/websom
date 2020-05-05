@@ -62,7 +62,49 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 
 		for (let int i in filter.orders) {
 			let order = filter.orders[i];
-			query.orderBy(order.name, order.operator);
+
+			let ordered = false;
+
+			if ("order" in req.body) {
+				let map clientOrder = req.body["order"];
+
+				if (clientOrder.typeAsString() == "map") {
+					let string orderField = clientOrder["field"];
+					let string orderDirection = clientOrder["direction"];
+
+					if (orderField.typeAsString() == "string") {
+						let allowed = false;
+
+						let schema = collection.appliedSchema;
+
+						if (order.name == "*") {
+							for (let int f in schema.fields) {
+								let schemaField = schema.fields[f];
+
+								if (schemaField.name == orderField)
+									allowed = true;
+							}
+						}else if (order.name == orderField) {
+							allowed = true;
+						}
+						
+						if (orderDirection != "dsc" and orderDirection != "asc")
+							allowed = false;
+
+						if (allowed) {
+							query.orderBy(orderField, orderDirection);
+							ordered = true;
+						}
+					}
+				}
+			}
+			
+			if (ordered == false) {
+				if (order.name == "*")
+					query.orderBy("id", order.operator);
+				else
+					query.orderBy(order.name, order.operator);
+			}
 		}
 
 		let map clientQuery = req.body["query"];
