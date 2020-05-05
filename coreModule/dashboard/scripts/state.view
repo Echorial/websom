@@ -5,24 +5,31 @@ info {
 
 script {
 	export default websom => ({
-		state: {
+		client(store) {
+			store.commit("loadDashboardMode");
+		},
+		state: () => ({
 			tabs: [],
-			advanced: false,
+			advanced: websom.getPreference("dashboardAdvancedMode", false),
 			authenticated: false,
 			data: {}
-		},
+		}),
 		mutations: {
 			registerDashboardTab(state, tab) {
 				state.tabs.push(tab);
 			},
 			setDashboardMode(state, to) {
 				state.advanced = to;
+				websom.setPreference("dashboardAdvancedMode", to)
 			},
 			setDashboardAuthenticated(state, to) {
 				state.authenticated = to;
 			},
 			setDashboardData(state, to) {
 				state.data = to;
+			},
+			loadDashboardMode(state) {
+				state.advanced = websom.getPreference("dashboardAdvancedMode", false);
 			}
 		}
 	})
