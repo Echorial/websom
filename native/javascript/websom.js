@@ -11947,7 +11947,42 @@ Websom.DeleteHandler = function (server) {var _c_this = this;
 			}
 		for (var i = 0; i < filter.orders.length; i++) {
 			var order = filter.orders[i];
-			query.orderBy(order.name, order.operator);
+			var ordered = false;
+			if ("order" in req.body) {
+				var clientOrder = req.body["order"];
+				if ((typeof clientOrder == 'object' ? (Array.isArray(clientOrder) ? 'array' : 'map') : (typeof clientOrder == 'number' ? 'float' : typeof clientOrder)) == "map") {
+					var orderField = clientOrder["field"];
+					var orderDirection = clientOrder["direction"];
+					if ((typeof orderField == 'object' ? (Array.isArray(orderField) ? 'array' : 'map') : (typeof orderField == 'number' ? 'float' : typeof orderField)) == "string") {
+						var allowed = false;
+						var schema = collection.appliedSchema;
+						if (order.name == "*") {
+							for (var f = 0; f < schema.fields.length; f++) {
+								var schemaField = schema.fields[f];
+								if (schemaField.name == orderField) {
+									allowed = true;
+									}
+								}
+							}else if (order.name == orderField) {
+							allowed = true;
+							}
+						if (orderDirection != "dsc" && orderDirection != "asc") {
+							allowed = false;
+							}
+						if (allowed) {
+							query.orderBy(orderField, orderDirection);
+							ordered = true;
+							}
+						}
+					}
+				}
+			if (ordered == false) {
+				if (order.name == "*") {
+					query.orderBy("id", order.operator);
+					}else{
+						query.orderBy(order.name, order.operator);
+					}
+				}
 			}
 		var clientQuery = req.body["query"];
 		if ((typeof clientQuery == 'object' ? (Array.isArray(clientQuery) ? 'array' : 'map') : (typeof clientQuery == 'number' ? 'float' : typeof clientQuery)) != "map") {
@@ -12223,7 +12258,42 @@ Websom.SelectHandler = function (server) {var _c_this = this;
 			}
 		for (var i = 0; i < filter.orders.length; i++) {
 			var order = filter.orders[i];
-			query.orderBy(order.name, order.operator);
+			var ordered = false;
+			if ("order" in req.body) {
+				var clientOrder = req.body["order"];
+				if ((typeof clientOrder == 'object' ? (Array.isArray(clientOrder) ? 'array' : 'map') : (typeof clientOrder == 'number' ? 'float' : typeof clientOrder)) == "map") {
+					var orderField = clientOrder["field"];
+					var orderDirection = clientOrder["direction"];
+					if ((typeof orderField == 'object' ? (Array.isArray(orderField) ? 'array' : 'map') : (typeof orderField == 'number' ? 'float' : typeof orderField)) == "string") {
+						var allowed = false;
+						var schema = collection.appliedSchema;
+						if (order.name == "*") {
+							for (var f = 0; f < schema.fields.length; f++) {
+								var schemaField = schema.fields[f];
+								if (schemaField.name == orderField) {
+									allowed = true;
+									}
+								}
+							}else if (order.name == orderField) {
+							allowed = true;
+							}
+						if (orderDirection != "dsc" && orderDirection != "asc") {
+							allowed = false;
+							}
+						if (allowed) {
+							query.orderBy(orderField, orderDirection);
+							ordered = true;
+							}
+						}
+					}
+				}
+			if (ordered == false) {
+				if (order.name == "*") {
+					query.orderBy("id", order.operator);
+					}else{
+						query.orderBy(order.name, order.operator);
+					}
+				}
 			}
 		var clientQuery = req.body["query"];
 		if ((typeof clientQuery == 'object' ? (Array.isArray(clientQuery) ? 'array' : 'map') : (typeof clientQuery == 'number' ? 'float' : typeof clientQuery)) != "map") {
