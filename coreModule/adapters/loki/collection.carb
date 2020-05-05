@@ -84,7 +84,7 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		let uint64 idVal = raw["$loki"];
 		
 		let doc = new CoreModule.LokiDocument(this, idVal.toString());
-		raw["id"] = raw["$loki"];
+		raw["id"] = idVal.toString();
 		doc.rawData = raw;
 
 		return doc;
