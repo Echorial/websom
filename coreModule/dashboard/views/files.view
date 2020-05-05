@@ -9,13 +9,15 @@ template {
 	<div class="dashboard-files" :class="{'dashboard-file-hover': fileHover}">
 		<h1>Media</h1>
 
-		<rich-view :sortable="true" :bulk="true" route="/media/view" class="dashboard-files-block" ref="mediaView">
+		<router-view></router-view>
+
+		<rich-view :sortable="true" :bulk="true" collection="/media" route="/media/view" class="dashboard-files-block" ref="mediaView">
 			<template v-slot:grid="slotProps">
-				<card class="card-grid dashboard-file-item full-image hover-title" :key="slotProps.entity.id">
+				<card class="dashboard-file-item full-image hover-title" :key="slotProps.entity.id">
 					<img v-if="slotProps.entity.type.split('/')[0] == 'image'" slot="image" :src="slotProps.entity.file" />
 					<icon v-else slot="image" :icon="getIconFor(slotProps.entity.type)" />
 
-					<h4 slot="title">{{slotProps.entity.name}}</h4>
+					<h4 slot="title"><router-link :to="slotProps.entity.id" append>{{slotProps.entity.name}}</router-link></h4>
 				</card>
 			</template>
 
@@ -26,6 +28,12 @@ template {
 			<template v-slot:column-size="s">
 				<td key="size">
 					{{(s.data / (1024 * 1024)).toFixed(2)}} MB
+				</td>
+			</template>
+
+			<template v-slot:column-name="s">
+				<td key="name">
+					<router-link :to="s.entity.id" append>{{s.data}}</router-link>
 				</td>
 			</template>
 
@@ -90,6 +98,11 @@ script {
 			async overwrite(file) {
 				file.conflict = false;
 				await this.uploadFile(file);
+				
+				for (let i = this.uploading.length - 1; i >= 0; i--)
+					if (this.uploading[i].completed)
+						this.uploading.splice(i, 1);
+				
 				this.$refs.mediaView.refresh();
 			},
 			async upload(files) {
@@ -232,8 +245,11 @@ style {
 
 		opacity: 0;
 
+		pointer-events: none;
+
 		&.dashboard-uploading-visible {
 			opacity: 1;
+			pointer-events: all;
 		}
 	}
 
@@ -246,7 +262,7 @@ style {
 	.dashboard-file-item {
 		background: var(--background-tint) !important;
 
-		img {
+		.card-images {
 			background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
 			background-size: 20px 20px;
 			background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
