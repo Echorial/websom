@@ -136,17 +136,23 @@ export async function createApp (api, context) {
 	});
 
 	var websomUtils = WebsomUtils(store, Packages, context);
+	let stateClientCalls = [];
+	
+	State.forEach(s => {
+		let scrpt = s.script(websomUtils);
+		store.registerModule(s.info.name, scrpt)
 
-	State.forEach(s =>
-		store.registerModule(s.info.name, s.script(websomUtils))
-	);
+		if (scrpt.client)
+			stateClientCalls.push(scrpt.client);
+	});
 
 	if (!ssr && window.__INITIAL_STATE__) {
 		console.log("Loaded with initial state");
 
 		store.replaceState(window.__INITIAL_STATE__);
 
-		console.log(store.state);
+		for (let call of stateClientCalls)
+			call(store);
 	}
 
 	if (!ssr) {
