@@ -104,8 +104,8 @@ script {
 					}
 				}else{
 					for (let doc of res.documents) {
-						let entity = websom.makeEntity(this.collection, doc);
-						resDocs.push(this.$store.commit("setEntity", entity));
+						let entity = this.websom.makeEntity(this.collection, doc);
+						resDocs.push(entity);
 					}
 				}
 
