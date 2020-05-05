@@ -1,0 +1,75 @@
+namespace Websom.Standard.CommerceSystem {}
+
+header relative Websom.Standard.CommerceSystem.Module {
+	Websom.Adapters.Database.Collection orders = null;
+	Websom.Adapters.Database.Collection products = null;
+}
+
+header relative Websom.Standard.CommerceSystem.Order {
+	field Websom.Standard.UserSystem.User user = null;
+
+	field string firstName = "";
+	field string lastName = "";
+	field string department = "";
+	field string company = "";
+	field string addressLine1 = "";
+	field string addressLine2 = "";
+	field string city = "";
+	field string state = "";
+	field string country = "";
+	field string postCode = "";
+
+	field Websom.Time created = null;
+	field Websom.Time denied = null;
+	field Websom.Time shipped = null;
+	field Websom.Time completed = null;
+
+	field string ip = "";
+
+	field float total = 0;
+	field float subTotal = 0;
+	field float tax = 0;
+	field float shipping = 0;
+	field float discount = 0;
+	
+	field <Websom.Standard.CommerceSystem.OrderItem>array items = null;
+}
+
+header relative Websom.Standard.CommerceSystem.OrderItem {
+	field Websom.Standard.CommerceSystem.Product product = null;
+	field int quantity = 0;
+	field float total = 0;
+	field string instructions = "";
+	
+	field map variation = null;
+}
+
+header relative Websom.Standard.CommerceSystem.Product {
+	field string name = "";
+	field string sku = "";
+	field string upc = "";
+	field int stock = 0;
+	field string stock = 0;
+
+	field float regularPrice = 0;
+	field float salePrice = 0;
+
+	field bool noDiscounts = false;
+	
+	field string status = "in-stock"; // back-order, out-of-stock
+
+	field int limit = 0;
+	field string type = "";
+
+	field float weight = 0; // kg
+
+	field float length = 0;
+	field float width = 0;
+	field float height = 0;
+
+	field string shippingClass = "";
+
+	field bool enabled = true;
+	field bool downloadable = true;
+	field bool virtual = true;
+}
