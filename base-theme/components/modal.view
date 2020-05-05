@@ -10,7 +10,7 @@ template {
 				<slot />
 				<button v-if="showClose" @click="close" class="modal-close floating"><icon icon="close" /></button>
 
-				<div class="modal-dialog">
+				<div class="modal-dialog" v-if="dialog">
 					<h1 class="modal-dialog-title">
 						<icon :icon="dialogIcon" :left="true" />
 						{{dialogTitle}}
@@ -100,6 +100,7 @@ script {
 			close() {
 				this.isOpen = false;
 				this.$send("close-shade");
+				this.$emit("close");
 			},
 			toggle() {
 				if (this.isOpen)
@@ -166,6 +167,11 @@ style {
 			height: 200px;
 			min-width: 300px;
 			min-height: 200px;
+		}
+
+		&.modal-display {
+			height: 60%;
+			width: 70%;
 		}
 
 		.modal-dialog {
