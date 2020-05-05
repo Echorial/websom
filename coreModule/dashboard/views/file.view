@@ -1,0 +1,76 @@
+info {
+	"name": "websom-dashboard-file",
+	"type": "page",
+	"route": ":id",
+	"nested": "/websom.dashboard/files"
+}
+
+template {
+	<modal ref="modal" @close="closed" size="display">
+		<g-l>
+			<g-h>
+				<g-v m="6" class="file-display-wrap center-content">
+					<template v-if="isImage">
+						<img :src="file.file" class="file-preview" @load="setImageDimensions"/>
+						<span class="file-display-dimensions">{{imageDimensions}}</span>
+					</template>
+				</g-v>
+				<g-v m="6">
+					<h1>
+						{{file.name}}
+					</h1>
+				</g-v>
+			</g-h>
+		</g-l>
+	</modal>
+}
+
+script {
+	export default {
+		data: () => ({
+			file: {},
+			imageDimensions: ""
+		}),
+		methods: {
+			closed() {
+				this.$router.push("./");
+			},
+			setImageDimensions(e) {
+				this.imageDimensions = e.target.width + "x" + e.target.height;
+			}
+		},
+		computed: {
+			isImage() {
+				return this.file.type ? this.file.type.split("/")[0] == "image" : false;
+			}
+		},
+		async mounted() {
+			this.$refs.modal.open();
+
+			this.file = await this.websom.getEntity("/media", this.$route.params.id);
+		}
+	}
+}
+
+style {
+	.file-display-wrap {
+		background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+		background-size: 20px 20px;
+		background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+
+		position: relative;
+	}
+
+	.file-preview {
+		max-width: 100%;
+	}
+
+	.file-display-dimensions {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		background: var(--background);
+		border-top-left-radius: 4px;
+		padding: 6px;
+	}
+}
