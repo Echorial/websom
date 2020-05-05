@@ -10,6 +10,8 @@ template {
 		<div class="rich-view-header">
 			<input-select placeholder="Filter Type" value="all" :options="['all', 'image', 'video', 'audio', 'document', 'other']" />
 
+			<inline-bar class="rich-view-mode" v-model="myLayout" :icons="['table', 'grid']" />
+
 			<button class="rich-bulk-button" :class="{'disabled': selectedCount == 0}"><icon icon="edit" :left="true" />
 				Bulk
 
@@ -18,18 +20,19 @@ template {
 				</dropdown>
 			</button>
 		</div>
-		<div v-if="layout == 'table'" class="rich-table-columns" ref="head">
+
+		<div v-if="myLayout == 'table'" class="rich-table-columns" ref="head">
 			<th class="center-content table-bulk-checkbox table-bulk-checkbox-all" v-if="bulk">
 				<input-checkbox :value="allSelected" @input="checkAll($event)" text="" />
 			</th>
-			<th v-for="column in displayColumns" class="rich-table-column" :class="{'fat-action': sortable}">
+			<th v-for="column in displayColumns" class="rich-table-column" :class="{'fat-action': sortable}" @click="sort(column)">
 				<icon v-if="sortable && sortColumn == column" :icon="sortDirection == 'asc' ? 'up' : 'down'" />
 				{{column}}
 			</th>
 		</div>
-		<div class="rich-view-table-wrap">
+		<div class="rich-view-table-wrap" v-if="myLayout == 'table'" @scroll="scrollListener" ref="tableWrap">
 			<table class="rich-view-table">
-				<thead v-if="layout == 'table'" class="rich-table-hidden-columns">
+				<thead v-if="myLayout == 'table'" class="rich-table-hidden-columns">
 					<th class="center-content table-bulk-checkbox table-bulk-checkbox-all" v-if="bulk">
 						<input-checkbox :value="allSelected" @input="checkAll($event)" text="" />
 					</th>
@@ -38,7 +41,7 @@ template {
 						{{column}}
 					</th>
 				</thead>
-				<transition-group v-if="!error" tag="tbody" class="rich-view-collection" :class="'rich-view-layout-' + layout" :name="transition" :mode="transitionMode">
+				<transition-group v-if="!error" tag="tbody" class="rich-view-collection" :class="'rich-view-layout-' + myLayout" :name="transition" :mode="transitionMode">
 					<template v-if="documents.length > 0">
 						<template v-for="(d, i) in documents">
 							<slot name="row" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" :selected="selected[d.id]">
@@ -70,6 +73,35 @@ template {
 				</div>
 			</table>
 		</div>
+
+		<div class="rich-view-grid-wrap" v-if="myLayout == 'grid'" @scroll="scrollListener" ref="gridWrap">
+			<transition-group v-if="!error" tag="div" class="rich-view-collection" :class="'rich-view-layout-' + myLayout" :name="transition" :mode="transitionMode">
+				<template v-if="documents.length > 0">
+					<template v-for="(d, i) in documents">
+						<div :key="d.id" class="rich-view-grid-item" :class="{'rich-view-grid-item-selected': selected[d.id]}">
+							<div class="rich-view-grid-item-checkbox">
+								<input-checkbox v-model="selected[d.id]" text="" />
+							</div>
+							<slot name="grid" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" :selected="selected[d.id]" />
+						</div>
+					</template>
+				</template>
+				<template v-else-if="!loading">
+					<slot name="empty">
+						<div :index="0" :class="{'data-view': true, [transition]: true}" key="0">
+							Nothing here.
+						</div>
+					</slot>
+				</template>
+			</transition-group>
+			<div v-else>
+				<h3>Error</h3>
+				<p>{{message}}</p>
+				<button @click="refresh()">Retry</button>
+			</div>
+		</div>
+
+		<loader :active="loading"></loader>
 	</div>
 }
 
@@ -108,6 +140,18 @@ script {
 				type: Number,
 				default: 0
 			},
+			paginate: {
+				type: Boolean,
+				default: false
+			},
+			autoload: {
+				type: Boolean,
+				default: false
+			},
+			scrollThreshold: {
+				type: Number,
+				default: 0.95
+			},
 			fetchOptions: {
 				type: Object,
 				default: () => ({})
@@ -141,16 +185,114 @@ script {
 				default: () => ({})
 			}
 		},
-		data: () => ({
-			documents: [],
-			error: false,
-			message: "",
-			loading: true,
-			selected: {},
-			sortColumn: "id",
-			sortDirection: "dsc"
-		}),
+		data() {
+			return {
+				documents: [],
+				error: false,
+				message: "",
+				loading: true,
+				selected: {},
+				sortColumn: "id",
+				sortDirection: "dsc",
+				myLayout: this.layout,
+				autoLoadPage: 0,
+				reachedEnd: false
+			};
+		},
 		methods: {
+			makeOrderQuery() {
+				if (this.sortable) {
+					return {
+						field: this.sortColumn,
+						direction: this.sortDirection
+					};
+				}
+
+				return {};
+			},
+			sort(column) {
+				if (this.sortColumn == column)
+					this.sortDirection = (this.sortDirection == "dsc" ? "asc" : "dsc");
+				else
+					this.sortColumn = column;
+
+				this.refresh();
+			},
+			checkScroll() {
+				if (this.myLayout == "table") {
+					this.scrollListener({
+						srcElement: this.$refs.tableWrap
+					});
+				}else{
+					this.scrollListener({
+						srcElement: this.$refs.gridWrap
+					});
+				}
+			},
+			scrollListener(e) {
+				let scroll = e.srcElement;
+
+				if (scroll.scrollTop + scroll.clientHeight > scroll.scrollHeight * this.scrollThreshold) {
+					if (!this.loading && !this.reachedEnd)
+						this.loadNextPage();
+				}
+			},
+			async loadNextPage() {
+				this.autoLoadPage++;
+
+				this.error = false;
+				this.message = "";
+				this.loading = true;
+
+				let res = await this.websom.fetch(this.route, {
+					filter: this.filter,
+					fields: {"*": true},
+					query: this.query,
+					page: this.autoLoadPage,
+					limit: this.limit,
+					order: this.makeOrderQuery()
+				}, this.fetchOptions);
+
+				if (res.status == "error") {
+					if (!this.websom.ssr)
+						console.error("Error while fetching for data-view", res);
+
+					this.error = true;
+					this.message = res.message;
+
+					this.loading = false;
+
+					return false;
+				}
+
+				if (res.documents.length == 0)
+					this.reachedEnd = true;
+
+				if (this.collection == "") {
+					for (let doc of res.documents) {
+						this.documents.push(doc);
+
+						if (this.bulk)
+							this.$set(this.selected, doc.id, false);
+					}
+				}else{
+					for (let doc of res.documents) {
+						let entity = this.websom.makeEntity(this.collection, doc);
+						this.documents.push(entity);
+
+						if (this.bulk)
+							this.$set(this.selected, entity.id, false);
+					}
+				}
+
+				this.$emit("update", this.documents);
+
+				this.loading = false;
+
+				this.$nextTick(() => {
+					this.computeColumnSizes();
+				});
+			},
 			async deleteItems() {
 				let ids = [];
 
@@ -187,6 +329,8 @@ script {
 				this.$set(this.selected, id, e);
 			},
 			async refresh() {
+				this.reachedEnd = false;
+				
 				for (let k in this.selected)
 					this.$delete(this.selected, k);
 
@@ -199,7 +343,8 @@ script {
 					fields: {"*": true},
 					query: this.query,
 					page: this.page,
-					limit: this.limit
+					limit: this.limit,
+					order: this.makeOrderQuery()
 				}, this.fetchOptions);
 
 				if (res.status == "error") {
@@ -214,7 +359,6 @@ script {
 					return false;
 				}
 
-				//this.documents.splice(0, this.documents.length);
 				let resDocs = [];
 
 				if (this.collection == "") {
@@ -223,8 +367,8 @@ script {
 					}
 				}else{
 					for (let doc of res.documents) {
-						let entity = websom.makeEntity(this.collection, doc);
-						resDocs.push(this.$store.commit("setEntity", entity));
+						let entity = this.websom.makeEntity(this.collection, doc);
+						resDocs.push(entity);
 					}
 				}
 
@@ -240,6 +384,8 @@ script {
 
 				this.$nextTick(() => {
 					this.computeColumnSizes();
+
+					this.checkScroll();
 				});
 
 				return true;
@@ -294,6 +440,21 @@ script {
 				return sizes;
 			}
 		},
+		watch: {
+			layout() {
+				this.myLayout = this.layout;
+			},
+			myLayout() {
+				if (this.myLayout == "table")
+					this.$nextTick(() => {
+						this.computeColumnSizes();
+					});
+
+				this.$nextTick(() => {
+					this.checkScroll();
+				});
+			}
+		},
 		computed: {
 			displayColumns() {
 				let keys = Object.keys(this.columns);
@@ -302,7 +463,7 @@ script {
 					return keys;
 				}else{
 					if (this.documents.length > 0)
-						return Object.keys(this.documents[0]);
+						return Object.keys(this.documents[0]).filter(c => c[0] != "$");
 					else
 						return [];
 				}
@@ -375,12 +536,56 @@ style {
 		overflow: auto;
 	}
 
+	.rich-view-grid-wrap {
+		overflow: auto;
+	}
+
 	.rich-bulk-button {
-		margin-left: auto;
+		
 	}
 
 	.rich-view-header {
 		display: flex;
 		align-items: center;
+	}
+
+	.rich-view-mode {
+		margin-left: auto;
+	}
+
+	.rich-view-grid-item {
+		display: inline-block;
+		width: calc(var(--base-size) * 12);
+		height: calc(var(--base-size) * 12);
+
+		margin: calc(var(--base-size) / 2);
+
+		position: relative;
+
+		> .card {
+			margin: 0;
+			width: calc(var(--base-size) * 12);
+			height: calc(var(--base-size) * 12);
+		}
+
+		&:hover, &.rich-view-grid-item-selected {
+			> .rich-view-grid-item-checkbox {
+				opacity: 1;
+			}
+		}
+
+		> .rich-view-grid-item-checkbox {
+			position: absolute;
+			opacity: 0;
+			z-index: 10;
+			transition: var(--transition);
+			top: 0;
+			left: 0;
+			width: calc(var(--base-size) * 4);
+			height: calc(var(--base-size) * 4);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
 	}
 }
