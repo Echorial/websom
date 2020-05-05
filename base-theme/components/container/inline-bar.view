@@ -1,0 +1,76 @@
+info {
+	"name": "inline-bar",
+	"type": "component"
+}
+
+template {
+	<div :class="'inline-bar inline-bar-edge-' + edge + (icons.length > 0 ? ' inline-bar-icons' : '')">
+		<slot>
+			<div v-for="icon in icons" class="inline-bar-icon" :class="{'inline-bar-icon-selected': myValue == icon}" @click="select(icon)">
+				<icon :icon="icon" />
+			</div>
+		</slot>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			edge: {
+				type: String,
+				default: "center"
+			},
+			icons: {
+				type: Array,
+				default: () => []
+			},
+			value: {
+				type: String,
+				default: ""
+			}
+		},
+		data() {
+			return {
+				myValue: this.value
+			};
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		},
+		methods: {
+			select(icon) {
+				this.myValue = icon;
+				this.$emit("input", icon);
+			}
+		}
+	}
+}
+
+style {
+	.inline-bar {
+		display: flex;
+		flex-direction: row;
+
+		padding: 0 calc(var(--base-size) / 2);
+
+		> * {
+			padding: 0 calc(var(--base-size) / 2);
+		}
+
+		&.inline-bar-icons {
+			> .inline-bar-icon {
+				opacity: 0.3;
+				transition: var(--transition);
+
+				cursor: var(--cursor-action);
+
+				&.inline-bar-icon-selected {
+					opacity: 1;
+					color: var(--primary);
+				}
+			}
+		}
+	}
+}
