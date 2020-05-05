@@ -26,6 +26,21 @@ export default (store, packages, context) => ({
 	getConfig(route, key) {
 		return store.state.websom.data.config[route + "." + key];
 	},
+	async getEntity(collection, id) {
+		if (store.state.entities[collection] && store.state.entities[collection][id]) {
+			return store.state.entities[collection][id];
+		}else{
+			let res = await this.fetch(collection + "/get", {
+				fields: { "*": true },
+				query: { id }
+			});
+			
+			if (res && res.documents && res.documents.length > 0)
+				return this.makeEntity(collection, res.documents[0]);
+
+			return null;
+		}
+	},
 	makeEntity(collection, data) {
 		let e = new Entity(collection, data);
 
@@ -56,5 +71,29 @@ export default (store, packages, context) => ({
 		append = append || "s";
 
 		return amount + " " + (amount > 1 ? `${base}${append}` : base);
+	},
+	getPreference(key, defaultValue) {
+		if (typeof localStorage === "undefined")
+			return defaultValue;
+
+		let websomPrefs = localStorage.getItem("websom_prefs");
+		if (!websomPrefs)
+			return defaultValue;
+		
+		websomPrefs = JSON.parse(websomPrefs);
+
+		return websomPrefs[key] || defaultValue;
+	},
+	setPreference(key, val) {
+		let websomPrefs = localStorage.getItem("websom_prefs");
+
+		if (!websomPrefs)
+			websomPrefs = "{}";
+
+		websomPrefs = JSON.parse(websomPrefs);
+
+		websomPrefs[key] = val;
+
+		localStorage.setItem("websom_prefs", JSON.stringify(websomPrefs));
 	}
 });
