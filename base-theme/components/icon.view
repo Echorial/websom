@@ -97,7 +97,8 @@ export default {
 						document: "file",
 						audio: "music",
 						grid: "border-all",
-						rows: "list"
+						rows: "list",
+						empty: "folder-open"
 					},
 					styles: {
 						free: {
@@ -145,7 +146,8 @@ export default {
 						music: "music_note",
 						grid: "grid_on",
 						rows: "toc",
-						table: "table_chart"
+						table: "table_chart",
+						empty: "folder_open"
 					},
 					styles: {
 						all: {
@@ -178,7 +180,8 @@ export default {
 						document: "file",
 						audio: "music",
 						rows: "list-check-2",
-						grid: "layout-grid"
+						grid: "layout-grid",
+						empty: "folder-open"
 					},
 					styles: {
 						all: {
