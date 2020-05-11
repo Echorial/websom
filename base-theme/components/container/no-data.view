@@ -1,0 +1,37 @@
+info {
+	"name": "no-data",
+	"type": "component"
+}
+
+template {
+	<div class="no-data">
+		<icon class="no-data-icon" icon="empty" />
+
+		<h2>Nothing Here!</h2>
+	</div>
+}
+
+script {
+	export default {
+		
+	}
+}
+
+style {
+	.no-data {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		color: var(--primary);
+		opacity: 0.5;
+		user-select: none;
+		cursor: default;
+	}
+
+	.no-data-icon {
+		--icon-size: 56px;
+		margin: var(--base-size);
+		color: var(--primary);
+	}
+}
