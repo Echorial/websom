@@ -3,6 +3,13 @@ namespace Websom.Standard.CommerceSystem {}
 header relative Websom.Standard.CommerceSystem.Module {
 	Websom.Adapters.Database.Collection orders = null;
 	Websom.Adapters.Database.Collection products = null;
+	Websom.Adapters.Database.Collection carts = null;
+
+	[ForceAsync]
+	Websom.Standard.CommerceSystem.Cart getCart(Websom.Standard.UserSystem.User user) {}
+
+	[ForceAsync]
+	bool addToCart(Websom.Standard.UserSystem.User user, Websom.Standard.CommerceSystem.OrderItem item) {}
 }
 
 header relative Websom.Standard.CommerceSystem.Order {
@@ -36,6 +43,8 @@ header relative Websom.Standard.CommerceSystem.Order {
 }
 
 header relative Websom.Standard.CommerceSystem.OrderItem {
+	void @construct() {}
+
 	field Websom.Standard.CommerceSystem.Product product = null;
 	field int quantity = 0;
 	field float total = 0;
@@ -72,4 +81,33 @@ header relative Websom.Standard.CommerceSystem.Product {
 	field bool enabled = true;
 	field bool downloadable = true;
 	field bool virtual = true;
+
+	field map attributes = new map();
+	field map variations = new map();
+
+	Websom.Standard.CommerceSystem.OrderItem pick(int quantity, map variation) {
+		let item = new Websom.Standard.CommerceSystem.OrderItem();
+		item.quantity = quantity;
+		item.total = this.salePrice * quantity;
+		item.variation = variation;
+		item.product = this;
+
+		return item;
+	}
+}
+
+header relative Websom.Standard.CommerceSystem.Cart {
+	field Websom.Standard.UserSystem.User user = null;
+
+	field float subTotal = 0;
+	field float total = 0;
+	field float tax = 0;
+	field float discount = 0;
+
+	field Websom.Time created = null;
+	field Websom.Time completed = null;
+
+	field <string>array coupons = null;
+	
+	field <Websom.Standard.CommerceSystem.OrderItem>array items = null;
 }
