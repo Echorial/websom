@@ -3,6 +3,7 @@ namespace Websom.Standard {
 }
 
 #include "userSystem.carb"
+#include "commerceSystem.carb"
 
 #script Carbon
 
