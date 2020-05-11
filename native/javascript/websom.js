@@ -48,6 +48,8 @@ Websom.Server = function () {var _c_this = this;
 
 	this.userSystem = null;
 
+	this.commerceSystem = null;
+
 	this.config = null;
 
 	this.configService = null;
@@ -327,11 +329,16 @@ Websom.Server.prototype.loadBucket = function (name, raw) {var _c_this = this; v
 /*async*/
 		_c_this.developmentServer = new Websom.Server(_c_this.rawInputConfig);
 		(await _c_this.developmentServer.start/* async call */());
+		var debounce = false;
 		_c_this.developmentServer.restartHandler = async function () {
 /*async*/
-			console.log("Restarting websom server");
-			(await _c_this.developmentServer.stop/* async call */());
-			(await _c_this.spawnRealServer/* async call */());
+			if (debounce == false) {
+/*async*/
+				debounce = true;
+				console.log("Restarting websom server");
+				(await _c_this.developmentServer.stop/* async call */());
+				(await _c_this.spawnRealServer/* async call */());
+				}
 			};}
 
 /*i async*/Websom.Server.prototype.startDevelopmentServer = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -1041,6 +1048,9 @@ Websom.Services.API.prototype.compareRoute = function (base, request) {var _c_th
 /*async*/
 				(await req.endWithError/* async call */("Non existent endpoint handler " + cir.executes));
 			}}
+
+Websom.Services.API.prototype.generateAdminEndpoints = function (collection, baseRoute, perm) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.interface(collection, baseRoute).route("/create").auth(perm).executes("insert").write("*").route("/get").auth(perm).executes("select").read("*").filter("default").field("id", "==").route("/list").auth(perm).executes("select").read("*").filter("default").order("*", "dsc");}
 
 Websom.Services.API.prototype.interface = function (collection, baseRoute) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var ci = new Websom.CollectionInterface(collection, baseRoute);
@@ -2316,13 +2326,21 @@ Websom.Services.Module.prototype.load = function (modDir, config, single) {var _
 
 			if (this.server.config.dev) {
 				var fs = require("fs");
+				let throttle = 0;
 				this.watchers.push(fs.watch(modDir, {recursive: true}, function (type, file) {
 					var ext = file.split(".");
 					ext = ext[ext.length - 1];
+					if (throttle > (Date.now() - 2000)) {
+						console.log("Throttled " + type + " on " + file);
+						return;
+					}else{
+						throttle = Date.now();
+					}
+					
 					if (file != modDir + "/module.php" && file != modDir + "/module.js") {
 						var slash = "/";
 						if (ext == "carb") {
-							console.log("Saw change on " + file + ". Rebuilding carbon");
+							console.log("Saw " + type + " on " + file + ". Rebuilding carbon");
 							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + "module.json")));
 							if (that.server.config.legacy) {
 								that.server.resource.build(true);
@@ -15126,4 +15144,14 @@ Websom.Adapters.UserSystem.ConnectionUser = function (firstName, lastName, usern
 		_c_this.email = email;
 }
 
+Websom.Standard.CommerceSystem = function () {var _c_this = this;
+
+
+}
+
+//Relative Module
+//Relative Order
+//Relative OrderItem
+//Relative Product
+//Relative Cart
 module.exports = Websom;
