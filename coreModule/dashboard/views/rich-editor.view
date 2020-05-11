@@ -1,0 +1,97 @@
+info {
+	"name": "rich-editor",
+	"type": "component"
+}
+
+template {
+	<div class="dashboard-rich-editor" :class="{['dashboard-rich-editor-' + collection]: true, 'dashboard-file-hover': fileHover}">
+		<div class="dashboard-rich-editor-bar">
+			<h1>
+				{{displayName}}
+				<span class="dashboard-route" v-if="$store.state.dashboard.advanced">{{route}}</span>
+			</h1>
+			<div>
+				<button class="success">
+					<icon icon="add" left/> New
+				</button>
+			</div>
+		</div>
+
+		<rich-view :sortable="true" :bulk="true" :collection="collection" :route="route" class="dashboard-products-block" ref="productView">
+			
+		</rich-view>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			displayName: {
+				type: String,
+				required: true
+			},
+			collection: {
+				type: String,
+				required: true
+			},
+			route: {
+				type: String,
+				required: true
+			}
+		},
+		data: () => ({
+		}),
+		methods: {
+			
+		},
+		mounted() {
+		
+		}
+	}
+}
+
+style {
+	.dashboard-route {
+		color: var(--primary);
+		opacity: 0.5;
+
+		font-size: 0.5em;
+	}
+
+	.dashboard-rich-editor {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+
+		.dashboard-rich-editor-bar {
+			display: flex;
+			flex-direction: row;
+			justify-content: center;
+
+			> * {
+				flex: 1;
+				margin: 0;
+
+				&:last-child {
+					text-align: right;
+				}
+			}
+		}
+
+		> * {
+			margin: var(--base-size);
+		}
+
+		.rich-view {
+			flex: 1;
+
+			.rich-view-table-wrap, .rich-view-grid-wrap, .rich-view-layout-grid, .rich-view-table {
+				height: 100%;
+
+				.no-data {
+					height: 100%;
+				}
+			}
+		}
+	}
+}
