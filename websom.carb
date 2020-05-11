@@ -32,6 +32,7 @@ class Websom.Server {
 	
 	//Websom.Standard.Dashboard.Module dashboard = null;
 	Websom.Standard.UserSystem.Module userSystem = null;
+	Websom.Standard.CommerceSystem.Module commerceSystem = null;
 	//Websom.Standard.PaymentSystem.Module paymentSystem = null;
 
 	Websom.Config config = null;
@@ -364,11 +365,15 @@ class Websom.Server {
 	void spawnRealServer() {
 		this.developmentServer = new Websom.Server(this.rawInputConfig);
 		this.developmentServer.start();
+		let debounce = false;
 
 		this.developmentServer.restartHandler = void () => {
-			Console.log("Restarting websom server");
-			this.developmentServer.stop();
-			this.spawnRealServer();
+			if (debounce == false) {
+				debounce = true;
+				Console.log("Restarting websom server");
+				this.developmentServer.stop();
+				this.spawnRealServer();
+			}
 		};
 	}
 
