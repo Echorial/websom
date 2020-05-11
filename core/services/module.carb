@@ -95,13 +95,21 @@ class Websom.Services.Module inherits Websom.Service {
 
 			if (this.server.config.dev) {
 				var fs = require("fs");
+				let throttle = 0;
 				this.watchers.push(fs.watch(modDir, {recursive: true}, function (type, file) {
 					var ext = file.split(".");
 					ext = ext[ext.length - 1];
+					if (throttle > (Date.now() - 2000)) {
+						console.log("Throttled " + type + " on " + file);
+						return;
+					}else{
+						throttle = Date.now();
+					}
+					
 					if (file != modDir + "/module.php" && file != modDir + "/module.js") {
 						var slash = "/";
 						if (ext == "carb") {
-							console.log("Saw change on " + file + ". Rebuilding carbon");
+							console.log("Saw " + type + " on " + file + ". Rebuilding carbon");
 							that.buildModule(modDir, JSON.parse(fs.readFileSync(modDir + slash + "module.json")));
 							if (that.server.config.legacy) {
 								that.server.resource.build(true);
