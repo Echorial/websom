@@ -12,11 +12,11 @@ template {
 
 			<inline-bar class="rich-view-mode" v-model="myLayout" :icons="['table', 'grid']" />
 
-			<button class="rich-bulk-button" :class="{'disabled': selectedCount == 0}"><icon icon="edit" :left="true" />
+			<button class="rich-bulk-button" :class="{'disabled': selectedCount == 0}"><icon icon="edit" left />
 				Bulk
 
 				<dropdown>
-					<button key="delete" @click="confirmDeletion" class="danger"><icon icon="delete" :left="true" /> Delete {{selectedCount}}</button>
+					<button key="delete" @click="confirmDeletion" class="danger"><icon icon="delete" left /> Delete {{selectedCount}}</button>
 				</dropdown>
 			</button>
 		</div>
@@ -60,9 +60,7 @@ template {
 					</template>
 					<template v-else-if="!loading">
 						<slot name="empty">
-							<div :index="0" :class="{'data-view': true, [transition]: true}" key="0">
-								Nothing here.
-							</div>
+							<no-data :index="0" :class="{'data-view': true, [transition]: true}" key="0"></no-data>
 						</slot>
 					</template>
 				</transition-group>
@@ -88,9 +86,7 @@ template {
 				</template>
 				<template v-else-if="!loading">
 					<slot name="empty">
-						<div :index="0" :class="{'data-view': true, [transition]: true}" key="0">
-							Nothing here.
-						</div>
+						<no-data :index="0" class="no-data" :class="{'data-view': true, [transition]: true}" key="0"></no-data>
 					</slot>
 				</template>
 			</transition-group>
