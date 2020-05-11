@@ -176,6 +176,26 @@ class Websom.Services.API inherits Websom.Service {
 		}
 	}
 
+	trust Websom.CollectionInterface generateAdminEndpoints(Websom.Adapters.Database.Collection collection, string baseRoute, Websom.Permission perm) {
+		return this.interface(collection, baseRoute)
+			.route("/create")
+				.auth(perm)
+				.executes("insert")
+					.write("*")
+			.route("/get")
+				.auth(perm)
+				.executes("select")
+					.read("*")
+					.filter("default")
+						.field("id", "==")
+			.route("/list")
+				.auth(perm)
+				.executes("select")
+					.read("*")
+					.filter("default")
+						.order("*", "dsc");
+	}
+
 	trust Websom.CollectionInterface interface(Websom.Adapters.Database.Collection collection, string baseRoute) {
 		let ci = new Websom.CollectionInterface(collection, baseRoute);
 		this.collections.push(ci);
