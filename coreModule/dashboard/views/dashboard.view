@@ -29,9 +29,9 @@ template {
 		</div>
 
 		<div class="websom-dashboard-main">
-			<router-view>
-
-			</router-view>
+			<transition name="page-slide-vertical" mode="out-in">
+				<router-view></router-view>
+			</transition>
 		</div>
 	</div>
 	<main v-else class="center-content">
@@ -143,7 +143,7 @@ style {
 		background: var(--background);
 		flex: 1;
 
-		overflow: auto;
+		overflow: hidden;
 
 		> main {
 			padding: 0;
