@@ -16,6 +16,7 @@ template {
 				<slot class="card-fab" name="fab" />
 				<slot class="card-title" name="title" v-if="titlePosition == 'content' || (!$slots.image && images.length == 0)" />
 				<slot class="card-body" name="body" />
+				<slot class="card-body" />
 			</div>
 			<div class="card-action-bar">
 				<slot class="card-actions" name="action" />
