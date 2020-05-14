@@ -4,22 +4,69 @@ info {
 }
 
 template {
-	<div class="dashboard-rich-editor" :class="{['dashboard-rich-editor-' + collection]: true, 'dashboard-file-hover': fileHover}">
-		<div class="dashboard-rich-editor-bar">
-			<h1>
-				{{displayName}}
-				<span class="dashboard-route" v-if="$store.state.dashboard.advanced">{{route}}</span>
-			</h1>
-			<div>
-				<button class="success">
-					<icon icon="add" left/> New
-				</button>
-			</div>
-		</div>
+	<div class="dashboard-rich-editor" :class="{['dashboard-rich-editor-' + collection]: true, 'dashboard-file-hover': fileHover, ['dashboard-rich-editor-' + viewMode]: true}">
+		<transition name="page-slide" mode="out-in">
+			<div v-if="!viewMode" key="default">
+				<div class="dashboard-rich-editor-bar">
+					<h1>
+						{{displayName}}
+						<span class="dashboard-route" v-if="$store.state.dashboard.advanced">{{route}}</span>
+					</h1>
+					<div>
+						<router-link to="create" append class="button success">
+							<icon icon="add" left/> New
+						</router-link>
+					</div>
+				</div>
 
-		<rich-view :sortable="true" :bulk="true" :collection="collection" :route="route" class="dashboard-products-block" ref="productView">
-			
-		</rich-view>
+				<rich-view :sortable="true" :bulk="true" :collection="collection" :route="route" class="dashboard-products-block" ref="productView">
+					
+				</rich-view>
+			</div>
+			<div class="dashboard-editor-main" v-if="viewMode == 'create'" key="create">
+				<g-l class="space">
+					<g-h purpose="header">
+						<div class="dashboard-rich-editor-bar">
+							<h1>
+								New {{displayName}}
+							</h1>
+							<div>
+								<router-link :to="basePath" class="button danger">
+									<icon icon="back" left/> Cancel
+								</router-link>
+							</div>
+						</div>
+					</g-h>
+					<g-h>
+						<g-v m="9">
+							<slot name="edit-main" :data="createData">
+								<card v-for="k in Object.keys(schema.schema)" :key="k">
+									<template v-slot:body>
+										<div>
+											<div class="rich-editor-row">
+												<input-rich-text v-if="k == 'description'" :placeholder="k" />
+												<input-text :placeholder="k" v-else />
+											</div>
+										</div>
+									</template>
+								</card>
+							</slot>
+						</g-v>
+						<g-v m="3">
+							<slot name="edit-side" :data="createData">
+								<card>
+									<template v-slot:body>
+										<div>
+											
+										</div>
+									</template>
+								</card>
+							</slot>
+						</g-v>
+					</g-h>
+				</g-l>
+			</div>
+		</transition>
 	</div>
 }
 
@@ -37,20 +84,54 @@ script {
 			route: {
 				type: String,
 				required: true
+			},
+			mode: {
+				type: String
+			},
+			entity: {
+				type: String
 			}
 		},
 		data: () => ({
+			createData: {}
 		}),
 		methods: {
-			
+
+		},
+		computed: {
+			viewMode() {
+				return this.mode || this.$route.params.mode;
+			},
+			entityId() {
+				return this.entity ?
+					(typeof this.entity == "object" ? this.entity.id : this.entity)
+					:
+					this.$route.params.id;
+			},
+			basePath() {
+				let path = this.$route.path.split("/");
+				let params = Object.keys(this.$route.params).filter(p => this.$route.params[p]).length;
+				path.splice(path.length - params, params);
+				console.log(path, params);
+				return path.join("/");
+			},
+			schema() {
+				return this.$store.state.websom.data.endpoints[this.collection];
+			}
 		},
 		mounted() {
-		
+			if (!this.schema)
+				console.error("Unable to find schema for collection " + this.collection + " in rich-editor. Did you forget to collectionInterface.exposeSchemaTo(permission)?");
 		}
 	}
 }
 
 style {
+	.dashboard-editor-main {
+		width: 100%;
+		margin: var(--base-size) auto !important;
+	}
+
 	.dashboard-route {
 		color: var(--primary);
 		opacity: 0.5;
@@ -58,27 +139,32 @@ style {
 		font-size: 0.5em;
 	}
 
+	.dashboard-rich-editor-bar {
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		width: 100%;
+
+		> * {
+			flex: 1;
+			margin: calc(var(--base-size) / 2);
+
+			&:last-child {
+				text-align: right;
+			}
+		}
+	}
+
 	.dashboard-rich-editor {
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-
-		.dashboard-rich-editor-bar {
-			display: flex;
-			flex-direction: row;
-			justify-content: center;
-
-			> * {
-				flex: 1;
-				margin: 0;
-
-				&:last-child {
-					text-align: right;
-				}
-			}
-		}
+		overflow: auto;
 
 		> * {
+			height: 100%;
+			display: flex;
+			flex-direction: column;
 			margin: var(--base-size);
 		}
 
