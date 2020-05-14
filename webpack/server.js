@@ -210,6 +210,9 @@ module.exports = async (websomServer, apiServer) => {
 					res.status(404);
 					res.end("Unknown route " + context.url);
 					return;
+				}else{
+					console.log(err);
+					return;
 				}
 
 				res.end(html);
