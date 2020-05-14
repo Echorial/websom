@@ -2,6 +2,10 @@ class Websom.CollectionInterface {
 	<Websom.CollectionInterfaceRoute>array routes = new <Websom.CollectionInterfaceRoute>array();
 
 	string baseRoute = "";
+	
+	bool exposeSchema = false;
+	Websom.Permission exposedTo = null;
+
 	Websom.Adapters.Database.Collection collection = null;
 
 	trust void @construct(Websom.Adapters.Database.Collection collection, string route) {
@@ -11,6 +15,12 @@ class Websom.CollectionInterface {
 
 	Websom.CollectionInterface route(string route) {
 		this.routes.push(new Websom.CollectionInterfaceRoute(this, route));
+		return this;
+	}
+
+	Websom.CollectionInterface exposeSchemaTo(Websom.Permission perm) {
+		this.exposedTo = perm;
+		this.exposeSchema = true;
 		return this;
 	}
 

@@ -59,7 +59,7 @@ module.exports = async ({ server: websomServer, deploy, bundles, template, creat
 			plugins: [
 				new webpack.DefinePlugin({
 					__websom_api: JSON.stringify(websomServer.apiHost),
-					__websom_data: JSON.stringify(await websomServer.configService.computeClientData()),
+					__websom_data: JSON.stringify(await websomServer.configService.computeClientData(null)),
 					__websom_route: JSON.stringify("/")
 				})
 			],

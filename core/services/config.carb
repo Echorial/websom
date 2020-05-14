@@ -59,7 +59,7 @@ class Websom.Services.Config inherits Websom.Service {
 	void loadFromDatabase() {
 		this.server.api.route("/data", void (Websom.Request req) => {
 			req.header("Content-Type", "application/json");
-			req.end(Websom.Json.encode(this.computeClientData()));
+			req.end(Websom.Json.encode(this.computeClientData(req)));
 		});
 	}
 
@@ -312,7 +312,7 @@ class Websom.Services.Config inherits Websom.Service {
 		return data;
 	}
 
-	map computeClientData() {
+	map computeClientData(Websom.Request req) {
 		let mp = new map();
 		if (this.publicValueCache == false) {
 			for (let int i in this.publicDefaults) {
@@ -334,7 +334,7 @@ class Websom.Services.Config inherits Websom.Service {
 		mp["config"] = this.publicValues;
 
 		mp["routes"] = new map();
-		mp["endpoints"] = this.server.api.gatherEndpoints();
+		mp["endpoints"] = this.server.api.gatherEndpoints(req);
 		mp["navigation"] = new map();
 
 		let data = this.getNavigationConfig();

@@ -73,7 +73,7 @@ export async function createApp (api, context) {
 		actions: {
 			async fetchWebsomData({ commit }) {
 				if (ssr) {
-					commit("setWebsomData", await websomServer.configService.computeClientData());
+					commit("setWebsomData", await websomServer.configService.computeClientData(context.server.makeRequestFromExpress(context.ssrRequest)));
 				}else{
 					if (typeof __websom_data !== "undefined") {
 						commit("setWebsomData", __websom_data);
@@ -171,7 +171,7 @@ export async function createApp (api, context) {
 			console.log("Websom data is already loaded");
 	}else{
 		if (!store.state.websom.data.loaded) {
-			store.commit("setWebsomData", await websomServer.configService.computeClientData());
+			store.commit("setWebsomData", await websomServer.configService.computeClientData(context.server.makeRequestFromExpress(context.ssrRequest)));
 		}
 	}
 

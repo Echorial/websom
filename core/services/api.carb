@@ -222,11 +222,26 @@ class Websom.Services.API inherits Websom.Service {
 		return chain;
 	}
 
-	map gatherEndpoints() {
+	map gatherEndpoints(Websom.Request req) {
 		let mp = new map();
 
 		for (let int i in this.collections) {
 			let collection = this.collections[i];
+
+			if (req != null and collection.exposeSchema and collection.collection.appliedSchema != null) {
+				if (this.server.security.authenticateRequest(req, collection.exposedTo)) {
+					let cm = new map();
+					let schema = new map();
+					
+					for (let int f in collection.collection.appliedSchema.fields) {
+						let field = collection.collection.appliedSchema.fields[f];
+						schema[field.name] = field.type;
+					}
+
+					cm["schema"] = schema;
+					mp[collection.collection.name] = cm;
+				}
+			}
 
 			for (let int r in collection.routes) {
 				let route = collection.routes[r];
