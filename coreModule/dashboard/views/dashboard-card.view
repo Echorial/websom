@@ -1,0 +1,54 @@
+info {
+	"name": "dashboard-card",
+	"type": "component"
+}
+
+template {
+	<div class="dashboard-card space">
+		<card class="fat-action" @click.native="toggle()">
+			<h3 class="flex-space-between">
+				<span>
+					{{name}}
+					<icon icon="help" />
+					<popover v-if="help">
+						{{help}}
+					</popover>
+				</span>
+				<icon :icon="open ? 'down' : 'left'" />
+			</h3>
+		</card>
+		<transition name="slide-height" mode="out-in">
+			<div v-if="open">
+				<card>
+					<slot />
+				</card>
+			</div>
+		</transition>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			name: {
+				type: String,
+				required: true
+			},
+			help: {
+				type: String,
+				default: ""
+			}
+		},
+		data: () => ({
+			open: true
+		}),
+		methods: {
+			toggle() {
+				this.open = !this.open;
+			}
+		},
+		created() {
+			
+		}
+	}
+}
