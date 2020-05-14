@@ -103,6 +103,8 @@ style {
 	}
 
 	.dashboard-layout {
+		overflow: auto;
+
 		h2 {
 			font-weight: var(--heading-weight) !important;
 		}
