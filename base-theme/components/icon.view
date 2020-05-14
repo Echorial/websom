@@ -98,7 +98,13 @@ export default {
 						audio: "music",
 						grid: "border-all",
 						rows: "list",
-						empty: "folder-open"
+						empty: "folder-open",
+						"format-size": "text-height",
+						clear: "remove-format",
+						quote: "quote-right",
+						"list-bulleted": "list-ul",
+						"list-ordered": "list-ol",
+						shipping: "truck"
 					},
 					styles: {
 						free: {
@@ -147,7 +153,30 @@ export default {
 						grid: "grid_on",
 						rows: "toc",
 						table: "table_chart",
-						empty: "folder_open"
+						empty: "folder_open",
+						heading: "title",
+						paragraph: "format_textdirection_l_to_r",
+						"format-size": "format_size",
+						bold: "format_bold",
+						italic: "format_italic",
+						strike: "strikethrough_s",
+						"align-right": "format_align_right",
+						"align-left": "format_align_left",
+						"align-center": "format_align_center",
+						"align-justify": "format_align_justify",
+						clear: "format_clear",
+						quote: "format_quote",
+						"list-bulleted": "format_list_bulleted",
+						"list-ordered": "format_list_numbered",
+						underline: "format_underline",
+						superscript: "vertical_align_top",
+						subscript: "vertical_align_bottom",
+						tag: "local_offer",
+						barcode: "horizontal_split",
+						box: "inbox",
+						truck: "local_shipping",
+						shipping: "local_shipping",
+						ruler: "straighten"
 					},
 					styles: {
 						all: {
@@ -181,7 +210,15 @@ export default {
 						audio: "music",
 						rows: "list-check-2",
 						grid: "layout-grid",
-						empty: "folder-open"
+						empty: "folder-open",
+						"format-size": "font-size-2",
+						clear: "format-clear",
+						quote: "double-quotes-r",
+						"list-bulleted": "list-check",
+						tag: "price-tag",
+						barcode: "barcode-box",
+						box: "archive",
+						shipping: "truck"
 					},
 					styles: {
 						all: {
