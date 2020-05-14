@@ -114,7 +114,7 @@ header class Websom.Adapters.Database.Collection {
 		let Websom.Entity entity = null;
 
 		native javascript {
-			entity = this.entityTemplate();
+			entity = new this.entityTemplate();
 		}
 
 		native php {
@@ -123,6 +123,8 @@ header class Websom.Adapters.Database.Collection {
 		}
 
 		entity.collection = this;
+
+		return entity;
 	}
 
 	trust Websom.Entity getEntity(string id) {
