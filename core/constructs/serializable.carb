@@ -1,0 +1,180 @@
+header class Websom.Serializable {
+	void @construct() {
+
+	}
+
+	primitive getFieldValue(string field) {
+		native javascript {
+			let camel = field[0].toUpperCase() + field.substr(1, field.length);
+
+			if (this["save" + camel]) {
+				return this["save" + camel](this[field]);
+			}else{
+				return this[field];
+			}
+		}
+
+		native php {
+			$camel = ucfirst($field);
+			
+			if (method_exists($this, "save" . $camel)) {
+				return $this->{"save" . $camel}($this->{$k});
+			}else{
+				return $this->{$k};
+			}
+		}
+	}
+
+	Websom.Adapters.Database.Schema getSimpleSchema() {
+		native javascript {
+			return this.getSchema();
+		}
+
+		native php {
+			return $this->getSchema();
+		}
+	}
+
+	[ForceAsync]
+	map saveToMap() {
+		let schema = this.getSimpleSchema();
+		
+		let mp = new map();
+
+		for (let int f in schema.fields) {
+			let field = schema.fields[f];
+			mp[field.name] = this.getFieldValue(field.name);
+		}
+
+		return mp;
+	}
+
+	[ForceAsync]
+	override void loadFromMap(map data) {
+		native javascript {
+			for (let k in data) {
+				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
+					let camel = k[0].toUpperCase() + k.substr(1, k.length);
+
+					if (this["load" + camel]) {
+						await this["load" + camel](data[k]);
+					}else{
+						this[k] = data[k];
+					}
+				}
+			}
+		}
+
+		native php {
+			foreach ($data as $k => $v) {
+				if (isset($this->$k)) {
+					$camel = ucfirst($k);
+					
+					if (method_exists($this, "load" . $camel)) {
+						$this->{"load" . $camel}($data[$k]);
+					}else{
+						$this->{$k} = $data[$k];
+					}
+				}
+			}
+		}
+	}
+}
+
+#script Carbon
+
+let classes = [];
+
+let buildFieldForMember = void (Carbon.Class cls, Carbon.Property prop) => {
+	let rawType = "string";
+	let isPrimitive = prop.output.reference.descendantOf(Carbon.findClass("primitive"));
+
+	if (isPrimitive == true) {
+		if (prop.output.reference.route == "string") {
+			rawType = "string";
+		}
+		if (prop.output.reference.route == "float") {
+			rawType = "float";
+		}
+		if (prop.output.reference.route == "int") {
+			rawType = "integer";
+		}
+		if (prop.output.reference.route == "array") {
+			rawType = "array";
+		}
+		if (prop.output.reference.route == "map") {
+			rawType = "map";
+		}
+		if (prop.output.reference.route == "bool") {
+			rawType = "boolean";
+		}
+	}
+
+	if (isPrimitive == false) {
+		let isTime = prop.output.reference.route == "Websom.Time";
+
+		if (isTime == true) {
+			rawType = "time";
+			
+			let first = prop.name.substr(0, 1);
+			first = first.toUpper();
+
+			let last = prop.name.substr(1, prop.name.length);
+
+			let camel = first + last;
+
+			Carbon.Method.eval("void load" + camel + "(primitive value) {this." + prop.name + " = new Websom.Time(); this." + prop.name + ".timestamp = value;}", cls);
+		}
+
+		if (isTime == false) {
+			let isSerializable = prop.output.reference.descendantOf(Carbon.findClass("Websom.Serializable"));
+			if (isSerializable == true) {
+				rawType = "map";
+
+				let first = prop.name.substr(0, 1);
+				first = first.toUpper();
+
+				let last = prop.name.substr(1, prop.name.length);
+
+				let camel = first + last;
+				
+				Carbon.Method.eval("void load" + camel + "(primitive value) {this." + prop.name + " = new " + prop.output.reference.route + "(); this." + prop.name + ".loadFromMap(value);}", cls);
+				Carbon.Method.eval("map save" + camel + "(" + prop.output.reference.route + " value) {return value.saveToMap();}", cls);
+			}
+			if (isSerializable == false) {
+				rawType = "reference";
+			}
+		}
+	}
+
+	return '.field("' + prop.name + '", "' + rawType + '")';
+};
+
+Carbon.on("inherits.Websom.Serializable", void (Carbon.Class base, Carbon.Class cls) => {
+	if (Carbon.platform != "header") {
+		classes.push(cls);
+	}
+});
+
+Carbon.on("classes.end", void () => {
+	for (let int i = 0; i < classes.length; i += 1) {
+		let cls = classes.index(i);
+		let members = cls.members;
+
+		let fields = [];
+		let int m = 0;
+		for (let int m = 0; m < members.length; m += 1) {
+			let member = members.index(m);
+	
+			if (member.hasFlag("field")) {
+				fields.push(buildFieldForMember(cls, member));
+			}
+		}
+
+		let method = "trust override Websom.Adapters.Database.Schema getSchema() {let schema = new Websom.Adapters.Database.Schema(null); return schema" + fields.join("") + ";}";
+		
+		Carbon.Method.eval(method, cls);
+	}
+});
+
+#end script
