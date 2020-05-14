@@ -2,6 +2,12 @@
 //Relative User
 //Relative Login
 //Relative Connection
+//Relative Module
+//Relative Order
+//Relative Product
+//Relative Cart
+//Relative ShippingClass
+//Relative ShippingZone
 CoreModule = function () {var _c_this = this;
 
 
@@ -538,10 +544,11 @@ CoreModule.LokiCollection.prototype.batch = function () {var _c_this = this; var
 CoreModule.LokiCollection.prototype.entity = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		var entity = null;
 		
-			entity = this.entityTemplate();
+			entity = new this.entityTemplate();
 		
 		
-		entity.collection = _c_this;}
+		entity.collection = _c_this;
+		return entity;}
 
 /*i async*/CoreModule.LokiCollection.prototype.getEntity = async function (id) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
@@ -979,10 +986,11 @@ CoreModule.FirestoreCollection.prototype.batch = function () {var _c_this = this
 CoreModule.FirestoreCollection.prototype.entity = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		var entity = null;
 		
-			entity = this.entityTemplate();
+			entity = new this.entityTemplate();
 		
 		
-		entity.collection = _c_this;}
+		entity.collection = _c_this;
+		return entity;}
 
 /*i async*/CoreModule.FirestoreCollection.prototype.getEntity = async function (id) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/

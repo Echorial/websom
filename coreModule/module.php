@@ -3,6 +3,12 @@
 //Relative User
 //Relative Login
 //Relative Connection
+//Relative Module
+//Relative Order
+//Relative Product
+//Relative Cart
+//Relative ShippingClass
+//Relative ShippingZone
 class CoreModule {
 
 function __construct(...$arguments) {
@@ -402,7 +408,8 @@ $entity = null;
 			$clsName = $this->entityTemplate;
 			$entity = new $clsName();
 		
-$entity->collection = $this;}
+$entity->collection = $this;
+return $entity;}
 
 function getEntity($id) {
 $doc = $this->document($id);
@@ -682,7 +689,8 @@ $entity = null;
 			$clsName = $this->entityTemplate;
 			$entity = new $clsName();
 		
-$entity->collection = $this;}
+$entity->collection = $this;
+return $entity;}
 
 function getEntity($id) {
 $doc = $this->document($id);
