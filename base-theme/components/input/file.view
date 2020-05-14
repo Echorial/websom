@@ -4,9 +4,12 @@ info {
 }
 
 template {
-	<div class="input-file" :class="{'input-file-has-files': files.length > 0, 'input-file-hovering': hovering}">
+	<div class="input-file" :class="{'input-file-has-files': files.length > 0, 'input-file-hovering': hovering, 'input-file-button': button}">
+		<button v-if="button"><icon icon="upload" left /> Upload</button>
+		
 		<input type="file" ref="file" @dragenter="enter" @dragleave="leave" :accept="accept.length > 0 ? accept.join(',') : undefined" :multiple="multiple" @change="change" />
-		<div class="input-file-upload-row">
+
+		<div class="input-file-upload-row" v-if="!button">
 			<icon class="input-file-icon large" icon="upload" />
 			<h3 class="input-file-message">
 				Drag or click here to upload files.
@@ -33,6 +36,10 @@ script {
 			accept: {
 				type: Array,
 				default: () => []
+			},
+			button: {
+				type: Boolean,
+				default: false
 			}
 		},
 		data() {
@@ -97,7 +104,7 @@ script {
 style {
 	.input-file {
 		position: relative;
-		display: flex;
+		display: inline-flex;
 		flex-direction: column;
 		justify-content: center;
 
@@ -108,6 +115,10 @@ style {
 		transition: var(--transition-color) var(--transition-easing);
 
 		cursor: var(--cursor-action);
+
+		&.input-file-button {
+			min-height: 0px;
+		}
 
 		&.input-file-hovering, &:hover {
 			.input-file-icon {
