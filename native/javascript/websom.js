@@ -1085,10 +1085,25 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'string' || typeof ar
 	}
 }
 
-Websom.Services.API.prototype.gatherEndpoints = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Services.API.prototype.gatherEndpoints = async function (req) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
 		var mp = {};
 		for (var i = 0; i < _c_this.collections.length; i++) {
+/*async*/
 			var collection = _c_this.collections[i];
+			if (req != null && collection.exposeSchema && collection.collection.appliedSchema != null) {
+/*async*/
+				if ((await _c_this.server.security.authenticateRequest/* async call */(req, collection.exposedTo))) {
+					var cm = {};
+					var schema = {};
+					for (var f = 0; f < collection.collection.appliedSchema.fields.length; f++) {
+						var field = collection.collection.appliedSchema.fields[f];
+						schema[field.name] = field.type;
+						}
+					cm["schema"] = schema;
+					mp[collection.collection.name] = cm;
+					}
+				}
 			for (var r = 0; r < collection.routes.length; r++) {
 				var route = collection.routes[r];
 				var key = collection.baseRoute + route.route;
@@ -1364,7 +1379,7 @@ Websom.Services.Config.prototype.loadFromDatabase = function () {var _c_this = t
 		_c_this.server.api.route("/data", async function (req) {
 /*async*/
 			req.header("Content-Type", "application/json");
-			(await req.end/* async call */(Websom.Json.encode(_c_this.computeClientData())));
+			(await req.end/* async call */(Websom.Json.encode((await _c_this.computeClientData/* async call */(req)))));
 			});}
 
 Websom.Services.Config.prototype.load = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -1565,7 +1580,8 @@ Websom.Services.Config.prototype.getConfiguredOptions = function () {var _c_this
 			}
 		return data;}
 
-Websom.Services.Config.prototype.computeClientData = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Services.Config.prototype.computeClientData = async function (req) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
 		var mp = {};
 		if (_c_this.publicValueCache == false) {
 			for (var i = 0; i < _c_this.publicDefaults.length; i++) {
@@ -1583,7 +1599,7 @@ Websom.Services.Config.prototype.computeClientData = function () {var _c_this = 
 			}
 		mp["config"] = _c_this.publicValues;
 		mp["routes"] = {};
-		mp["endpoints"] = _c_this.server.api.gatherEndpoints();
+		mp["endpoints"] = (await _c_this.server.api.gatherEndpoints/* async call */(req));
 		mp["navigation"] = {};
 		var data = _c_this.getNavigationConfig();
 		if ("navbar" in data) {
@@ -5008,6 +5024,10 @@ Websom.CollectionInterface = function (collection, route) {var _c_this = this;
 
 	this.baseRoute = "";
 
+	this.exposeSchema = false;
+
+	this.exposedTo = null;
+
 	this.collection = null;
 
 		_c_this.baseRoute = route;
@@ -5016,6 +5036,11 @@ Websom.CollectionInterface = function (collection, route) {var _c_this = this;
 
 Websom.CollectionInterface.prototype.route = function (route) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.routes.push(new Websom.CollectionInterfaceRoute(_c_this, route));
+		return _c_this;}
+
+Websom.CollectionInterface.prototype.exposeSchemaTo = function (perm) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.exposedTo = perm;
+		_c_this.exposeSchema = true;
 		return _c_this;}
 
 Websom.CollectionInterface.prototype.auth = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -7382,7 +7407,13 @@ Websom.Entity.linkToCollection = function (collection) {var _c_this = this; var 
 
 Websom.Entity.prototype.getFieldValue = function (field) {var _c_this = this; var _c_root_method_arguments = arguments;
 		
-			return this[field];
+			let camel = field[0].toUpperCase() + field.substr(1, field.length);
+
+			if (this["save" + camel]) {
+				return this["save" + camel](this[field]);
+			}else{
+				return this[field];
+			}
 		
 		}
 
@@ -7432,6 +7463,17 @@ Websom.Entity.prototype.getFieldsChanged = function () {var _c_this = this; var 
 			update.set(field.name, _c_this.getFieldValue(field.name));
 			}
 		return (await update.run/* async call */());}
+
+/*i async*/Websom.Entity.prototype.insertIntoCollection = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var fields = _c_this.getFieldsChanged();
+		var insert = _c_this.collection.insert();
+		for (var i = 0; i < fields.length; i++) {
+			var field = fields[i];
+			insert.set(field.name, _c_this.getFieldValue(field.name));
+			}
+		var res = (await insert.run/* async call */());
+		_c_this.id = res.id;}
 
 /*i async*/Websom.Entity.prototype.loadFromMap = async function (data) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.rawFields = data;
@@ -7514,7 +7556,13 @@ Websom.Group.linkToCollection = function (collection) {var _c_this = this; var _
 
 Websom.Group.prototype.getFieldValue = function (field) {var _c_this = this; var _c_root_method_arguments = arguments;
 		
-			return this[field];
+			let camel = field[0].toUpperCase() + field.substr(1, field.length);
+
+			if (this["save" + camel]) {
+				return this["save" + camel](this[field]);
+			}else{
+				return this[field];
+			}
 		
 		}
 
@@ -7564,6 +7612,17 @@ Websom.Group.prototype.getFieldsChanged = function () {var _c_this = this; var _
 			update.set(field.name, _c_this.getFieldValue(field.name));
 			}
 		return (await update.run/* async call */());}
+
+/*i async*/Websom.Group.prototype.insertIntoCollection = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var fields = _c_this.getFieldsChanged();
+		var insert = _c_this.collection.insert();
+		for (var i = 0; i < fields.length; i++) {
+			var field = fields[i];
+			insert.set(field.name, _c_this.getFieldValue(field.name));
+			}
+		var res = (await insert.run/* async call */());
+		_c_this.id = res.id;}
 
 /*i async*/Websom.Group.prototype.loadFromMap = async function (data) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.rawFields = data;
@@ -8968,6 +9027,54 @@ Websom.Cookie.prototype.bake = function () {var _c_this = this; var _c_root_meth
 			opts += "; SameSite=" + _c_this.sameSite;
 			}
 		return _c_this.name + "=" + _c_this.value + opts;}
+
+Websom.Serializable = function () {var _c_this = this;
+
+
+}
+
+Websom.Serializable.prototype.getFieldValue = function (field) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			let camel = field[0].toUpperCase() + field.substr(1, field.length);
+
+			if (this["save" + camel]) {
+				return this["save" + camel](this[field]);
+			}else{
+				return this[field];
+			}
+		
+		}
+
+Websom.Serializable.prototype.getSimpleSchema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			return this.getSchema();
+		
+		}
+
+/*i async*/Websom.Serializable.prototype.saveToMap = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var schema = _c_this.getSimpleSchema();
+		var mp = {};
+		for (var f = 0; f < schema.fields.length; f++) {
+			var field = schema.fields[f];
+			mp[field.name] = _c_this.getFieldValue(field.name);
+			}
+		return mp;}
+
+/*i async*/Websom.Serializable.prototype.loadFromMap = async function (data) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			for (let k in data) {
+				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
+					let camel = k[0].toUpperCase() + k.substr(1, k.length);
+
+					if (this["load" + camel]) {
+						await this["load" + camel](data[k]);
+					}else{
+						this[k] = data[k];
+					}
+				}
+			}
+		
+		}
 
 Websom.Status = function () {var _c_this = this;
 	this.notices = [];
@@ -10978,10 +11085,11 @@ Websom.Adapters.Database.Collection.prototype.batch = function () {var _c_this =
 Websom.Adapters.Database.Collection.prototype.entity = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		var entity = null;
 		
-			entity = this.entityTemplate();
+			entity = new this.entityTemplate();
 		
 		
-		entity.collection = _c_this;}
+		entity.collection = _c_this;
+		return entity;}
 
 /*i async*/Websom.Adapters.Database.Collection.prototype.getEntity = async function (id) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
@@ -15151,7 +15259,144 @@ Websom.Standard.CommerceSystem = function () {var _c_this = this;
 
 //Relative Module
 //Relative Order
-//Relative OrderItem
+Websom.Standard.CommerceSystem.OrderItem = function () {var _c_this = this;
+	this.product = null;
+
+	this.quantity = 0;
+
+	this.total = 0;
+
+	this.instructions = "";
+
+	this.variation = null;
+
+	if (arguments.length == 0) {
+
+	}
+else 	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Standard.CommerceSystem.OrderItem.prototype.getFieldValue = function (field) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			let camel = field[0].toUpperCase() + field.substr(1, field.length);
+
+			if (this["save" + camel]) {
+				return this["save" + camel](this[field]);
+			}else{
+				return this[field];
+			}
+		
+		}
+
+Websom.Standard.CommerceSystem.OrderItem.prototype.getSimpleSchema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			return this.getSchema();
+		
+		}
+
+/*i async*/Websom.Standard.CommerceSystem.OrderItem.prototype.saveToMap = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var schema = _c_this.getSimpleSchema();
+		var mp = {};
+		for (var f = 0; f < schema.fields.length; f++) {
+			var field = schema.fields[f];
+			mp[field.name] = _c_this.getFieldValue(field.name);
+			}
+		return mp;}
+
+/*i async*/Websom.Standard.CommerceSystem.OrderItem.prototype.loadFromMap = async function (data) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			for (let k in data) {
+				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
+					let camel = k[0].toUpperCase() + k.substr(1, k.length);
+
+					if (this["load" + camel]) {
+						await this["load" + camel](data[k]);
+					}else{
+						this[k] = data[k];
+					}
+				}
+			}
+		
+		}
+
+Websom.Standard.CommerceSystem.OrderItem.prototype.getSchema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var schema = new Websom.Adapters.Database.Schema(null);
+		return schema.field("product", "reference").field("quantity", "integer").field("total", "float").field("instructions", "string").field("variation", "map");}
+
 //Relative Product
 //Relative Cart
+//Relative ShippingClass
+//Relative ShippingZone
+Websom.Standard.CommerceSystem.ShippingMethod = function () {var _c_this = this;
+	this.name = "";
+
+	this.description = "";
+
+	this.enabled = true;
+
+	this.type = "";
+
+	this.price = "";
+
+	this.shippingClassOverrides = {};
+
+	if (arguments.length == 0) {
+
+	}
+else 	if (arguments.length == 0) {
+
+	}
+
+}
+
+Websom.Standard.CommerceSystem.ShippingMethod.prototype.getFieldValue = function (field) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			let camel = field[0].toUpperCase() + field.substr(1, field.length);
+
+			if (this["save" + camel]) {
+				return this["save" + camel](this[field]);
+			}else{
+				return this[field];
+			}
+		
+		}
+
+Websom.Standard.CommerceSystem.ShippingMethod.prototype.getSimpleSchema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			return this.getSchema();
+		
+		}
+
+/*i async*/Websom.Standard.CommerceSystem.ShippingMethod.prototype.saveToMap = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var schema = _c_this.getSimpleSchema();
+		var mp = {};
+		for (var f = 0; f < schema.fields.length; f++) {
+			var field = schema.fields[f];
+			mp[field.name] = _c_this.getFieldValue(field.name);
+			}
+		return mp;}
+
+/*i async*/Websom.Standard.CommerceSystem.ShippingMethod.prototype.loadFromMap = async function (data) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			for (let k in data) {
+				if (data.hasOwnProperty(k) && this.hasOwnProperty(k)) {
+					let camel = k[0].toUpperCase() + k.substr(1, k.length);
+
+					if (this["load" + camel]) {
+						await this["load" + camel](data[k]);
+					}else{
+						this[k] = data[k];
+					}
+				}
+			}
+		
+		}
+
+Websom.Standard.CommerceSystem.ShippingMethod.prototype.getSchema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		var schema = new Websom.Adapters.Database.Schema(null);
+		return schema.field("name", "string").field("description", "string").field("enabled", "boolean").field("type", "string").field("price", "string").field("shippingClassOverrides", "map");}
+
 module.exports = Websom;
