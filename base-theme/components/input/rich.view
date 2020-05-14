@@ -1,0 +1,285 @@
+info {
+	"name": "input-rich-text",
+	"type": "component"
+}
+
+template {
+	<div class="input-rich-text form-field" :style="'--line-count: ' + lines" :class="{'input-text-invalid input-invalid': error, ['text-' + type]: true, focus: focus, placeholder: myValue.length == 0, icon, 'icon-left': side != 'right', 'icon-right': side == 'right', 'input-error': error, 'input-success': success}">
+		<div class="input-rich-text-bar" ref="toolbar">
+			<button class="floating tiny input-rich-text-bar-heading">
+				<icon icon="format-size" />
+
+				<dropdown>
+					<div @click="setHeader('')"><icon icon="paragraph"/> Paragraph</div>
+					<div v-for="i in 6" :key="i" @click="setHeader(i)" :class="'rich-text-heading-' + i"><component :is="'h' + i"><icon icon="heading" /> Heading {{i}}</component></div>
+				</dropdown>
+			</button>
+			<select class="ql-header" ref="headerSelect" style="display: none;">
+				<option></option>
+				<option value="1"></option>
+				<option value="2"></option>
+				<option value="3"></option>
+				<option value="4"></option>
+				<option value="5"></option>
+				<option value="6"></option>
+			</select>
+			<div class="input-rich-text-bar-space"></div>
+			<button class="floating tiny input-rich-text-bar-bold ql-bold">
+				<icon icon="bold" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-italic ql-italic">
+				<icon icon="italic" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-strike ql-strike">
+				<icon icon="strike" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-underline ql-underline">
+				<icon icon="underline" />
+			</button>
+			<div class="input-rich-text-bar-space"></div>
+			<button class="floating tiny input-rich-text-bar-left ql-align">
+				<icon icon="align-left" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-center ql-align" value="center">
+				<icon icon="align-center" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-right ql-align" value="right">
+				<icon icon="align-right" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-justify ql-align" value="justify">
+				<icon icon="align-justify" />
+			</button>
+			<div class="input-rich-text-bar-space"></div>
+			<button class="floating tiny input-rich-text-bar-blockquote ql-blockquote">
+				<icon icon="quote" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-bulleted ql-list" value="bullet">
+				<icon icon="list-bulleted" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-ordered ql-list" value="ordered">
+				<icon icon="list-ordered" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-subscript ql-script" value="sub">
+				<icon icon="subscript" />
+			</button>
+			<button class="floating tiny input-rich-text-bar-superscript ql-script" value="super">
+				<icon icon="superscript" />
+			</button>
+		</div>
+		<div class="input-text-wrap" ref="editorWrap">
+			<!--<div contenteditable ref="editor" class="rich-input" @input="input" v-model="myValue"></div>-->
+			
+		</div>
+		<popover v-if="error && errorMessage" :activated="displayingInvalidPopover" :activate-on-hover="!displayingInvalidPopover" edge="left">
+			{{errorMessage}}
+		</popover>
+		<popover v-else-if="error && displayingInvalidPopover" :activated="true" :activate-on-hover="false" edge="left">
+			Invalid
+		</popover>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: [Number, String],
+				default: ""
+			},
+			placeholder: {
+				type: String,
+				default: "Input your text"
+			},
+			icon: {
+				type: String,
+				default: ""
+			},
+			side: {
+				type: String,
+				default: "left"
+			},
+			type: {
+				type: String,
+				default: "text"
+			},
+			validate: {
+				type: [String, Function],
+				default: ""
+			},
+			format: {
+				type: String,
+				default: "markdown"
+			}
+		},
+		data() {
+			return {
+				focus: false,
+				myValue: this.value || "",
+				success: false,
+				error: false,
+				errorMessage: "",
+				displayingInvalidPopover: false,
+				selectionchange: null,
+				lastSelection: null,
+				editor: null,
+				mk: null
+			};
+		},
+		methods: {
+			async checkValidation() {
+				return true;
+			},
+			setHeader(size) {
+				this.editor.focus();
+				this.$refs.headerSelect.value = size || "";
+				console.log(this.$refs.headerSelect.value)
+				this.$refs.headerSelect.dispatchEvent(new Event("change"));
+			},
+			emitInput() {
+				console.log(this.output(this.myValue));
+				this.$emit("input", this.output(this.myValue));
+			},
+			showErrorMessage() {
+				this.displayingInvalidPopover = true;
+			},
+			recomputeCursorData() {
+				this.lastSelection = document.getSelection().getRangeAt(0);
+				console.log(document.queryCommandState("bold") || document.queryCommandState("bolder"));
+			},
+			exec(cmd) {
+				if (this.lastSelection) {
+					
+					let newNode = document.createElement(cmd);
+					let range = this.lastSelection;
+					newNode.appendChild(range.extractContents());
+					range.insertNode(newNode);
+				}
+			},
+			input(raw) {
+
+			},
+			output(delta) {
+				//return this.mk.fromDelta(delta);
+
+				let lines = [];
+				let workingLine = [];
+				for (let op of delta.ops) {
+					if (op.attributes && op.attributes.header)
+						workingLine.unshift(op);
+					else
+						workingLine.push(op);
+
+					if (op.insert.indexOf("\n") > 1) {
+						lines.push(workingLine);
+						workingLine = [];
+					}
+				}
+
+				return lines.map(line =>
+					line.map(op =>
+						Object.keys(op.attributes || {}).reduce((a, x) =>
+							this.wrapAttribute(a, x, op.attributes[x]),
+							op.insert
+						)
+					).join("")
+				).join("\n");
+			},
+			wrapAttribute(content, attribute, val) {
+				if (!attribute)
+					return content;
+				
+				if (attribute == "header") {
+					return (new Array(val + 1)).join("#");
+				}
+				
+				let wraps = {
+					"bold": "**"
+				};
+
+				if (val === true) {
+					return wraps[attribute] + content + wraps[attribute];
+				}
+			}
+		},
+		watch: {
+			value() {
+				this.myValue = this.input(this.value);
+				this.editor.setContent(this.myValue);
+			}
+		},
+		computed: {
+			lines() {
+				return 0;
+			}
+		},
+		async mounted() {
+			this.selectionchange = (e) => {
+				let selection = document.getSelection();
+				let el = selection.anchorNode.parentElement.closest("[contenteditable]");
+				if (el && el.isEqualNode(this.$refs.editor)) {
+					this.recomputeCursorData();
+				}
+			};
+
+			//document.addEventListener("selectionchange", this.selectionchange);
+
+			//this.$refs.editor.addEventListener("input", (e) => {
+			///	this.recomputeCursorData();
+			//});
+
+			//console.log(this.$refs.editorWrap);
+			//this.mk = await import("quill-markdown-delta");
+			const Quill = await import("quill");
+			console.log(Quill);
+
+
+			this.editor = new Quill.default(this.$refs.editorWrap, {
+				modules: {
+					toolbar: this.$refs.toolbar
+				}
+			});
+
+			this.editor.on("text-change", () => {
+				this.myValue = this.editor.getContents();
+				this.emitInput();
+			});
+		},
+		beforeDestroy() {
+			//document.removeEventListener("selectionchange", this.selectionchange);
+		}
+	}
+}
+
+style {
+	.input-rich-text {
+		.input-text-wrap {
+			background: var(--background-tint);
+			margin-top: var(--base-size);
+
+			.ql-editor {
+				min-height: 300px;
+				overflow: auto;
+			}
+		}
+	}
+
+	.input-rich-text-bar {
+		display: flex;
+		flex-direction: row;
+		text-align: left;
+
+		> * {
+			margin: 0px 4px !important;
+		}
+	}
+
+	.input-rich-text-bar-space {
+		margin: 0px var(--base-size);
+	}
+
+
+	/*!* Quill Editor v1.3.6
+	* https://quilljs.com/
+	* Copyright (c) 2014, Jason Chen
+	* Copyright (c) 2013, salesforce.com*/.ql-container{box-sizing:border-box;font-family:Helvetica,Arial,sans-serif;font-size:16px;height:100%;margin:0;position:relative}.ql-container.ql-disabled .ql-tooltip{visibility:hidden}.ql-container.ql-disabled .ql-editor ul[data-checked]>li::before{pointer-events:none}.ql-clipboard{left:-100000px;height:1px;overflow-y:hidden;position:absolute;top:50%}.ql-clipboard p{margin:0;padding:0}.ql-editor{box-sizing:border-box;line-height:1.42;height:100%;outline:none;overflow-y:auto;padding:12px 15px;tab-size:4;-moz-tab-size:4;text-align:left;white-space:pre-wrap;word-wrap:break-word}.ql-editor>*{cursor:text}.ql-editor p,.ql-editor ol,.ql-editor ul,.ql-editor pre,.ql-editor blockquote,.ql-editor h1,.ql-editor h2,.ql-editor h3,.ql-editor h4,.ql-editor h5,.ql-editor h6{margin:0;padding:0;counter-reset:list-1 list-2 list-3 list-4 list-5 list-6 list-7 list-8 list-9}.ql-editor ol,.ql-editor ul{padding-left:1.5em}.ql-editor ol>li,.ql-editor ul>li{list-style-type:none}.ql-editor ul>li::before{content:'\2022'}.ql-editor ul[data-checked=true],.ql-editor ul[data-checked=false]{pointer-events:none}.ql-editor ul[data-checked=true]>li *,.ql-editor ul[data-checked=false]>li *{pointer-events:all}.ql-editor ul[data-checked=true]>li::before,.ql-editor ul[data-checked=false]>li::before{color:#777;cursor:pointer;pointer-events:all}.ql-editor ul[data-checked=true]>li::before{content:'\2611'}.ql-editor ul[data-checked=false]>li::before{content:'\2610'}.ql-editor li::before{display:inline-block;white-space:nowrap;width:1.2em}.ql-editor li:not(.ql-direction-rtl)::before{margin-left:-1.5em;margin-right:.3em;text-align:right}.ql-editor li.ql-direction-rtl::before{margin-left:.3em;margin-right:-1.5em}.ql-editor ol li:not(.ql-direction-rtl),.ql-editor ul li:not(.ql-direction-rtl){padding-left:1.5em}.ql-editor ol li.ql-direction-rtl,.ql-editor ul li.ql-direction-rtl{padding-right:1.5em}.ql-editor ol li{counter-reset:list-1 list-2 list-3 list-4 list-5 list-6 list-7 list-8 list-9;counter-increment:list-0}.ql-editor ol li:before{content:counter(list-0,decimal) '. '}.ql-editor ol li.ql-indent-1{counter-increment:list-1}.ql-editor ol li.ql-indent-1:before{content:counter(list-1,lower-alpha) '. '}.ql-editor ol li.ql-indent-1{counter-reset:list-2 list-3 list-4 list-5 list-6 list-7 list-8 list-9}.ql-editor ol li.ql-indent-2{counter-increment:list-2}.ql-editor ol li.ql-indent-2:before{content:counter(list-2,lower-roman) '. '}.ql-editor ol li.ql-indent-2{counter-reset:list-3 list-4 list-5 list-6 list-7 list-8 list-9}.ql-editor ol li.ql-indent-3{counter-increment:list-3}.ql-editor ol li.ql-indent-3:before{content:counter(list-3,decimal) '. '}.ql-editor ol li.ql-indent-3{counter-reset:list-4 list-5 list-6 list-7 list-8 list-9}.ql-editor ol li.ql-indent-4{counter-increment:list-4}.ql-editor ol li.ql-indent-4:before{content:counter(list-4,lower-alpha) '. '}.ql-editor ol li.ql-indent-4{counter-reset:list-5 list-6 list-7 list-8 list-9}.ql-editor ol li.ql-indent-5{counter-increment:list-5}.ql-editor ol li.ql-indent-5:before{content:counter(list-5,lower-roman) '. '}.ql-editor ol li.ql-indent-5{counter-reset:list-6 list-7 list-8 list-9}.ql-editor ol li.ql-indent-6{counter-increment:list-6}.ql-editor ol li.ql-indent-6:before{content:counter(list-6,decimal) '. '}.ql-editor ol li.ql-indent-6{counter-reset:list-7 list-8 list-9}.ql-editor ol li.ql-indent-7{counter-increment:list-7}.ql-editor ol li.ql-indent-7:before{content:counter(list-7,lower-alpha) '. '}.ql-editor ol li.ql-indent-7{counter-reset:list-8 list-9}.ql-editor ol li.ql-indent-8{counter-increment:list-8}.ql-editor ol li.ql-indent-8:before{content:counter(list-8,lower-roman) '. '}.ql-editor ol li.ql-indent-8{counter-reset:list-9}.ql-editor ol li.ql-indent-9{counter-increment:list-9}.ql-editor ol li.ql-indent-9:before{content:counter(list-9,decimal) '. '}.ql-editor .ql-indent-1:not(.ql-direction-rtl){padding-left:3em}.ql-editor li.ql-indent-1:not(.ql-direction-rtl){padding-left:4.5em}.ql-editor .ql-indent-1.ql-direction-rtl.ql-align-right{padding-right:3em}.ql-editor li.ql-indent-1.ql-direction-rtl.ql-align-right{padding-right:4.5em}.ql-editor .ql-indent-2:not(.ql-direction-rtl){padding-left:6em}.ql-editor li.ql-indent-2:not(.ql-direction-rtl){padding-left:7.5em}.ql-editor .ql-indent-2.ql-direction-rtl.ql-align-right{padding-right:6em}.ql-editor li.ql-indent-2.ql-direction-rtl.ql-align-right{padding-right:7.5em}.ql-editor .ql-indent-3:not(.ql-direction-rtl){padding-left:9em}.ql-editor li.ql-indent-3:not(.ql-direction-rtl){padding-left:10.5em}.ql-editor .ql-indent-3.ql-direction-rtl.ql-align-right{padding-right:9em}.ql-editor li.ql-indent-3.ql-direction-rtl.ql-align-right{padding-right:10.5em}.ql-editor .ql-indent-4:not(.ql-direction-rtl){padding-left:12em}.ql-editor li.ql-indent-4:not(.ql-direction-rtl){padding-left:13.5em}.ql-editor .ql-indent-4.ql-direction-rtl.ql-align-right{padding-right:12em}.ql-editor li.ql-indent-4.ql-direction-rtl.ql-align-right{padding-right:13.5em}.ql-editor .ql-indent-5:not(.ql-direction-rtl){padding-left:15em}.ql-editor li.ql-indent-5:not(.ql-direction-rtl){padding-left:16.5em}.ql-editor .ql-indent-5.ql-direction-rtl.ql-align-right{padding-right:15em}.ql-editor li.ql-indent-5.ql-direction-rtl.ql-align-right{padding-right:16.5em}.ql-editor .ql-indent-6:not(.ql-direction-rtl){padding-left:18em}.ql-editor li.ql-indent-6:not(.ql-direction-rtl){padding-left:19.5em}.ql-editor .ql-indent-6.ql-direction-rtl.ql-align-right{padding-right:18em}.ql-editor li.ql-indent-6.ql-direction-rtl.ql-align-right{padding-right:19.5em}.ql-editor .ql-indent-7:not(.ql-direction-rtl){padding-left:21em}.ql-editor li.ql-indent-7:not(.ql-direction-rtl){padding-left:22.5em}.ql-editor .ql-indent-7.ql-direction-rtl.ql-align-right{padding-right:21em}.ql-editor li.ql-indent-7.ql-direction-rtl.ql-align-right{padding-right:22.5em}.ql-editor .ql-indent-8:not(.ql-direction-rtl){padding-left:24em}.ql-editor li.ql-indent-8:not(.ql-direction-rtl){padding-left:25.5em}.ql-editor .ql-indent-8.ql-direction-rtl.ql-align-right{padding-right:24em}.ql-editor li.ql-indent-8.ql-direction-rtl.ql-align-right{padding-right:25.5em}.ql-editor .ql-indent-9:not(.ql-direction-rtl){padding-left:27em}.ql-editor li.ql-indent-9:not(.ql-direction-rtl){padding-left:28.5em}.ql-editor .ql-indent-9.ql-direction-rtl.ql-align-right{padding-right:27em}.ql-editor li.ql-indent-9.ql-direction-rtl.ql-align-right{padding-right:28.5em}.ql-editor .ql-video{display:block;max-width:100%}.ql-editor .ql-video.ql-align-center{margin:0 auto}.ql-editor .ql-video.ql-align-right{margin:0 0 0 auto}.ql-editor .ql-bg-black{background-color:#000}.ql-editor .ql-bg-red{background-color:#e60000}.ql-editor .ql-bg-orange{background-color:#f90}.ql-editor .ql-bg-yellow{background-color:#ff0}.ql-editor .ql-bg-green{background-color:#008a00}.ql-editor .ql-bg-blue{background-color:#06c}.ql-editor .ql-bg-purple{background-color:#93f}.ql-editor .ql-color-white{color:#fff}.ql-editor .ql-color-red{color:#e60000}.ql-editor .ql-color-orange{color:#f90}.ql-editor .ql-color-yellow{color:#ff0}.ql-editor .ql-color-green{color:#008a00}.ql-editor .ql-color-blue{color:#06c}.ql-editor .ql-color-purple{color:#93f}.ql-editor .ql-font-serif{font-family:Georgia,Times New Roman,serif}.ql-editor .ql-font-monospace{font-family:Monaco,Courier New,monospace}.ql-editor .ql-size-small{font-size:.75em}.ql-editor .ql-size-large{font-size:1.5em}.ql-editor .ql-size-huge{font-size:2.5em}.ql-editor .ql-direction-rtl{direction:rtl;text-align:inherit}.ql-editor .ql-align-center{text-align:center}.ql-editor .ql-align-justify{text-align:justify}.ql-editor .ql-align-right{text-align:right}.ql-editor.ql-blank::before{color:rgba(0,0,0,.6);content:attr(data-placeholder);font-style:italic;left:15px;pointer-events:none;position:absolute;right:15px}
+}
