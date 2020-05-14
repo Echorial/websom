@@ -7,7 +7,14 @@ info {
 
 template {
 	<div class="dashboard-files" :class="{'dashboard-file-hover': fileHover}">
-		<h1>Media</h1>
+		<div class="dashboard-rich-editor-bar">
+			<h1>
+				Media
+			</h1>
+			<div>
+				<input-file button @input="upload"/>
+			</div>
+		</div>
 
 		<router-view></router-view>
 
