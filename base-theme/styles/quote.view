@@ -1,0 +1,11 @@
+info {
+	"name": "quote",
+	"type": "style"
+}
+
+style {
+	blockquote {
+		padding-left: calc(var(--base-size) * 2) !important;
+		border-left: 4px solid var(--primary);
+	}
+}
