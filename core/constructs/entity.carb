@@ -60,11 +60,23 @@ header class Websom.Entity {
 
 	primitive getFieldValue(string field) {
 		native javascript {
-			return this[field];
+			let camel = field[0].toUpperCase() + field.substr(1, field.length);
+
+			if (this["save" + camel]) {
+				return this["save" + camel](this[field]);
+			}else{
+				return this[field];
+			}
 		}
 
 		native php {
-			return $this->$field;
+			$camel = ucfirst($field);
+			
+			if (method_exists($this, "save" . $camel)) {
+				return $this->{"save" . $camel}($this->{$k});
+			}else{
+				return $this->{$k};
+			}
 		}
 	}
 
@@ -76,7 +88,10 @@ header class Websom.Entity {
 
 			let primitive realValue = null;
 			let myValue = this.getFieldValue(field.name);
-			let rawValue = this.rawFields[field.name];
+			let rawValue = null;
+			
+			if (this.rawFields != null)
+				rawValue = this.rawFields[field.name];
 
 			let isDifferent = false;
 
@@ -135,6 +150,22 @@ header class Websom.Entity {
 	}
 
 	[ForceAsync]
+	void insertIntoCollection() {
+		let fields = this.getFieldsChanged();
+
+		let insert = this.collection.insert();
+
+		for (let int i in fields) {
+			let field = fields[i];
+
+			insert.set(field.name, this.getFieldValue(field.name));
+		}
+
+		let res = insert.run();
+		this.id = res.id;
+	}
+
+	[ForceAsync]
 	override void loadFromMap(map data) {
 		this.rawFields = data;
 
@@ -186,9 +217,27 @@ let buildFieldForMember = void (Carbon.Class cls, Carbon.Property prop) => {
 		}
 		if (prop.output.reference.route == "array") {
 			rawType = "array";
+
+			let aType = prop.output.templates[0];
+			let isSerializable = aType.reference.descendantOf(Carbon.findClass("Websom.Serializable"));
+
+			if (isSerializable == true) {
+				let first = prop.name.substr(0, 1);
+				first = first.toUpper();
+
+				let last = prop.name.substr(1, prop.name.length);
+
+				let camel = first + last;
+				
+				Carbon.Method.eval("void load" + camel + "(<map>array value) {this." + prop.name + " = new <" + aType.reference.route + ">array(); for (let i in value) {let val = value[i]; let insert = new " + aType.reference.route + "(); insert.loadFromMap(val); this." + prop.name + ".push(insert)}}", cls);
+				Carbon.Method.eval("map save" + camel + "(<" + aType.reference.route + ">array values) {let mpArr = new <map>array(); for (let i in values) {mpArr.push(values[i].saveToMap());} return mpArr;}", cls);
+			}
+			if (isSerializable == false) {
+
+			}
 		}
 		if (prop.output.reference.route == "map") {
-			rawType = "string";
+			rawType = "map";
 		}
 		if (prop.output.reference.route == "bool") {
 			rawType = "boolean";
@@ -212,7 +261,23 @@ let buildFieldForMember = void (Carbon.Class cls, Carbon.Property prop) => {
 		}
 
 		if (isTime == false) {
-			rawType = "reference";
+			let isSerializable = prop.output.reference.descendantOf(Carbon.findClass("Websom.Serializable"));
+			if (isSerializable == true) {
+				rawType = "map";
+
+				let first = prop.name.substr(0, 1);
+				first = first.toUpper();
+
+				let last = prop.name.substr(1, prop.name.length);
+
+				let camel = first + last;
+				
+				Carbon.Method.eval("void load" + camel + "(primitive value) {this." + prop.name + " = new " + prop.output.reference.route + "(); this." + prop.name + ".loadFromMap(value);}", cls);
+				Carbon.Method.eval("map save" + camel + "(" + prop.output.reference.route + " value) {return value.saveToMap();}", cls);
+			}
+			if (isSerializable == false) {
+				rawType = "reference";
+			}
 		}
 	}
 
