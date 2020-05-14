@@ -1,0 +1,56 @@
+info {
+	"name": "transition",
+	"type": "style"
+}
+
+style {
+	.page-slide-enter-active, .page-slide-leave-active {
+		transition: .2s;
+		transform: translate(0px, 0px);
+		opacity: 1;
+	}
+
+	.page-slide-enter {
+		transform: translate(10%, 0px);
+		opacity: 0;
+	}
+
+	.page-slide-leave-to {
+		transform: translate(-10%, 0px);
+		opacity: 0;
+	}
+
+	.page-slide-vertical-enter-active, .page-slide-vertical-leave-active {
+		transition: .2s;
+		transform: translate(0px, 0px);
+		opacity: 1;
+	}
+
+	.page-slide-vertical-enter {
+		transform: translate(0px, 10%);
+		opacity: 0;
+	}
+
+	.page-slide-vertical-leave-to {
+		transform: translate(0px, -10%);
+		opacity: 0;
+	}
+
+	.fade-enter-active, .fade-leave-active {
+		transition: opacity .5s;
+	}
+	
+	.fade-enter, .fade-leave-to {
+		opacity: 0;
+	}
+
+	.slide-height-enter-active, .slide-height-leave-active {
+		transition: max-height .5s;
+		overflow: hidden;
+		max-height: 512px;
+	}
+
+	.slide-height-enter, .slide-height-leave-to {
+		max-height: 0px;
+	}
+}
