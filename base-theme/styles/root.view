@@ -245,6 +245,11 @@ style {
 		--base-size: 12px;
 	}
 
+	.tiny {
+		--base-size: 8px;
+		--icon-size: 16px;
+	}
+
 	.transparent {
 		--color: transparent;
 		--color-dark: rgba(0, 0, 0, 0.1);
@@ -401,5 +406,12 @@ style {
 	.disabled {
 		pointer-events: none;
 		cursor: normal;
+	}
+
+	.flex-space-between {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
 	}
 }
