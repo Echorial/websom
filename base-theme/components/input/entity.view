@@ -1,0 +1,33 @@
+info {
+	"name": "input-entity",
+	"type": "component"
+}
+
+template {
+	<div class="input-entity">
+		<input-text v-model="text" type="search" :placeholder="placeholder" />
+
+		<dropdown>
+			<div class="disabled"><icon icon="danger" class="start" /> Nothing found</div>
+			<div><icon icon="add" class="start" /> Create new {{name}}</div>
+		</dropdown>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			placeholder: {
+				type: String,
+				default: "Select"
+			},
+			name: {
+				type: String,
+				default: "Entity"
+			}
+		},
+		data: () => ({
+			text: ""
+		})
+	}
+}
