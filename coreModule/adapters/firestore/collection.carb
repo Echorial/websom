@@ -8,6 +8,10 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 		}
 	}
 
+	override Websom.Adapters.Database.Document makeDocumentFromMap(string id, map data) {
+		return this.documentFromRaw(id, data);
+	}
+
 	override Websom.Adapters.Database.Document document(string id) {
 		this.lazilyGetCollection();
 
