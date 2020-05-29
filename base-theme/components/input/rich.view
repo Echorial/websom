@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<div class="input-rich-text form-field" :style="'--line-count: ' + lines" :class="{'input-text-invalid input-invalid': error, ['text-' + type]: true, focus: focus, placeholder: myValue.length == 0, icon, 'icon-left': side != 'right', 'icon-right': side == 'right', 'input-error': error, 'input-success': success}">
+	<div class="input-rich-text form-field" :style="'--line-count: ' + lines" :class="{'input-text-invalid input-invalid': error, ['text-' + type]: true, focus: focus, placeholder: myValue === undefined || myValue.length == 0, icon, 'icon-left': side != 'right', 'icon-right': side == 'right', 'input-error': error, 'input-success': success}">
 		<div class="input-rich-text-bar" ref="toolbar">
 			<button class="floating tiny input-rich-text-bar-heading">
 				<icon icon="format-size" />
@@ -156,7 +156,7 @@ script {
 				}
 			},
 			input(raw) {
-
+				return raw;
 			},
 			output(delta) {
 				//return this.mk.fromDelta(delta);
@@ -204,7 +204,8 @@ script {
 		watch: {
 			value() {
 				this.myValue = this.input(this.value);
-				this.editor.setContent(this.myValue);
+				if (this.editor)
+					this.editor.setContents(this.myValue);
 			}
 		},
 		computed: {
