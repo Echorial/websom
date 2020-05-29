@@ -1,0 +1,44 @@
+namespace Websom.Adapters.Search {}
+
+header class Websom.Adapters.Search.Adapter extends Websom.Adapter {
+	[ForceAsync]
+	void initializeCollection(Websom.Adapters.Database.Collection collection) {
+		
+	}
+
+	[ForceAsync]
+	void insertDocument(Websom.Adapters.Database.Document document) {
+
+	}
+
+	[ForceAsync]
+	void updateDocument(Websom.Adapters.Database.Document document) {
+		
+	}
+
+	[ForceAsync]
+	Websom.Adapters.Search.QueryResult search(Websom.Adapters.Database.Collection collection, Websom.Adapters.Search.Query query) {
+
+	}
+}
+
+class Websom.Adapters.Search.Query {
+	string query = "";
+
+	void @construct(string baseQuery) {
+		this.query = baseQuery;
+	}
+}
+
+class Websom.Adapters.Search.QueryResult {
+	bool error = false;
+	string message = "";
+
+	<string>array ids = null;
+	<Websom.Adapters.Database.Document>array unsafeDocuments = null;
+
+	void @construct(bool error, string message) {
+		this.error = error;
+		this.message = message;
+	}
+}

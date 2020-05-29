@@ -58,6 +58,7 @@ namespace Websom.Services {}
 #include "util"
 #include "databases"
 #include "constructs/adapters/database"
+#include "constructs/adapters/search"
 #include "constructs/adapters/notification"
 #include "constructs/adapters/confirmation"
 #include "constructs/adapters/captcha"
