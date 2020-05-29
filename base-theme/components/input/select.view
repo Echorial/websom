@@ -9,6 +9,7 @@ template {
 			<option v-for="option in options" :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :value="getValueOfOption(option)">{{option}}</option>
 		</select>
 		<button @click="toggle" ref="button" class="full" :style="{'min-width': minWidth + 'px'}">
+			<icon v-if="optionIcon" :icon="optionIcon" class="start" />
 			<span ref="text" class="start">{{text}}</span>
 			<icon ref="icon" :icon="$config.dropIcon" pack="font-awesome" class="end" />
 		</button>
@@ -23,7 +24,7 @@ template {
 								{{option}}
 							</template>
 							<template v-else>
-								<icon v-if="option.icon && typeof option.side === 'undefined'" :icon="option.icon" />
+								<icon v-if="option.icon && typeof option.side === 'undefined'" class="start" :icon="option.icon" />
 								<icon v-if="option.icon && option.side == 'left'" :icon="option.icon" class="start" />
 								{{option.name || option.value || ""}}
 								<icon v-if="option.icon && option.side == 'right'" :icon="option.icon" class="end" />
@@ -49,7 +50,7 @@ script {
 			},
 			options: {
 				type: Array,
-				default: []
+				default: () => []
 			},
 			multiple: {
 				type: Boolean,
@@ -179,6 +180,22 @@ script {
 					return Math.max(listRect.width, buttonRect.width);
 				}else{
 					return 100;
+				}
+			},
+			optionIcon() {
+				if (!this.multiple) {
+					let val;
+
+					for (let o of this.options) {
+						if (typeof o == "object") {
+							if (o.value == this.myValue && o.icon) {
+								val = o.icon;
+								break;
+							}
+						}
+					}
+
+					return val;
 				}
 			},
 			text() {
