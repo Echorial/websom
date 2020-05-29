@@ -1,0 +1,14 @@
+class CoreModule.Algolia inherits Websom.Adapters.Database.Adapter {
+	void firestore = null;
+
+	string route = "adapter.search.algolia";
+
+	override void initialize() {
+		
+	}
+
+	async override void shutdown() {
+		
+	}
+	
+}

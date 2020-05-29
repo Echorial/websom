@@ -1,0 +1,17 @@
+info {
+	"name": "algolia",
+	"type": "script"
+}
+
+script {
+	export default ctx => {
+		ctx.registerAdapter("algolia", {
+			initialize() {
+
+			},
+			search(collection, query, filters) {
+				
+			}
+		});
+	}
+}
