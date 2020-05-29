@@ -292,6 +292,10 @@ style {
 		--icon-size: 16px;
 	}
 
+	body .huge {
+		--icon-size: 64px;
+	}
+
 	body .large {
 		--icon-size: 32px;
 
