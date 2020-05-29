@@ -38,18 +38,35 @@ template {
 		<card>
 			<h1 slot="title">Websom Dashboard</h1>
 			<div slot="body">
-				<action-bar>
+				<action-bar v-if="hasUserSystem">
 					<router-link to="/" class="button mute">Go Back</router-link>
 					<button @click="$refs.userModal.open()">Login</button>
 				</action-bar>
+				<div v-else>
+					<status-box status="danger" message="No user management system found."/>
+					<h5>We just logged a 4 digit code into your console.<br>Use it in place of the normal login.</h5>
+					<api-form route="/dashboard/login-with-access-code" ref="accessForm">
+						<g-h>
+							<g-v s="7">
+								<input-text v-model="accessCode" placeholder="Dev access code" />
+							</g-v>
+							<g-v s="5">
+								<button @click="accessLogin">Login</button>
+							</g-v>
+						</g-h>
+					</api-form>
+				</div>
 			</div>
 		</card>
-		<user-modal ref="userModal" @success="checkAuthentication()" modal-class="dashboard-modal" />
+		<user-modal v-if="hasUserSystem" ref="userModal" @success="checkAuthentication()" modal-class="dashboard-modal" />
 	</main>
 }
 
 script {
 	export default {
+		data: () => ({
+			accessCode: ""
+		}),
 		computed: {
 			logo() {
 				return this.websom.resolveAsset("websom", "logo");
@@ -70,20 +87,37 @@ script {
 			},
 			data() {
 				return this.$store.state.dashboard.data;
+			},
+			hasUserSystem() {
+				return !!this.$options.components["user-modal"];
 			}
 		},
 		methods: {
 			async checkAuthentication() {
-				this.$refs.userModal.cancel();
+				if (this.hasUserSystem) {
+					this.$refs.userModal.cancel();
+				}
 
 				let res = await this.websom.fetch("/dashboard/view", {});
-				console.log(res);
 
 				if (res.status == "success") {
 					this.$store.commit("setDashboardData", res.data);
 					this.$store.commit("setDashboardAuthenticated", true);
 				}else{
-					this.$refs.userModal.open();
+					if (!this.hasUserSystem) {
+						this.websom.fetch("/dashboard/access");
+					}else{
+						this.$refs.userModal.open();
+					}
+				}
+			},
+			async accessLogin() {
+				let res = await this.$refs.accessForm.submit({
+					code: this.accessCode
+				});
+
+				if (res && res.status == "success") {
+					this.checkAuthentication();
 				}
 			}
 		},

@@ -25,6 +25,8 @@ class CoreModule.Module inherits Websom.Module {
 
 	Websom.Bucket media = null;
 
+	string transientAccessCode = "";
+
 	override void permissions() {
 		this.dashboardView = new Websom.Permission("Dashboard.View");
 
@@ -235,6 +237,50 @@ class CoreModule.Module inherits Websom.Module {
 				data["options"] = this.server.configService.getConfiguredOptions();
 
 				ctx.request.endWithData(data);
+			});
+
+		this.server.api.route("/dashboard/access")
+			.executes(void (Websom.APIContext ctx) => {
+				if (this.server.config.dev) {
+					let data = new map();
+
+					let str = "";
+					for (let int i = 0; i < 4; i++)
+						str += (Math.floor(Math.random() * 10));
+
+					this.transientAccessCode = str;
+
+					Console.log("Dev access code requested: " + this.transientAccessCode);
+
+					ctx.request.endWithSuccess("Generated");
+				}else{
+					ctx.request.endWithError("Nice try.");
+				}
+			});
+		
+		this.server.api.route("/dashboard/login-with-access-code")
+			.input("code")
+				.type("string")
+			.executes(void (Websom.APIContext ctx) => {
+				if (this.server.config.dev) {
+					if (this.transientAccessCode != "") {
+						let code = ctx.get("code");
+
+						if (code == this.transientAccessCode) {
+							this.transientAccessCode = "";
+
+							ctx.request.grantSessionRole("admin");
+
+							ctx.request.endWithSuccess("Success");
+						}else{
+							ctx.request.endWithError("Invalid");
+						}
+					}else{
+						ctx.request.endWithError("Invalid");
+					}
+				}else{
+					ctx.request.endWithError("This feature is only available on dev servers.");
+				}
 			});
 	}
 
