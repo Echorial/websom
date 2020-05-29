@@ -160,26 +160,11 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 		return query;
 	}
 
-	void executeQuery(Websom.CollectionInterfaceRoute cir, Websom.CollectionInterfaceFilter filter, Websom.Request req, Websom.Adapters.Database.SelectQuery query) {
-		let collection = cir.collection.collection;
-
-		let res = new map();
-
-		res["status"] = "success";
-		res["message"] = "Query successful!";
+	<map>array exposeDocuments(<Websom.Adapters.Database.Document>array docs) {
 		let output = new <map>array();
 
-		let results = query.get();
-
-		let returnFields = req.body["fields"];
-
-		if (returnFields.typeAsString() != "map") {
-			req.endWithError("No fields object provided. See the api request docs.");
-			return null;
-		}
-
-		for (let int i in results.documents) {
-			let doc = results.documents[i];
+		for (let int i in docs) {
+			let doc = docs[i];
 			let mp = new map();
 
 			if (cir.reads.length > 0) {
@@ -219,6 +204,28 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 			}
 
 			output.push(mp);
+		}
+
+		return output;
+	}
+
+	void executeQuery(Websom.CollectionInterfaceRoute cir, Websom.CollectionInterfaceFilter filter, Websom.Request req, Websom.Adapters.Database.SelectQuery query) {
+		let collection = cir.collection.collection;
+
+		let res = new map();
+
+		res["status"] = "success";
+		res["message"] = "Query successful!";
+
+		let results = query.get();
+
+		let output = this.exposeDocuments(results.documents);
+
+		let returnFields = req.body["fields"];
+
+		if (returnFields.typeAsString() != "map") {
+			req.endWithError("No fields object provided. See the api request docs.");
+			return null;
 		}
 
 		res["documents"] = output;
