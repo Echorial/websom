@@ -67,6 +67,9 @@ export default (store, packages, context) => ({
 		if (typeof val == "object")
 			return this.resolveAsset(val.$from, val.$resolve);
 	},
+	resolveMedia(name) {
+		return store.state.websom.api + "/buckets/media/" + name;
+	},
 	plural(amount, base, append) {
 		append = append || "s";
 
