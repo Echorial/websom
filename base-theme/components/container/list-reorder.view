@@ -1,0 +1,254 @@
+info {
+	"name": "list-reorder",
+	"type": "component"
+}
+
+template {
+	<div class="list-reorder" :class="{'list-dragging': dragging}">
+		<slot />
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			horizontal: {
+				type: Boolean,
+				default: false
+			}
+		},
+		data: () => ({
+			listener: null,
+			listenerEnd: null,
+			dragging: false
+		}),
+		mounted() {
+			let draggingEl = null;
+			let startPosition = {x: 0, y: 0};
+			let relativeElement = null;
+			let startOffsetX = 0;
+			let startOffsetY = 0;
+			let dragging = false;
+			let offsets = [];
+			let draggingIndex = 0;
+			let toIndex = 0;
+			let moved = false;
+			let startRelativeOffsetY = 0;
+
+			let axis = {
+				x: 1,
+				y: 1
+			};
+
+			if (this.horizontal) {
+				axis.y = 0;
+				axis.x = 1;
+			}
+
+			this.$el.addEventListener("dragstart", (e) => {
+				return false;
+			});
+
+			let computeOffsets = () => {
+				offsets = [];
+
+				for (let i of this.$el.children) {
+					let rect = i.getBoundingClientRect();
+
+					if (axis.y)
+						offsets.push(rect.top);
+					else
+						offsets.push(rect.left);
+				}
+			};
+
+			let traverseTree = (e) => {
+				startRelativeOffsetY = draggingEl.offsetY;
+
+				computeOffsets();
+
+				let rect = draggingEl.getBoundingClientRect();
+				draggingIndex = Array.prototype.indexOf.call(this.$el.childNodes, draggingEl);
+
+				startOffsetX = rect.left - startPosition.x;
+				startOffsetY = rect.top - startPosition.y;
+
+				relativeElement = draggingEl;
+
+				while (relativeElement.parentElement) {
+					relativeElement = relativeElement.parentElement;
+
+					let rel = getComputedStyle(relativeElement);
+
+					if (rel.position != "static") {
+						break;
+					}
+				}
+
+				this.listener(e);
+			};
+
+			this.$el.addEventListener("mousedown", (e) => {
+				draggingEl = e.target.closest(".list-reorder > *");
+				startPosition.x = e.clientX;
+				startPosition.y = e.clientY;
+				dragging = true;
+				traverseTree(e);
+				moved = false;
+				draggingEl.classList.add("list-reorder-dragging");
+			});
+
+			this.$el.addEventListener("touchstart", (e) => {
+				draggingEl = e.target.closest(".list-reorder > *");
+				let touch = e.touches[0];
+				startPosition.x = touch.clientX;
+				startPosition.y = touch.clientY;
+				dragging = true;
+				traverseTree(e);
+				moved = false;
+				draggingEl.classList.add("list-reorder-dragging");
+			});
+
+			this.listenerEnd = (e) => {
+				if (!dragging)
+					return;
+					
+				dragging = false;
+				this.dragging = false;
+			
+				draggingEl.classList.add("list-reorder-moving");
+
+				setTimeout(() => {
+					if (axis.y)
+						draggingEl.style.setProperty("--mouse-y", (offsets[toIndex] - relativeElement.offsetTop) + "px");
+					else
+						draggingEl.style.setProperty("--mouse-x", (offsets[toIndex] - relativeElement.offsetLeft) + "px");
+				});
+
+				setTimeout(() => {
+					for (let el of document.querySelectorAll(".list-reorder-moving")) {
+						el.classList.remove("list-reorder-moving");
+						el.classList.remove("list-reorder-dragging");
+					}
+
+					for (let [i, o] of offsets.entries()) {
+						this.$el.children[i].style.setProperty("--margin-left", "0px");
+						this.$el.children[i].style.setProperty("--margin-right", "0px");
+					}
+
+					if (moved)
+						if (draggingIndex != toIndex) {
+							this.$emit("input", {from: draggingIndex, to: toIndex, reorder: (arr) => {
+								let el = arr.splice(draggingIndex, 1);
+								arr.splice(toIndex, 0, el[0]);
+							}});
+						}
+				}, 300);
+			};
+
+			this.listener = (e) => {
+				if (!dragging)
+					return;
+
+				let pos = null;
+				
+				moved = true;
+				
+				if (e.type == "mousemove" || e.type == "mousedown") {
+					pos = {x: e.clientX, y: e.clientY};
+				}else{
+					pos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+				}
+
+				let diffX = pos.x - startPosition.x;
+				let diffY = pos.y - startPosition.y;
+
+				let offsetTop = relativeElement.offsetTop;
+				let offsetLeft = relativeElement.offsetLeft;
+
+				draggingEl.style.setProperty("--mouse-x", (pos.x - offsetLeft + startOffsetX) + "px");
+				if (axis.y)
+					draggingEl.style.setProperty("--mouse-y", (pos.y - offsetTop + startOffsetY) + "px");
+				else
+					draggingEl.style.setProperty("--mouse-y", startRelativeOffsetY + "px");
+
+				let selected = 0;
+				for (let [i, o] of offsets.entries()) {
+					if (axis.x) {
+						if (o < pos.x)
+							selected = i;
+					}
+				}
+				
+				for (let [i, o] of offsets.entries()) {
+					if (i != selected) {
+						this.$el.children[i].style.setProperty("--margin-left", "0px");
+						this.$el.children[i].style.setProperty("--margin-right", "0px");
+					}
+				}
+				
+				if (selected == draggingIndex) {
+					if (selected == 0) {
+						if (this.$el.children[selected + 1]) {
+							this.$el.children[selected + 1].style.setProperty("--margin-left", draggingEl.clientWidth + "px");
+							this.$el.children[selected + 1].style.setProperty("--margin-right", "0px");
+						}
+					}else{
+						this.$el.children[selected - 1].style.setProperty("--margin-right", draggingEl.clientWidth + "px");
+						this.$el.children[selected - 1].style.setProperty("--margin-left", "0px");
+					}
+				}else if (selected == this.$el.children.length - 1) {
+					this.$el.children[selected].style.setProperty("--margin-right", draggingEl.clientWidth + "px");
+					this.$el.children[selected].style.setProperty("--margin-left", "0px");
+				}else{
+					if (selected > draggingIndex) {
+						this.$el.children[selected].style.setProperty("--margin-right", draggingEl.clientWidth + "px");
+						this.$el.children[selected].style.setProperty("--margin-left", "0px");
+					}else{
+						this.$el.children[selected].style.setProperty("--margin-left", draggingEl.clientWidth + "px");
+						this.$el.children[selected].style.setProperty("--margin-right", "0px");
+					}
+				}
+
+				toIndex = selected;
+				setTimeout(() => {
+					this.dragging = true;
+				});
+			};
+
+			document.addEventListener("mousemove", this.listener);
+			document.addEventListener("touchmove", this.listener);
+			document.addEventListener("touchend", this.listenerEnd);
+			document.addEventListener("mouseup", this.listenerEnd);
+		},
+		beforeDestroy() {
+			if (this.listener) {
+				document.removeEventListener("mousemove", this.listener);
+				document.removeEventListener("touchmove", this.listener);
+				document.removeEventListener("touchend", this.listenerEnd);
+				document.removeEventListener("mouseup", this.listenerEnd);
+			}
+		}
+	}
+}
+
+style {
+	.list-reorder-dragging {
+		position: absolute;
+		top: var(--mouse-y);
+		left: var(--mouse-x);
+	}
+
+	.list-reorder-moving {
+		transition: .3s !important;
+	}
+
+	.list-reorder > * {
+		margin-left: var(--margin-left) !important;
+		margin-right: var(--margin-right) !important;
+	}
+
+	.list-reorder.list-dragging > * {
+		transition: margin .3s;
+	}
+}
