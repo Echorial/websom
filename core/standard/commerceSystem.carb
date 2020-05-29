@@ -84,8 +84,8 @@ header relative Websom.Standard.CommerceSystem.Product {
 	field bool downloadable = true;
 	field bool virtual = true;
 
-	field map attributes = new map();
-	field map variations = new map();
+	field <map>array attributes = new map();
+	field <map>array variations = new <map>array();
 
 	Websom.Standard.CommerceSystem.OrderItem pick(int quantity, map variation) {
 		let item = new Websom.Standard.CommerceSystem.OrderItem();
