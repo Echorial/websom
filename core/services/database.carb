@@ -6,7 +6,7 @@ class Websom.Services.Database inherits Websom.Service {
 	Websom.AdapterInterface searchAdapter = null;
 
 	Websom.Adapters.Database.Adapter central = null;
-	Websom.Adapters.Database.Adapter search = null;
+	Websom.Adapters.Search.Adapter search = null;
 
 	void preStart() {
 		this.primaryAdapter = this.server.adapt("database");
