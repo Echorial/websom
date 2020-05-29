@@ -9,6 +9,10 @@ header class Websom.Adapters.Database.Adapter extends Websom.Adapter {
 header class Websom.Adapters.Database.Collection {
 	Websom.Adapters.Database.Adapter database = null;
 	Websom.Adapters.Database.Schema appliedSchema = null;
+	
+	bool searchable = false;
+	<string>array replicatedSearchFields = null;
+
 	string name = "";
 
 	void entityTemplate = null;
@@ -36,6 +40,15 @@ header class Websom.Adapters.Database.Collection {
 		entity.loadFromMap(document.data());
 
 		return entity;
+	}
+
+	void enableSearching(<string>array fields) {
+		this.searchable = true;
+		this.replicatedSearchFields = fields;
+	}
+
+	Websom.Adapters.Database.Document makeDocumentFromMap(string id, map data) {
+
 	}
 
 	Websom.Adapters.Database.Schema schema() {
