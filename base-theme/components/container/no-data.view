@@ -4,16 +4,21 @@ info {
 }
 
 template {
-	<div class="no-data">
+	<div class="no-data" :class="{'data-inline': inline}">
 		<icon class="no-data-icon" icon="empty" />
 
-		<h2>Nothing Here!</h2>
+		<h2>Nothing here.</h2>
 	</div>
 }
 
 script {
 	export default {
-		
+		props: {
+			inline: {
+				type: Boolean,
+				default: false
+			}
+		}
 	}
 }
 
@@ -27,6 +32,16 @@ style {
 		opacity: 0.5;
 		user-select: none;
 		cursor: default;
+
+		&.data-inline {
+			opacity: 1;
+			flex-direction: row;
+
+			.no-data-icon {
+				--icon-size: 24px;
+				margin-right: .5em;
+			}
+		}
 	}
 
 	.no-data-icon {
