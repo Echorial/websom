@@ -44,6 +44,20 @@ style {
 		opacity: 0;
 	}
 
+	.list-slide-enter, .list-slide-leave-to {
+		opacity: 0;
+		transform: translateX(-100px);
+	}
+
+	.list-slide-leave-active {
+		position: absolute;
+	}
+
+	.list-slide-item {
+		transition: all .5s;
+		display: block;
+	}
+
 	.slide-height-enter-active, .slide-height-leave-active {
 		transition: max-height .5s;
 		overflow: hidden;
