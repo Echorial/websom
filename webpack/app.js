@@ -46,6 +46,7 @@ export async function createApp (api, context) {
 				colorScheme: "light",
 				api,
 				ssr,
+				registeredAdapters: {},
 				data: {
 					config: {},
 					routes: {},
@@ -97,6 +98,9 @@ export async function createApp (api, context) {
 					store.assets[data.package] = {};
 				
 				store.assets[data.package][data.name] = data.value;
+			},
+			registerAdapter(store, data) {
+				store.websom.registeredAdapters[data.name] = data.handler;
 			},
 			setWebsomData(state, data) {
 				state.websom.data = data;
@@ -251,12 +255,17 @@ export async function createApp (api, context) {
 		let effectLoader = new EffectLoader(Effects);
 		effectLoader.initialize();
 	}
+
+	let registerAdapter = (name, handler) => {
+		store.commit("registerAdapter", {name, handler});
+	};
 	
 	for (let s of Scripts)
 		await s.script({
 			app,
 			websom: websomUtils,
 			store,
+			registerAdapter,
 			packages: Packages,
 			ssr,
 			fillState: typeof __INITIAL_STATE__ === "undefined"
