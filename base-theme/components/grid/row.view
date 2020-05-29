@@ -31,7 +31,7 @@ style {
 		flex-wrap: wrap;
 
 		&.purpose-header {
-			max-height: calc(var(--base-size) * 3.5);
+			max-height: calc(var(--base-size) * 4);
 		}
 
 		//height: 100%;
