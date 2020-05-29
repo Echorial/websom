@@ -73,7 +73,7 @@ template {
 		</div>
 
 		<div class="rich-view-grid-wrap" v-if="myLayout == 'grid'" @scroll="scrollListener" ref="gridWrap">
-			<transition-group v-if="!error" tag="div" class="rich-view-collection" :class="'rich-view-layout-' + myLayout" :name="transition" :mode="transitionMode">
+			<transition-group v-if="!error" tag="div" class="rich-view-collection" :class="'rich-view-layout-' + myLayout + (selectedCount > 0 ? ' rich-view-selected' : '')" :name="transition" :mode="transitionMode">
 				<template v-if="documents.length > 0">
 					<template v-for="(d, i) in documents">
 						<div :key="d.id" class="rich-view-grid-item" :class="{'rich-view-grid-item-selected': selected[d.id]}">
@@ -323,6 +323,11 @@ script {
 			},
 			setSelected(id, e) {
 				this.$set(this.selected, id, e);
+				this.emitSelection();
+			},
+			clearSelection() {
+				for (let k of Object.keys(this.selected))
+					this.selected[k] = false;
 			},
 			async refresh() {
 				this.reachedEnd = false;
@@ -389,6 +394,8 @@ script {
 			checkAll(set) {
 				for (let k in this.selected)
 					this.selected[k] = set;
+					
+				this.emitSelection();
 			},
 			computeColumnSizes() {
 				this.documents;
@@ -434,6 +441,15 @@ script {
 					setRow(this.$refs.head);
 
 				return sizes;
+			},
+			emitSelection() {
+				let list = [];
+
+				for (let k of Object.keys(this.selected))
+					if (this.selected[k])
+						list.push(this.documents.find(d => d.id == k));
+
+				this.$emit("input", list);
 			}
 		},
 		watch: {
@@ -449,6 +465,12 @@ script {
 				this.$nextTick(() => {
 					this.checkScroll();
 				});
+			},
+			selected: {
+				handler() {
+					this.emitSelection();
+				},
+				deep: true
 			}
 		},
 		computed: {
