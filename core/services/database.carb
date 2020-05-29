@@ -3,18 +3,23 @@ class Websom.Services.Database inherits Websom.Service {
 	<Websom.Database>array databases = new <Websom.Database>array();
 
 	Websom.AdapterInterface primaryAdapter = null;
+	Websom.AdapterInterface searchAdapter = null;
 
 	Websom.Adapters.Database.Adapter central = null;
-	void search = null;
+	Websom.Adapters.Database.Adapter search = null;
 
 	void preStart() {
 		this.primaryAdapter = this.server.adapt("database");
+		this.searchAdapter = this.server.adapt("search");
+		this.searchAdapter.exposeToClient = true;
 	}
 
 	void loadAdapter() {
 		this.primaryAdapter.loadFromConfig();
+		this.searchAdapter.loadFromConfig();
 
 		this.central = this.primaryAdapter.adapter;
+		this.search = this.searchAdapter.adapter;
 	}
 
 	Websom.Status loadDatabase(map raw) {
