@@ -32,6 +32,11 @@ const movers = {
 	},
 	transform(e) {
 		e.el.style.transform = `translate(${e.dx}px, ${e.dy}px)`;
+	},
+	mouse(e) {
+		e.el.style.left = e.start.ox + e.dx + "px";
+		e.el.style.top = e.start.oy + e.dy + "px";
+		e.el.style.position = "absolute";
 	}
 };
 
@@ -138,13 +143,22 @@ export default (Vue, options) => {
 						...state,
 						dx: 0,
 						dy: 0,
+						adx: 0,
+						ady: 0,
 						x: state.start.x,
 						y: state.start.y
 					});
 			};
+			
+			let handle = el;
 
-			el.addEventListener("mousedown", downListener);
-			el.addEventListener("touchstart", downListener);
+			if (config.handle) {
+				handle = el.querySelector(config.handle) || el;
+				el.classList.add("websom-has-handle");
+			}
+
+			handle.addEventListener("mousedown", downListener);
+			handle.addEventListener("touchstart", downListener);
 
 			listeners[myUid] = (type, e) => {
 				if (!state.dragging)
@@ -169,6 +183,8 @@ export default (Vue, options) => {
 							...state,
 							dx: (clientX - state.start.x) * config.axis.x,
 							dy: (clientY - state.start.y) * config.axis.y,
+							adx: (clientX - state.start.x) * config.axis.x,
+							ady: (clientY - state.start.y) * config.axis.y,
 							x: clientX,
 							y: clientY
 						});
