@@ -25,6 +25,8 @@ public $objects;
 
 public $mediaFiles;
 
+public $tags;
+
 public $dashboardView;
 
 public $commentEdit;
@@ -38,6 +40,8 @@ public $groupRead;
 public $groupCreate;
 
 public $groupEdit;
+
+public $corePublic;
 
 public $media;
 
@@ -74,6 +78,7 @@ $this->groups = null;
 $this->confirmations = null;
 $this->objects = null;
 $this->mediaFiles = null;
+$this->tags = null;
 $this->dashboardView = null;
 $this->commentEdit = null;
 $this->commentCreate = null;
@@ -81,6 +86,7 @@ $this->commentRead = null;
 $this->groupRead = null;
 $this->groupCreate = null;
 $this->groupEdit = null;
+$this->corePublic = null;
 $this->media = null;
 $this->server = null;
 $this->baseConfig = null;
@@ -113,12 +119,17 @@ $this->registerPermission($this->dashboardView);
 $this->registerPermission($this->commentEdit);
 $this->registerPermission($this->commentCreate);
 $this->registerPermission($this->commentRead);
+$this->corePublic = $this->registerPermission("Core.Public")->isPublic()->setDescription("Base public permission providing access to tags, categories and more.");
 $this->groupRead = $this->registerPermission("Group.Read")->setDescription("Allows users to read permission group information.");
 $this->groupCreate = $this->registerPermission("Group.Create")->setDescription("Allows users to create permission groups. WARNING This is an admin level permission.");
 $this->groupEdit = $this->registerPermission("Group.Edit")->setDescription("Allows users to edit permission groups. WARNING This is an admin level permission.");}
 
 function collections() {
 $db = $this->server->database->central;
+$this->tags = $db->collection("tags");
+$this->tags->schema()->field("name", "string")->field("namespace", "string")->field("description", "string")->field("color", "string")->field("created", "time")->field("objects", "int");
+$this->registerCollection($this->tags);
+$this->server->api->_c__interface($this->tags, "/tags")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("namespace")->write("description")->write("color")->setComputed("created", function ($req) use (&$db, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("namespace", "==")->route("/search")->auth($this->corePublic)->executes("search")->read("*")->filter("default")->field("name", "==")->field("namespace", "==")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("id", "==");
 $this->objects = $db->collection("websom_bucket_objects");
 $this->objects->schema()->field("filename", "string")->field("bucket", "string")->field("acl", "string")->field("uploaded", "boolean")->field("token", "string")->field("sizeLimit", "int");
 $this->registerCollection($this->objects);
@@ -269,6 +280,12 @@ $this->name = $name;
 }
 function lazilyGetCollection() {
 }
+
+function makeDocumentFromMap($id, $data) {
+$doc = new CoreModule_LokiDocument($this, $id);
+$data["id"] = $id;
+$doc->rawData = $data;
+return $doc;}
 
 function document($id) {
 $this->lazilyGetCollection();
@@ -425,10 +442,13 @@ public $route;
 
 public $server;
 
+public $adapterKey;
+
 function __construct($server) {
 $this->loki = null;
 $this->route = "adapter.database.loki";
 $this->server = null;
+$this->adapterKey = "";
 
 $this->server = $server;
 }
@@ -549,6 +569,9 @@ $this->name = $name;
 }
 function lazilyGetCollection() {
 }
+
+function makeDocumentFromMap($id, $data) {
+return $this->documentFromRaw($id, $data);}
 
 function document($id) {
 $this->lazilyGetCollection();
@@ -706,10 +729,13 @@ public $route;
 
 public $server;
 
+public $adapterKey;
+
 function __construct($server) {
 $this->firestore = null;
 $this->route = "adapter.database.firestore";
 $this->server = null;
+$this->adapterKey = "";
 
 $this->server = $server;
 }
@@ -809,10 +835,13 @@ public $route;
 
 public $server;
 
+public $adapterKey;
+
 function __construct($server) {
 $this->sendGrid = null;
 $this->route = "adapter.email.sendGrid";
 $this->server = null;
+$this->adapterKey = "";
 
 $this->server = $server;
 }
@@ -845,11 +874,14 @@ public $handlers;
 
 public $server;
 
+public $adapterKey;
+
 function __construct($server) {
 $this->route = "adapter.confirmation";
 $this->module = null;
 $this->handlers = [];
 $this->server = null;
+$this->adapterKey = "";
 
 $this->server = $server;
 }
@@ -923,9 +955,12 @@ public $coreModule;
 
 public $server;
 
+public $adapterKey;
+
 function __construct($server) {
 $this->coreModule = null;
 $this->server = null;
+$this->adapterKey = "";
 
 $this->server = $server;
 }
@@ -993,6 +1028,33 @@ return $this->server->apiHost . "/buckets/" . $bucket->name . "/" . $filename;}
 
 function shutdown() {
 }
+
+
+}class CoreModule_Algolia {
+public $firestore;
+
+public $route;
+
+public $server;
+
+public $adapterKey;
+
+function __construct($server) {
+$this->firestore = null;
+$this->route = "adapter.search.algolia";
+$this->server = null;
+$this->adapterKey = "";
+
+$this->server = $server;
+}
+function initialize() {
+}
+
+function shutdown() {
+}
+
+function collection($name) {
+return new Websom_Adapters_Database_Collection($this, $name);}
 
 
 }
