@@ -140,7 +140,10 @@ script {
 		},
 		computed: {
 			lines() {
-				return this.myValue.split("\n").length;
+				if (typeof this.myValue == "string")
+					return this.myValue.split("\n").length;
+				
+				return 0;
 			}
 		}
 	}
@@ -151,6 +154,7 @@ style {
 		display: flex;
 
 		height: var(--base-height);
+		width: 100%;
 
 		position: relative;
 
