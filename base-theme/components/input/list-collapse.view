@@ -1,0 +1,197 @@
+info {
+	"name": "input-list-collapse",
+	"type": "component"
+}
+
+template {
+	<div class="input-list-collapse" :style="'--drag-spacing: ' + dragSpacing + 'px'" :class="{'has-drag-target': dragTarget == -1}">
+		<transition-group name="data-view">
+			<div class="input-list-collapse-item" :class="{'input-drag-target': dragTarget == i}" v-draggable="draggable()" v-for="(v, i) in myValue" :key="randomKey(v)" ref="items" :data-index="i">
+				<h3 class="input-list-collapse-title flex-space-between fat-action">
+					{{itemTitle(v)}}
+					<span class="input-list-collapse-show" @click="remove(i)">
+						<icon icon="delete" />
+					</span>
+				</h3>
+				<transition name="slide-height" mode="out-in">
+					<div v-if="toggles[i]" class="input-list-collapse-body">
+						<slot :data="v" :index="i" />
+					</div>
+				</transition>
+			</div>
+		</transition-group>
+		<div class="pad-content">
+			<button @click="addItem()"><icon icon="add" left/> Add</button>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: [Array, String, Object, Number, Boolean],
+				default: () => []
+			},
+			template: {
+				type: [Object],
+				default: () => ({})
+			}
+		},
+		data() {
+			let value = this.value || [];
+
+			return {
+				myValue: value,
+				toggles: {},
+				dragTarget: -1,
+				dragSpacing: 0
+			};
+		},
+		methods: {
+			remove(i) {
+				this.toggles[i] = false;
+				this.myValue.splice(i, 1);
+			},
+			addItem() {
+				this.myValue.push(JSON.parse(JSON.stringify(this.template)));
+				this.myValue[this.myValue.length - 1]["name"] += " " + this.myValue.length;
+				this.$emit("input", this.myValue);
+			},
+			toggleItem(index) {
+				this.$set(this.toggles, index, this.toggles[index] ? false : true);
+			},
+			itemTitle(v) {
+				return v.name;
+			},
+			draggable() {
+				return {
+					axis: {
+						x: 0,
+						y: 1
+					},
+					handle: ".input-list-collapse-title",
+					position: "transform",
+					move: (e) => {
+						let selected;
+
+						let modIndex = e.el.getAttribute("data-index");
+
+						for (let [i, r] of this.$refs.items.entries()) {
+							let cc = r.getBoundingClientRect();
+
+							if (i != modIndex && e.y > cc.y) {
+								selected = i;
+							}
+
+							if (i == 0 && e.y < cc.y) {
+								selected = -1;
+							}
+						}
+
+						if (typeof selected == "number" && selected != modIndex && selected != modIndex - 1) {
+							this.dragTarget = selected;
+							this.dragSpacing = e.el.getBoundingClientRect().height;
+						}else{
+							this.dragTarget = null;
+							this.dragSpacing = null;
+						}
+					},
+					end: (e) => {
+						e.el.removeAttribute("style");
+
+						if (this.dragTarget !== null) {
+							let modIndex = e.el.getAttribute("data-index");
+
+							let val = this.myValue.splice(modIndex, 1);
+							
+							this.myValue.splice(this.dragTarget + 1, 0, val[0]);
+						}
+
+						this.dragTarget = null;
+						this.dragSpacing = null;
+						
+						if (!e.moved)
+							this.toggleItem(e.el.getAttribute("data-index"));
+					},
+					start: (e) => {
+						return;
+					}
+				};
+			},
+			randomKey(v) {
+				if (v.$randomKey) {
+					return v.$randomKey;
+				}
+
+				do {
+					v.$randomKey = Math.floor(Math.random() * 100000);
+				} while(this.myValue.find(mv => mv.$randomKey == v.$randomKey).length > 0);
+				
+				return v.$randomKey;
+			}
+		},
+		mounted() {
+			
+		},
+		watch: {
+			value() {
+				this.myValue = this.value;
+			}
+		}
+	}
+}
+
+style {
+	#app h3.input-list-collapse-title {
+		margin: 0;
+		padding: var(--base-size);
+		background: var(--background);
+	}
+
+	.input-list-collapse-item {
+		transition: margin-bottom var(--transition), margin-top var(--transition);
+
+		&:first-child {
+			border-top: 1px solid var(--background-tint);
+		}
+
+		border-bottom: 1px solid var(--background-tint);
+
+		&.websom-dragging {
+			z-index: 100;
+		}
+	}
+
+	.input-list-collapse-body {
+		background: var(--background-diff);
+		border-top: 1px solid var(--background-tint);
+		//padding: var(--base-size);
+	}
+
+	.card .input-list-collapse {
+		margin: 0px calc(var(--base-size) * -1);
+		transition: margin-top var(--transition);
+
+		&.has-drag-target {
+			margin-top: var(--drag-spacing);
+		}
+	}
+
+	.input-list-collapse-show {
+		opacity: 0;
+		transition: var(--transition);
+
+		&:hover {
+			color: var(--danger);
+		}
+	}
+
+	.input-list-collapse-title:hover .input-list-collapse-show {
+		opacity: 1;
+	}
+
+	.input-drag-target {
+		margin-bottom: var(--drag-spacing) !important;
+	}
+}
