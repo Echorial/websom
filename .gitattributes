@@ -1,2 +1,3 @@
 vendor/* linguist-vendored
 platform/* linguist-generated
+core/util/native/* linguist-vendored
