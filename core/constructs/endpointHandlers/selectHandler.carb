@@ -160,7 +160,9 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 		return query;
 	}
 
-	<map>array exposeDocuments(<Websom.Adapters.Database.Document>array docs) {
+	<map>array exposeDocuments(Websom.CollectionInterfaceRoute cir, Websom.Request req, map returnFields, <Websom.Adapters.Database.Document>array docs) {
+		let collection = cir.collection.collection;
+
 		let output = new <map>array();
 
 		for (let int i in docs) {
@@ -219,14 +221,14 @@ class Websom.SelectHandler inherits Websom.EndpointHandler {
 
 		let results = query.get();
 
-		let output = this.exposeDocuments(results.documents);
-
 		let returnFields = req.body["fields"];
 
 		if (returnFields.typeAsString() != "map") {
 			req.endWithError("No fields object provided. See the api request docs.");
 			return null;
 		}
+
+		let output = this.exposeDocuments(cir, req, returnFields, results.documents);
 
 		res["documents"] = output;
 
