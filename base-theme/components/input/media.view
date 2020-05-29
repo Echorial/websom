@@ -1,0 +1,218 @@
+info {
+	"name": "input-media",
+	"type": "component"
+}
+
+template {
+	<div class="input-media">
+		<modal ref="media-modal" :modal-transparent="true">
+			<div class="modal-media-row" :class="{'media-selected': isSelected}">
+				<websom-media ref="media" layout="grid" @input="handleSelections"/>
+				<div class="modal-media-info">
+					<div class="modal-media-sub">
+						<transition-group name="list-slide" tag="div" class="modal-media-list">
+							<div v-for="file in selectedModalMedia" :key="file.id" class="list-slide-item modal-media-item">
+								{{file.name}}
+							</div>
+						</transition-group>
+						<button @click="selectImages" class="success full modal-select-button">Continue <icon icon="right" right /></button>
+					</div>
+				</div>
+			</div>
+		</modal>
+
+		<div class="gallery-view center-content">
+			<img :src="selectedImage" v-if="myValue.length > 0" />
+			<div v-else>
+				<div class="center-content"><icon icon="image" class="huge" /></div>
+				<h1>No media selected</h1>
+			</div>
+		</div>
+		<div class="gallery-row">
+			<list-reorder horizontal @input="reorder">
+				<div v-for="(media, i) in myValue" :key="media">
+					<div class="gallery-media">
+						<img draggable="false" :src="websom.resolveMedia(media)" @click="selectImage(media)"/>
+						<button @click="remove(i)" class="danger floating tiny"><icon icon="remove" /></button>
+					</div>
+				</div>
+			</list-reorder>
+			<div class="gallery-add fat-action" @click="openMedia">
+				<icon icon="add" class="large color-primary" />
+			</div>
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: [Array, Number, String],
+				default: () => []
+			},
+			type: {
+				type: [String, Array],
+				default: "*"
+			}
+		},
+		methods: {
+			openMedia() {
+				this.$refs["media-modal"].open();
+			},
+			handleSelections(selected) {
+				this.selectedModalMedia = selected;
+			},
+			selectImages() {
+				for (let media of this.selectedModalMedia)
+					this.myValue.push(media.name);
+
+				this.selectImage(this.myValue[this.myValue.length - 1]);
+
+				this.$refs["media-modal"].close();
+				this.$refs.media.clearSelection();
+
+				this.$emit("input", this.myValue);
+			},
+			reorder(r) {
+				r.reorder(this.myValue);
+				this.$emit("input", this.myValue);
+			},
+			selectImage(media) {
+				this.selectedImage = this.websom.resolveMedia(media);
+			},
+			remove(i) {
+				this.myValue.splice(i, 1);
+			}
+		},
+		computed: {
+			isSelected() {
+				return this.selectedModalMedia.length > 0;
+			}
+		},
+		data() {
+			return {
+				myValue: this.value || [],
+				selectedModalMedia: [],
+				selectedImage: ""
+			};
+		}
+	}
+}
+
+style {
+	.gallery-row {
+		padding: var(--base-size);
+	}
+
+	.gallery-view {
+		min-width: 100%;
+		min-height: 350px;
+		max-height: 350px;
+		background: var(--background);
+		border-bottom: 1px solid var(--background-overlay);
+		
+		> img {
+			max-width: 100%;
+			max-height: 350px;
+		}
+	}
+
+	.gallery-row, .gallery-row > .list-reorder {
+		overflow: auto;
+		background: var(--background);
+		display: flex;
+		flex-direction: row;
+		
+		--item-size: calc(var(--base-size) * 8);
+	}
+
+	.gallery-media {
+		margin-right: var(--base-size);
+		position: relative;
+
+		&:hover {
+			> button {
+				opacity: 1;
+			}
+		}
+
+		> button {
+			transition: var(--transition);
+			opacity: 0;
+			bottom: 2px !important;
+			right: 2px !important;
+			margin: 0 !important;
+			position: absolute !important;
+		}
+	}
+
+	.gallery-add, .gallery-media {
+			display: flex;
+			width: var(--item-size);
+			height: var(--item-size);
+			min-width: var(--item-size);
+			align-items: center;
+			justify-content: center;
+
+			background: var(--background-overlay);
+
+			> img {
+				max-width: var(--item-size);
+				max-height: var(--item-size);
+			}
+
+			&.gallery-add {
+				margin-left: auto;
+			}
+		}
+
+	.modal-media-item {
+		padding: var(--base-size);
+		background: var(--background-overlay);
+		margin-bottom: var(--base-size);
+	}
+
+	.modal-select-button {
+		margin-top: auto;
+	}
+
+	.modal-media-row {
+		display: flex;
+		flex-direction: row;
+		flex: 1;
+
+		.websom-media {
+			max-height: 90vh;
+			max-width: 70vw;
+		}
+
+		.modal-media-list {
+			max-height: calc(90vh - var(--base-height));
+			overflow: hidden;
+			height: 100%;
+		}
+
+		.modal-media-sub {
+			min-width: 200px;
+			height: 100%;
+		}
+
+		.modal-media-info {
+			padding-left: 0px;
+
+			max-width: 0px;
+			overflow: hidden;
+			transition: var(--transition);
+
+			> h1 {
+				margin: 0px;
+			}
+		}
+
+		&.media-selected .modal-media-info {
+			padding-left: var(--base-size);
+			max-width: 200px;
+		}
+	}
+}
