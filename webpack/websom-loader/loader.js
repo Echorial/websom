@@ -35,7 +35,9 @@ module.exports = function (source) {
 		}
 		
 		if (this.query.server.config.dev) {
-			imports.push(`import "${path.join(this.query.server.config.configOverrides, "customization.json").replace(/\\/g, "\\\\")}";`);
+			let customizationPath = path.join(this.query.server.config.configOverrides, "customization.json").replace(/\\/g, "\\\\");
+			if (fs.existsSync(customizationPath))
+				imports.push(`import "${customizationPath}";`);
 		}
 
 		return `let imports = [];\n${imports.join("\n")}\nexport default imports;`;
@@ -58,7 +60,9 @@ module.exports = function (source) {
 		}
 		
 		if (this.query.server.config.dev) {
-			imports.push(`@import "${path.join(this.query.server.config.configOverrides, "customization.json").replace(/\\/g, "\\\\")}";`);
+			let customizationPath = path.join(this.query.server.config.configOverrides, "customization.json").replace(/\\/g, "\\\\");
+			if (fs.existsSync(customizationPath))
+				imports.push(`@import "${customizationPath}";`);
 		}
 
 		return `${imports.join("\n")}`;
