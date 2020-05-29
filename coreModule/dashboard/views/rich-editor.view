@@ -55,12 +55,18 @@ template {
 						<g-v m="3">
 							<slot name="edit-side" :data="createData">
 								<card>
-									<template v-slot:body>
-										<div>
-											
-										</div>
-									</template>
+									<g-h>
+										<g-v s="6">
+											<input-select :options="[{value: 'Draft', name: 'Draft', icon: 'send'}, {value: 'private', name: 'Private', icon: 'lock'}, {value: 'publish', name: 'Publish', icon: 'public'}]" value="Draft" />
+										</g-v>
+										<g-v s="5" shift="1">
+											<button class="success"><icon icon="add" left /> Create</button>
+										</g-v>
+									</g-h>
 								</card>
+								<dashboard-card name="Tags">
+									<input-entity placeholder="Add Tags" name="Tag" route="/tags" collection="tags" />
+								</dashboard-card>
 							</slot>
 						</g-v>
 					</g-h>
@@ -95,6 +101,11 @@ script {
 		data: () => ({
 			createData: {}
 		}),
+		watch: {
+			createData(nv) {
+				console.log(nv);
+			}
+		},
 		methods: {
 
 		},
@@ -112,7 +123,6 @@ script {
 				let path = this.$route.path.split("/");
 				let params = Object.keys(this.$route.params).filter(p => this.$route.params[p]).length;
 				path.splice(path.length - params, params);
-				console.log(path, params);
 				return path.join("/");
 			},
 			schema() {
@@ -122,6 +132,25 @@ script {
 		mounted() {
 			if (!this.schema)
 				console.error("Unable to find schema for collection " + this.collection + " in rich-editor. Did you forget to collectionInterface.exposeSchemaTo(permission)?");
+
+			for (let k in this.schema.schema) {
+				let type = this.schema.schema[k];
+				let v = null;
+
+				if (type == "string")
+					v = "";
+				else if (type == "integer" || type == "float")
+					v = 0;
+				else if (type == "array")
+					v = [];
+				else if (type == "map")
+					v = {};
+				else if (type == "boolean")
+					v = false;
+
+				this.$set(this.createData, k, v);
+				
+			}
 		}
 	}
 }
