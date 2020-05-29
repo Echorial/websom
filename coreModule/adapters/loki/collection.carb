@@ -8,6 +8,14 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		}
 	}
 
+	override Websom.Adapters.Database.Document makeDocumentFromMap(string id, map data) {
+		let doc = new CoreModule.LokiDocument(this, id);
+		data["id"] = id;
+		doc.rawData = data;
+
+		return doc;
+	}
+
 	override Websom.Adapters.Database.Document document(string id) {
 		this.lazilyGetCollection();
 
