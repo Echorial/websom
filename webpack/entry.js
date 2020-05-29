@@ -5,5 +5,5 @@ import { createApp } from "./app.js";
 
 	app.$mount("#app");
 
-	console.log(router);
+	console.log("Websom Router: ", router);
 })();
