@@ -123,8 +123,8 @@ style {
 		.define-color(light-mode-mute, rgba(0, 0, 0, 0.1), @set-contrast-dark, $--light-background);
 		.define-color(dark-mode-mute, rgba(255, 255, 255, 0.1), @set-contrast-light, $--dark-background);
 
-		.define-color(light-mode-disabled, darken($--light-background, 10%), darken($--light-background, 25%), $--light-background);
-		.define-color(dark-mode-disabled, lighten($--dark-background, 10%), lighten($--dark-background, 25%), $--dark-background);
+		.define-color(light-mode-disabled, darken($--light-background, 20%), darken($--light-background, 35%), $--light-background);
+		.define-color(dark-mode-disabled, lighten($--dark-background, 20%), lighten($--dark-background, 35%), $--dark-background);
 
 		--base-size: 12px;
 
@@ -231,6 +231,10 @@ style {
 		.@{name} {
 			.set-vars(@name, @toName);
 		}
+
+		.color-@{name} {
+			color: var(~"--@{name}");
+		}
 	}
 
 	.large {
@@ -260,6 +264,12 @@ style {
 		--color: transparent;
 		--color-dark: transparent;
 		--color-light: transparent;
+	}
+
+	.background-transparent {
+		--background: transparent;
+		--background-tint: transparent;
+		--background-overlay: transparent;
 	}
 
 	/*.primary {
