@@ -337,6 +337,18 @@ class Websom.Services.Config inherits Websom.Service {
 		mp["endpoints"] = this.server.api.gatherEndpoints(req);
 		mp["navigation"] = new map();
 
+		let adapters = new map();
+		
+		for (let int i in this.server.adaptation.interfaces) {
+			let interface = this.server.adaptation.interfaces[i];
+
+			if (interface.adapter != null and interface.exposeToClient) {
+				adapters[interface.name] = interface.adapter.adapterKey;
+			}
+		}
+
+		mp["adapters"] = adapters;
+
 		let data = this.getNavigationConfig();
 
 		if ("navbar" in data)

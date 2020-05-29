@@ -1,5 +1,6 @@
 header class Websom.Adapter {
 	Websom.Server server = null;
+	string adapterKey = "";
 
 	void @construct(Websom.Server server) {
 		this.server = server;

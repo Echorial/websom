@@ -38,6 +38,8 @@ class Websom.AdapterInterface {
 	Websom.Adapter adapter = null;
 	string name = "";
 
+	bool exposeToClient = false;
+
 	void @construct(Websom.Server server, string name) {
 		this.server = server;
 		this.name = name;
@@ -53,14 +55,18 @@ class Websom.AdapterInterface {
 			for (let i = 1; i < splits.length; i++)
 				cls = cls[splits[i]];
 
-			this.adapter = new cls(this.server);
+			if (cls)
+				this.adapter = new cls(this.server);
+			else
+				console.log("Unable to find adapter of class " + className);
 		}
 
 		native php {
 			$this->adapter = new $className($this->server);
 		}
-		
-		this.adapter.initialize();
+
+		if (this.adapter != null)
+			this.adapter.initialize();
 	}
 
 	bool loadAsBranchAdapter(string branchName) {
@@ -127,6 +133,9 @@ class Websom.AdapterInterface {
 		}
 
 		this.load(selectedModule, selectedClass);
+		
+		if (this.adapter != null)
+			this.adapter.adapterKey = adapterName;
 
 		return true;
 	}
