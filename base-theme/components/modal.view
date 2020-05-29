@@ -6,7 +6,7 @@ info {
 template {
 	<portal to="top">
 		<div class="modal-wrap" :class="{'modal-wrap-open': isOpen}">
-			<div :class="'modal' + (isOpen ? ' modal-open' : '') + ' modal-' + size + ' ' + modalClass">
+			<div :class="'modal' + (isOpen ? ' modal-open' : '') + ' modal-' + size + (modalTransparent ? ' modal-transparent ' : ' ') + modalClass">
 				<slot />
 				<button v-if="showClose" @click="close" class="modal-close floating"><icon icon="close" /></button>
 
@@ -33,6 +33,10 @@ template {
 script {
 	export default {
 		props: {
+			modalTransparent: {
+				type: Boolean,
+				default: false
+			},
 			showClose: {
 				type: Boolean,
 				default: false
@@ -136,6 +140,10 @@ style {
 	.modal {
 		background: var(--background-tint);
 
+		&.modal-transparent {
+			background: transparent;
+		}
+
 		transition: var(--transition) var(--transition-easing);
 
 		opacity: 0;
@@ -145,6 +153,9 @@ style {
 		min-width: var(--modal-width);
 
 		min-height: 300px;
+
+		max-height: calc(100% - var(--base-size) * 4);
+		max-width: 100%;
 
 		.modal-close {
 			position: absolute;
