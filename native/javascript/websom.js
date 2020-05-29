@@ -796,6 +796,8 @@ Websom.AdapterInterface = function (server, name) {var _c_this = this;
 
 	this.name = "";
 
+	this.exposeToClient = false;
+
 		_c_this.server = server;
 		_c_this.name = name;
 		if (_c_this.server.config.verbose) {
@@ -811,10 +813,16 @@ Websom.AdapterInterface = function (server, name) {var _c_this = this;
 			for (let i = 1; i < splits.length; i++)
 				cls = cls[splits[i]];
 
-			this.adapter = new cls(this.server);
+			if (cls)
+				this.adapter = new cls(this.server);
+			else
+				console.log("Unable to find adapter of class " + className);
 		
 		
-		(await _c_this.adapter.initialize/* async call */());}
+		if (_c_this.adapter != null) {
+/*async*/
+			(await _c_this.adapter.initialize/* async call */());
+			}}
 
 /*i async*/Websom.AdapterInterface.prototype.loadAsBranchAdapter = async function (branchName) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
@@ -868,6 +876,9 @@ Websom.AdapterInterface = function (server, name) {var _c_this = this;
 			return false;
 			}
 		(await _c_this.load/* async call */(selectedModule, selectedClass));
+		if (_c_this.adapter != null) {
+			_c_this.adapter.adapterKey = adapterName;
+			}
 		return true;}
 
 Websom.Services.API = function (server) {var _c_this = this;
@@ -1601,6 +1612,14 @@ Websom.Services.Config.prototype.getConfiguredOptions = function () {var _c_this
 		mp["routes"] = {};
 		mp["endpoints"] = (await _c_this.server.api.gatherEndpoints/* async call */(req));
 		mp["navigation"] = {};
+		var adapters = {};
+		for (var i = 0; i < _c_this.server.adaptation.interfaces.length; i++) {
+			var interface = _c_this.server.adaptation.interfaces[i];
+			if (interface.adapter != null && interface.exposeToClient) {
+				adapters[interface.name] = interface.adapter.adapterKey;
+				}
+			}
+		mp["adapters"] = adapters;
 		var data = _c_this.getNavigationConfig();
 		if ("navbar" in data) {
 			mp["navigation"]["config"] = data["navbar"];
@@ -1800,6 +1819,8 @@ Websom.Services.Database = function (server) {var _c_this = this;
 
 	this.primaryAdapter = null;
 
+	this.searchAdapter = null;
+
 	this.central = null;
 
 	this.search = null;
@@ -1813,6 +1834,8 @@ Websom.Services.Database = function (server) {var _c_this = this;
 Websom.Services.Database.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 0) {
 		_c_this.primaryAdapter = _c_this.server.adapt("database");
+		_c_this.searchAdapter = _c_this.server.adapt("search");
+		_c_this.searchAdapter.exposeToClient = true;
 	}
 else 	if (arguments.length == 0) {
 
@@ -1822,7 +1845,9 @@ else 	if (arguments.length == 0) {
 /*i async*/Websom.Services.Database.prototype.loadAdapter = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		(await _c_this.primaryAdapter.loadFromConfig/* async call */());
-		_c_this.central = _c_this.primaryAdapter.adapter;}
+		(await _c_this.searchAdapter.loadFromConfig/* async call */());
+		_c_this.central = _c_this.primaryAdapter.adapter;
+		_c_this.search = _c_this.searchAdapter.adapter;}
 
 Websom.Services.Database.prototype.loadDatabase = function (raw) {var _c_this = this; var _c_root_method_arguments = arguments;
 		if (("type" in raw) == false) {
@@ -4816,6 +4841,8 @@ Websom.Services.View.prototype.end = function () {var _c_this = this; var _c_roo
 Websom.Adapter = function (server) {var _c_this = this;
 	this.server = null;
 
+	this.adapterKey = "";
+
 		_c_this.server = server;
 }
 
@@ -7423,7 +7450,10 @@ Websom.Entity.prototype.getFieldsChanged = function () {var _c_this = this; var 
 			var field = _c_this.collection.appliedSchema.fields[i];
 			var realValue = null;
 			var myValue = _c_this.getFieldValue(field.name);
-			var rawValue = _c_this.rawFields[field.name];
+			var rawValue = null;
+			if (_c_this.rawFields != null) {
+				rawValue = _c_this.rawFields[field.name];
+				}
 			var isDifferent = false;
 			if (field.type == "time") {
 				var cast = myValue;
@@ -7572,7 +7602,10 @@ Websom.Group.prototype.getFieldsChanged = function () {var _c_this = this; var _
 			var field = _c_this.collection.appliedSchema.fields[i];
 			var realValue = null;
 			var myValue = _c_this.getFieldValue(field.name);
-			var rawValue = _c_this.rawFields[field.name];
+			var rawValue = null;
+			if (_c_this.rawFields != null) {
+				rawValue = _c_this.rawFields[field.name];
+				}
 			var isDifferent = false;
 			if (field.type == "time") {
 				var cast = myValue;
@@ -10994,6 +11027,8 @@ Websom.Adapters.Database = function () {var _c_this = this;
 Websom.Adapters.Database.Adapter = function (server) {var _c_this = this;
 	this.server = null;
 
+	this.adapterKey = "";
+
 		_c_this.server = server;
 }
 
@@ -11030,6 +11065,9 @@ Websom.Adapters.Database.Collection = function (database, name) {var _c_this = t
 		entity.id = document.id;
 		(await entity.loadFromMap/* async call */(document.data()));
 		return entity;}
+
+Websom.Adapters.Database.Collection.prototype.makeDocumentFromMap = function (id, data) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
 
 Websom.Adapters.Database.Collection.prototype.schema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.appliedSchema = new Websom.Adapters.Database.Schema(_c_this);
@@ -11637,6 +11675,56 @@ Websom.Adapters.Database.BatchQuery.prototype.update = function () {var _c_this 
 /*async*/
 		return (await _c_this.collection.commitBatch/* async call */(_c_this));}
 
+Websom.Adapters.Search = function () {var _c_this = this;
+
+
+}
+
+Websom.Adapters.Search.Adapter = function (server) {var _c_this = this;
+	this.server = null;
+
+	this.adapterKey = "";
+
+		_c_this.server = server;
+}
+
+Websom.Adapters.Search.Adapter.prototype.initializeCollection = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+Websom.Adapters.Search.Adapter.prototype.insertDocument = function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+Websom.Adapters.Search.Adapter.prototype.updateDocument = function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+Websom.Adapters.Search.Adapter.prototype.search = function (collection, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Search.Adapter.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Search.Adapter.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+Websom.Adapters.Search.Query = function (baseQuery) {var _c_this = this;
+	this.query = "";
+
+		_c_this.query = baseQuery;
+}
+
+Websom.Adapters.Search.QueryResult = function (error, message) {var _c_this = this;
+	this.error = false;
+
+	this.message = "";
+
+	this.ids = null;
+
+	this.unsafeDocuments = null;
+
+		_c_this.error = error;
+		_c_this.message = message;
+}
+
 Websom.Adapters.Email = function () {var _c_this = this;
 
 
@@ -11644,6 +11732,8 @@ Websom.Adapters.Email = function () {var _c_this = this;
 
 Websom.Adapters.Email.Adapter = function (server) {var _c_this = this;
 	this.server = null;
+
+	this.adapterKey = "";
 
 		_c_this.server = server;
 }
@@ -11819,6 +11909,8 @@ Websom.Adapters.Confirmation.Adapter = function (server) {var _c_this = this;
 
 	this.server = null;
 
+	this.adapterKey = "";
+
 		_c_this.server = server;
 }
 
@@ -11944,6 +12036,8 @@ Websom.Adapters.Captcha = function () {var _c_this = this;
 Websom.Adapters.Captcha.Adapter = function (server) {var _c_this = this;
 	this.server = null;
 
+	this.adapterKey = "";
+
 		_c_this.server = server;
 }
 
@@ -11986,6 +12080,8 @@ Websom.Adapters.Bucket = function () {var _c_this = this;
 
 Websom.Adapters.Bucket.Adapter = function (server) {var _c_this = this;
 	this.server = null;
+
+	this.adapterKey = "";
 
 		_c_this.server = server;
 }
@@ -12326,6 +12422,198 @@ Websom.InsertHandler = function (server) {var _c_this = this;
 
 Websom.InsertHandler.prototype.typeCheck = function (value, schemaField) {var _c_this = this; var _c_root_method_arguments = arguments;
 		return _c_this.server.security.typeCheck(value, schemaField.type);}
+
+Websom.SearchHandler = function (server) {var _c_this = this;
+	this.server = null;
+
+		_c_this.server = server;
+}
+
+/*i async*/Websom.SearchHandler.prototype.fulfill = async function (cir, req) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var filterName = req.body["filter"];
+		if ((typeof filterName == 'object' ? (Array.isArray(filterName) ? 'array' : 'map') : (typeof filterName == 'number' ? 'float' : typeof filterName)) != "string") {
+			filterName = "default";
+			}
+		var filter = cir.findFilter(filterName);
+		if (filter == null) {
+/*async*/
+			(await req.endWithError/* async call */("Unknown filter provided"));
+			return null;
+			}
+		var collection = cir.collection.collection;
+		var query = collection.select();
+		var out = (await _c_this.buildQuery/* async call */(cir, filter, req, query));
+		if (out == null) {
+			return null;
+			}
+		(await _c_this.executeQuery/* async call */(cir, filter, req, query));}
+
+/*i async*/Websom.SearchHandler.prototype.buildQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var limit = filter.limits[0];
+		if ("limit" in req.body) {
+			var reqLimit = req.body["limit"];
+			for (var i = 0; i < filter.limits.length; i++) {
+				var l = filter.limits[i];
+				if (reqLimit == l) {
+					limit = l;
+					}
+				}
+			}
+		var offset = 0;
+		if ("page" in req.body) {
+			var page = req.body["page"];
+			if ((typeof page == 'object' ? (Array.isArray(page) ? 'array' : 'map') : (typeof page == 'number' ? 'float' : typeof page)) == "float") {
+				var pageAsFloat = page;
+				if (pageAsFloat % 1 === 0) {
+					offset = pageAsFloat * limit;
+					}
+				}
+			}
+		query.startOffset(offset);
+		query.limit(limit);
+		for (var i = 0; i < filter.forces.length; i++) {
+			var force = filter.forces[i];
+			query.where(force.name, force.operator, force.value);
+			}
+		for (var i = 0; i < filter.orders.length; i++) {
+			var order = filter.orders[i];
+			var ordered = false;
+			if ("order" in req.body) {
+				var clientOrder = req.body["order"];
+				if ((typeof clientOrder == 'object' ? (Array.isArray(clientOrder) ? 'array' : 'map') : (typeof clientOrder == 'number' ? 'float' : typeof clientOrder)) == "map") {
+					var orderField = clientOrder["field"];
+					var orderDirection = clientOrder["direction"];
+					if ((typeof orderField == 'object' ? (Array.isArray(orderField) ? 'array' : 'map') : (typeof orderField == 'number' ? 'float' : typeof orderField)) == "string") {
+						var allowed = false;
+						var schema = collection.appliedSchema;
+						if (order.name == "*") {
+							for (var f = 0; f < schema.fields.length; f++) {
+								var schemaField = schema.fields[f];
+								if (schemaField.name == orderField) {
+									allowed = true;
+									}
+								}
+							}else if (order.name == orderField) {
+							allowed = true;
+							}
+						if (orderDirection != "dsc" && orderDirection != "asc") {
+							allowed = false;
+							}
+						if (allowed) {
+							query.orderBy(orderField, orderDirection);
+							ordered = true;
+							}
+						}
+					}
+				}
+			if (ordered == false) {
+				if (order.name == "*") {
+					query.orderBy("id", order.operator);
+					}else{
+						query.orderBy(order.name, order.operator);
+					}
+				}
+			}
+		var clientQuery = req.body["query"];
+		if ((typeof clientQuery == 'object' ? (Array.isArray(clientQuery) ? 'array' : 'map') : (typeof clientQuery == 'number' ? 'float' : typeof clientQuery)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("Query must be an object. ( e.g. { name: Hello } )"));
+			return null;
+			}
+		for (var i = 0; i < filter.fields.length; i++) {
+/*async*/
+			var field = filter.fields[i];
+			if (field.name in clientQuery) {
+				query.where(field.name, field.operator, clientQuery[field.name]);
+				}else{
+/*async*/
+					(await req.endWithError/* async call */("No query for field '" + field.name + "' was provided."));
+					return null;
+				}
+			}
+		for (var i = 0; i < filter.computed.length; i++) {
+			var field = filter.computed[i];
+			var value = null;
+			
+				value = await field.handler(req);
+			
+			
+			if (req.sent) {
+				return null;
+				}
+			query.where(field.name, field.operator, value);
+			}
+		if (filter.handler != null) {
+			
+				await filter.handler(req, query);
+			
+			
+			}
+		if (req.sent) {
+			return null;
+			}
+		return query;}
+
+/*i async*/Websom.SearchHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var res = {};
+		res["status"] = "success";
+		res["message"] = "Query successful!";
+		var output = [];
+		var results = (await query.get/* async call */());
+		var returnFields = req.body["fields"];
+		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
+			return null;
+			}
+		for (var i = 0; i < results.documents.length; i++) {
+/*async*/
+			var doc = results.documents[i];
+			var mp = {};
+			if (cir.reads.length > 0) {
+/*async*/
+				if (cir.reads[0].field == "*") {
+/*async*/
+					if (collection.appliedSchema == null) {
+/*async*/
+						(await req.endWithError/* async call */("This collection has no schema applied"));
+						return null;
+						}
+					var schema = collection.appliedSchema;
+					for (var f = 0; f < schema.fields.length; f++) {
+						var field = schema.fields[f];
+						mp[field.name] = doc.get(field.name);
+						}
+					}
+				}
+			for (var j = 0; j < cir.reads.length; j++) {
+/*async*/
+				var read = cir.reads[j];
+				if (read.field in returnFields || "*" in returnFields) {
+/*async*/
+					var val = doc.get(read.field);
+					for (var t = 0; t < read.transformers.length; t++) {
+/*async*/
+						var transformer = read.transformers[t];
+						val = (await transformer.transform/* async call */(req, doc, read.field, val));
+						}
+					mp[read.field] = val;
+					}
+				}
+			if ("*" in returnFields) {
+				mp["id"] = doc.get("id");
+				}
+			output.push(mp);
+			}
+		res["documents"] = output;
+		cir.trigger("success", req, results.documents);
+		req.header("Content-Type", "application/json");
+		(await req.end/* async call */(Websom.Json.encode(res)));}
 
 Websom.SelectHandler = function (server) {var _c_this = this;
 	this.server = null;
@@ -15224,6 +15512,8 @@ Websom.Adapters.UserSystem = function () {var _c_this = this;
 
 Websom.Adapters.UserSystem.Connection = function (server) {var _c_this = this;
 	this.server = null;
+
+	this.adapterKey = "";
 
 		_c_this.server = server;
 }
