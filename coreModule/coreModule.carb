@@ -9,6 +9,7 @@ class CoreModule.Module inherits Websom.Module {
 	Websom.Adapters.Database.Collection confirmations = null;
 	Websom.Adapters.Database.Collection objects = null;
 	Websom.Adapters.Database.Collection mediaFiles = null;
+	Websom.Adapters.Database.Collection tags = null;
 
 	public Websom.Permission dashboardView = null;
 
@@ -19,6 +20,8 @@ class CoreModule.Module inherits Websom.Module {
 	Websom.Permission groupRead = null;
 	Websom.Permission groupCreate = null;
 	Websom.Permission groupEdit = null;
+
+	Websom.Permission corePublic = null;
 
 	Websom.Bucket media = null;
 
@@ -40,6 +43,11 @@ class CoreModule.Module inherits Websom.Module {
 		this.registerPermission(this.commentCreate);
 		this.registerPermission(this.commentRead);
 
+		this.corePublic = this.registerPermission("Core.Public")
+			.isPublic()
+			.setDescription("Base public permission providing access to tags, categories and more.");
+
+
 		this.groupRead = this.registerPermission("Group.Read")
 			.setDescription("Allows users to read permission group information.");
 		
@@ -52,6 +60,63 @@ class CoreModule.Module inherits Websom.Module {
 
 	override void collections() {
 		let db = this.server.database.central;
+
+		this.tags = db.collection("tags");
+		this.tags.schema()
+			.field("name", "string")
+			.field("namespace", "string")
+			.field("description", "string")
+			.field("color", "string")
+			.field("created", "time")
+			.field("objects", "int");
+
+		let fieldsForSearching = new <string>array();
+		fieldsForSearching.push("name");
+		fieldsForSearching.push("namespace");
+		fieldsForSearching.push("description");
+		fieldsForSearching.push("color");
+		fieldsForSearching.push("created");
+		fieldsForSearching.push("objects");
+
+		this.tags.enableSearching(fieldsForSearching);
+
+		this.registerCollection(this.tags);
+
+		this.server.api.interface(this.tags, "/tags")
+			.route("/insert")
+				.auth(this.dashboardView)
+				.executes("insert")
+					.write("name")
+					.write("namespace")
+					.write("description")
+					.write("color")
+					.setComputed("created", uint64 (Websom.Request req) => {
+						return Websom.Time.now();
+					})
+				.route("/delete")
+					.auth(this.dashboardView)
+					.executes("delete")
+						.filter("default")
+							.field("id", "in")
+				.route("/view")
+					.auth(this.dashboardView)
+					.executes("select")
+						.read("*")
+						.filter("default")
+							.field("namespace", "==")
+				.route("/search")
+					.auth(this.corePublic)
+					.executes("search")
+						.read("*")
+						.filter("default")
+							.field("name", "==")
+							.field("namespace", "==")
+				.route("/get")
+					.auth(this.dashboardView)
+					.executes("select")
+						.read("*")
+						.filter("default")
+							.field("id", "==");
 
 		this.objects = db.collection("websom_bucket_objects");
 		this.objects.schema()
@@ -223,3 +288,4 @@ class CoreModule.Module inherits Websom.Module {
 #include "adapters/sendGrid"
 #include "adapters/confirmation"
 #include "adapters/fileSystem"
+#include "adapters/algolia"
