@@ -87,7 +87,9 @@ let server = new Server({
 	verbose: false
 });
 
-server.startDevelopmentServer().then(() => {});`;
+server.startDevelopmentServer().then(() => {
+	// Server started
+});`;
 
 	fs.writeFileSync(path.resolve(cwd, "./devServer.js"), devServer, null, "\t");
 
