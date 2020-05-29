@@ -22,6 +22,8 @@ CoreModule.Module = function (server) {var _c_this = this;
 
 	this.mediaFiles = null;
 
+	this.tags = null;
+
 	this.dashboardView = null;
 
 	this.commentEdit = null;
@@ -35,6 +37,8 @@ CoreModule.Module = function (server) {var _c_this = this;
 	this.groupCreate = null;
 
 	this.groupEdit = null;
+
+	this.corePublic = null;
 
 	this.media = null;
 
@@ -83,6 +87,7 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		_c_this.registerPermission(_c_this.commentEdit);
 		_c_this.registerPermission(_c_this.commentCreate);
 		_c_this.registerPermission(_c_this.commentRead);
+		_c_this.corePublic = _c_this.registerPermission("Core.Public").isPublic().setDescription("Base public permission providing access to tags, categories and more.");
 		_c_this.groupRead = _c_this.registerPermission("Group.Read").setDescription("Allows users to read permission group information.");
 		_c_this.groupCreate = _c_this.registerPermission("Group.Create").setDescription("Allows users to create permission groups. WARNING This is an admin level permission.");
 		_c_this.groupEdit = _c_this.registerPermission("Group.Edit").setDescription("Allows users to edit permission groups. WARNING This is an admin level permission.");}
@@ -90,6 +95,12 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 /*i async*/CoreModule.Module.prototype.collections = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		var db = _c_this.server.database.central;
+		_c_this.tags = db.collection("tags");
+		_c_this.tags.schema().field("name", "string").field("namespace", "string").field("description", "string").field("color", "string").field("created", "time").field("objects", "int");
+		(await _c_this.registerCollection/* async call */(_c_this.tags));
+		_c_this.server.api.interface(_c_this.tags, "/tags").route("/insert").auth(_c_this.dashboardView).executes("insert").write("name").write("namespace").write("description").write("color").setComputed("created", function (req) {
+			return Websom.Time.now();
+			}).route("/delete").auth(_c_this.dashboardView).executes("delete").filter("default").field("id", "in").route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("namespace", "==").route("/search").auth(_c_this.corePublic).executes("search").read("*").filter("default").field("name", "==").field("namespace", "==").route("/get").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("id", "==");
 		_c_this.objects = db.collection("websom_bucket_objects");
 		_c_this.objects.schema().field("filename", "string").field("bucket", "string").field("acl", "string").field("uploaded", "boolean").field("token", "string").field("sizeLimit", "int");
 		(await _c_this.registerCollection/* async call */(_c_this.objects));
@@ -265,6 +276,12 @@ CoreModule.LokiCollection.prototype.lazilyGetCollection = function () {var _c_th
 			if (!this.lokiCollection)
 				this.lokiCollection = this.database.loki.getCollection(this.name);
 		}
+
+CoreModule.LokiCollection.prototype.makeDocumentFromMap = function (id, data) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var doc = new CoreModule.LokiDocument(_c_this, id);
+		data["id"] = id;
+		doc.rawData = data;
+		return doc;}
 
 /*i async*/CoreModule.LokiCollection.prototype.document = async function (id) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.lazilyGetCollection();
@@ -565,6 +582,8 @@ CoreModule.LokiDB = function (server) {var _c_this = this;
 
 	this.server = null;
 
+	this.adapterKey = "";
+
 		_c_this.server = server;
 }
 
@@ -710,6 +729,9 @@ CoreModule.FirestoreCollection.prototype.lazilyGetCollection = function () {var 
 			if (!this.firestoreCollection)
 				this.firestoreCollection = this.database.firestore.collection(this.name);
 		}
+
+CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, data) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.documentFromRaw(id, data);}
 
 /*i async*/CoreModule.FirestoreCollection.prototype.document = async function (id) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.lazilyGetCollection();
@@ -1007,6 +1029,8 @@ CoreModule.Firestore = function (server) {var _c_this = this;
 
 	this.server = null;
 
+	this.adapterKey = "";
+
 		_c_this.server = server;
 }
 
@@ -1155,6 +1179,8 @@ CoreModule.SendGrid = function (server) {var _c_this = this;
 
 	this.server = null;
 
+	this.adapterKey = "";
+
 		_c_this.server = server;
 }
 
@@ -1209,6 +1235,8 @@ CoreModule.Confirmation = function (server) {var _c_this = this;
 	this.handlers = [];
 
 	this.server = null;
+
+	this.adapterKey = "";
 
 		_c_this.server = server;
 }
@@ -1307,6 +1335,8 @@ CoreModule.FileSystemBucket = function (server) {var _c_this = this;
 	this.coreModule = null;
 
 	this.server = null;
+
+	this.adapterKey = "";
 
 		_c_this.server = server;
 }
@@ -1407,6 +1437,27 @@ CoreModule.FileSystemBucket.prototype.registerBucket = function (bucket) {var _c
 
 /*i async*/CoreModule.FileSystemBucket.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
+
+CoreModule.Algolia = function (server) {var _c_this = this;
+	this.firestore = null;
+
+	this.route = "adapter.search.algolia";
+
+	this.server = null;
+
+	this.adapterKey = "";
+
+		_c_this.server = server;
+}
+
+/*i async*/CoreModule.Algolia.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/CoreModule.Algolia.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+CoreModule.Algolia.prototype.collection = function (name) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return new Websom.Adapters.Database.Collection(_c_this, name);}
 
 
 module.exports = CoreModule.Module;
