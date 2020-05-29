@@ -517,6 +517,7 @@ class Websom.Server {
 		if (apiPass == false) {
 			// Handle routes
 
+			req.code(404);
 			req.end("No endpoint here...");
 		}
 	}
