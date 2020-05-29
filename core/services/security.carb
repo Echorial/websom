@@ -154,6 +154,22 @@ class Websom.Services.Security inherits Websom.Service {
 					}
 				}
 			}
+		}else{
+			let sessionRole = req.session.get("security_role");
+
+			if (sessionRole != null) {
+				if (permission.user)
+					return true;
+				
+				if (sessionRole == "admin")
+					return true;
+
+				if (permission.author and sessionRole == "author")
+					return true;
+
+				if (permission.moderator and sessionRole == "moderator")
+					return true;
+			}
 		}
 
 		return false;

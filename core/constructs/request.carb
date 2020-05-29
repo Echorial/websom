@@ -231,6 +231,14 @@ class Websom.Request {
 		this.userCache = this.server.userSystem.getUserFromRequest(this);
 		return this.userCache;
 	}
+
+	void grantSessionRole(string role) {
+		this.session.set("security_role", role);
+	}
+
+	void revokeSessionRole() {
+		this.session.delete("security_role");
+	}
 }
 
 class Websom.Session {
