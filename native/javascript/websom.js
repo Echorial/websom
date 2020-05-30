@@ -492,6 +492,7 @@ Websom.Server.prototype.startAPI = function (port) {var _c_this = this; var _c_r
 			}
 		if (apiPass == false) {
 /*async*/
+			req.code(404);
 			(await req.end/* async call */("No endpoint here..."));
 			}}
 
@@ -905,7 +906,8 @@ Websom.Services.API = function (server) {var _c_this = this;
 Websom.Services.API.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.registerEndpointHandler("select", new Websom.SelectHandler(_c_this.server));
 		_c_this.registerEndpointHandler("insert", new Websom.InsertHandler(_c_this.server));
-		_c_this.registerEndpointHandler("delete", new Websom.DeleteHandler(_c_this.server));}
+		_c_this.registerEndpointHandler("delete", new Websom.DeleteHandler(_c_this.server));
+		_c_this.registerEndpointHandler("search", new Websom.SearchHandler(_c_this.server));}
 
 Websom.Services.API.prototype.registerEndpointHandler = function (key, handler) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.handlers[key] = handler;}
@@ -4354,6 +4356,23 @@ Websom.Services.Security.prototype.verify = function (callback) {var _c_this = t
 						}
 					}
 				}
+			}else{
+/*async*/
+				var sessionRole = (await req.session.get/* async call */("security_role"));
+				if (sessionRole != null) {
+					if (permission.user) {
+						return true;
+						}
+					if (sessionRole == "admin") {
+						return true;
+						}
+					if (permission.author && sessionRole == "author") {
+						return true;
+						}
+					if (permission.moderator && sessionRole == "moderator") {
+						return true;
+						}
+					}
 			}
 		return false;}
 
@@ -8711,6 +8730,14 @@ Websom.Request.prototype.getUser = function (callback) {var _c_this = this; var 
 		_c_this.userCache = (await _c_this.server.userSystem.getUserFromRequest/* async call */(_c_this));
 		return _c_this.userCache;}
 
+/*i async*/Websom.Request.prototype.grantSessionRole = async function (role) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.session.set/* async call */("security_role", role));}
+
+/*i async*/Websom.Request.prototype.revokeSessionRole = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.session.delete/* async call */("security_role"));}
+
 Websom.Session = function (req) {var _c_this = this;
 	this.data = {};
 
@@ -8977,6 +9004,14 @@ Websom.SinkRequest.prototype.getUser = function (callback) {var _c_this = this; 
 		_c_this.cachedUser = true;
 		_c_this.userCache = (await _c_this.server.userSystem.getUserFromRequest/* async call */(_c_this));
 		return _c_this.userCache;}
+
+/*i async*/Websom.SinkRequest.prototype.grantSessionRole = async function (role) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.session.set/* async call */("security_role", role));}
+
+/*i async*/Websom.SinkRequest.prototype.revokeSessionRole = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.session.delete/* async call */("security_role"));}
 
 Websom.Response = function () {var _c_this = this;
 	this.code = 200;
@@ -11046,6 +11081,10 @@ Websom.Adapters.Database.Collection = function (database, name) {var _c_this = t
 
 	this.appliedSchema = null;
 
+	this.searchable = false;
+
+	this.replicatedSearchFields = null;
+
 	this.name = "";
 
 	this.entityTemplate = null;
@@ -11065,6 +11104,10 @@ Websom.Adapters.Database.Collection = function (database, name) {var _c_this = t
 		entity.id = document.id;
 		(await entity.loadFromMap/* async call */(document.data()));
 		return entity;}
+
+Websom.Adapters.Database.Collection.prototype.enableSearching = function (fields) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.searchable = true;
+		_c_this.replicatedSearchFields = fields;}
 
 Websom.Adapters.Database.Collection.prototype.makeDocumentFromMap = function (id, data) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
@@ -11688,16 +11731,16 @@ Websom.Adapters.Search.Adapter = function (server) {var _c_this = this;
 		_c_this.server = server;
 }
 
-Websom.Adapters.Search.Adapter.prototype.initializeCollection = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Adapters.Search.Adapter.prototype.initializeCollection = async function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
-Websom.Adapters.Search.Adapter.prototype.insertDocument = function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Adapters.Search.Adapter.prototype.insertDocument = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
-Websom.Adapters.Search.Adapter.prototype.updateDocument = function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Adapters.Search.Adapter.prototype.updateDocument = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
-Websom.Adapters.Search.Adapter.prototype.search = function (collection, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Adapters.Search.Adapter.prototype.search = async function (collection, query) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
 /*i async*/Websom.Adapters.Search.Adapter.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -12246,23 +12289,13 @@ Websom.DeleteHandler = function (server) {var _c_this = this;
 			}
 		return query;}
 
-/*i async*/Websom.DeleteHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.DeleteHandler.prototype.exposeDocuments = async function (cir, req, returnFields, docs) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		var collection = cir.collection.collection;
-		var res = {};
-		res["status"] = "success";
-		res["message"] = "Query successful!";
 		var output = [];
-		var results = (await query.get/* async call */());
-		var returnFields = req.body["fields"];
-		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+		for (var i = 0; i < docs.length; i++) {
 /*async*/
-			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
-			return null;
-			}
-		for (var i = 0; i < results.documents.length; i++) {
-/*async*/
-			var doc = results.documents[i];
+			var doc = docs[i];
 			var mp = {};
 			if (cir.reads.length > 0) {
 /*async*/
@@ -12299,6 +12332,22 @@ Websom.DeleteHandler = function (server) {var _c_this = this;
 				}
 			output.push(mp);
 			}
+		return output;}
+
+/*i async*/Websom.DeleteHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var res = {};
+		res["status"] = "success";
+		res["message"] = "Query successful!";
+		var results = (await query.get/* async call */());
+		var returnFields = req.body["fields"];
+		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
+			return null;
+			}
+		var output = (await _c_this.exposeDocuments/* async call */(cir, req, returnFields, results.documents));
 		res["documents"] = output;
 		cir.trigger("success", req, results.documents);
 		req.header("Content-Type", "application/json");
@@ -12431,23 +12480,38 @@ Websom.SearchHandler = function (server) {var _c_this = this;
 
 /*i async*/Websom.SearchHandler.prototype.fulfill = async function (cir, req) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
-		var filterName = req.body["filter"];
-		if ((typeof filterName == 'object' ? (Array.isArray(filterName) ? 'array' : 'map') : (typeof filterName == 'number' ? 'float' : typeof filterName)) != "string") {
-			filterName = "default";
-			}
-		var filter = cir.findFilter(filterName);
-		if (filter == null) {
+		if (_c_this.server.database.search != null) {
 /*async*/
-			(await req.endWithError/* async call */("Unknown filter provided"));
-			return null;
-			}
-		var collection = cir.collection.collection;
-		var query = collection.select();
-		var out = (await _c_this.buildQuery/* async call */(cir, filter, req, query));
-		if (out == null) {
-			return null;
-			}
-		(await _c_this.executeQuery/* async call */(cir, filter, req, query));}
+			var res = {};
+			var q = new Websom.Adapters.Search.Query("");
+			var docs = (await _c_this.server.database.search.search/* async call */(cir.collection.collection, q));
+			res["status"] = "success";
+			res["message"] = "Query successful!";
+			var mp = {};
+			mp["*"] = true;
+			res["documents"] = (await _c_this.exposeDocuments/* async call */(cir, req, mp, docs.unsafeDocuments));
+			req.header("Content-Type", "application/json");
+			(await req.end/* async call */(Websom.Json.encode(res)));
+			}else{
+/*async*/
+				var filterName = req.body["filter"];
+				if ((typeof filterName == 'object' ? (Array.isArray(filterName) ? 'array' : 'map') : (typeof filterName == 'number' ? 'float' : typeof filterName)) != "string") {
+					filterName = "default";
+					}
+				var filter = cir.findFilter(filterName);
+				if (filter == null) {
+/*async*/
+					(await req.endWithError/* async call */("Unknown filter provided"));
+					return null;
+					}
+				var collection = cir.collection.collection;
+				var query = collection.select();
+				var out = (await _c_this.buildQuery/* async call */(cir, filter, req, query));
+				if (out == null) {
+					return null;
+					}
+				(await _c_this.executeQuery/* async call */(cir, filter, req, query));
+			}}
 
 /*i async*/Websom.SearchHandler.prototype.buildQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
@@ -12557,23 +12621,13 @@ Websom.SearchHandler = function (server) {var _c_this = this;
 			}
 		return query;}
 
-/*i async*/Websom.SearchHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.SearchHandler.prototype.exposeDocuments = async function (cir, req, returnFields, docs) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		var collection = cir.collection.collection;
-		var res = {};
-		res["status"] = "success";
-		res["message"] = "Query successful!";
 		var output = [];
-		var results = (await query.get/* async call */());
-		var returnFields = req.body["fields"];
-		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+		for (var i = 0; i < docs.length; i++) {
 /*async*/
-			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
-			return null;
-			}
-		for (var i = 0; i < results.documents.length; i++) {
-/*async*/
-			var doc = results.documents[i];
+			var doc = docs[i];
 			var mp = {};
 			if (cir.reads.length > 0) {
 /*async*/
@@ -12610,6 +12664,22 @@ Websom.SearchHandler = function (server) {var _c_this = this;
 				}
 			output.push(mp);
 			}
+		return output;}
+
+/*i async*/Websom.SearchHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var res = {};
+		res["status"] = "success";
+		res["message"] = "Query successful!";
+		var results = (await query.get/* async call */());
+		var returnFields = req.body["fields"];
+		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
+			return null;
+			}
+		var output = (await _c_this.exposeDocuments/* async call */(cir, req, returnFields, results.documents));
 		res["documents"] = output;
 		cir.trigger("success", req, results.documents);
 		req.header("Content-Type", "application/json");
@@ -12749,23 +12819,13 @@ Websom.SelectHandler = function (server) {var _c_this = this;
 			}
 		return query;}
 
-/*i async*/Websom.SelectHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.SelectHandler.prototype.exposeDocuments = async function (cir, req, returnFields, docs) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		var collection = cir.collection.collection;
-		var res = {};
-		res["status"] = "success";
-		res["message"] = "Query successful!";
 		var output = [];
-		var results = (await query.get/* async call */());
-		var returnFields = req.body["fields"];
-		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+		for (var i = 0; i < docs.length; i++) {
 /*async*/
-			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
-			return null;
-			}
-		for (var i = 0; i < results.documents.length; i++) {
-/*async*/
-			var doc = results.documents[i];
+			var doc = docs[i];
 			var mp = {};
 			if (cir.reads.length > 0) {
 /*async*/
@@ -12802,6 +12862,22 @@ Websom.SelectHandler = function (server) {var _c_this = this;
 				}
 			output.push(mp);
 			}
+		return output;}
+
+/*i async*/Websom.SelectHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var res = {};
+		res["status"] = "success";
+		res["message"] = "Query successful!";
+		var results = (await query.get/* async call */());
+		var returnFields = req.body["fields"];
+		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
+			return null;
+			}
+		var output = (await _c_this.exposeDocuments/* async call */(cir, req, returnFields, results.documents));
 		res["documents"] = output;
 		cir.trigger("success", req, results.documents);
 		req.header("Content-Type", "application/json");

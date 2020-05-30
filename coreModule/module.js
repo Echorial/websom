@@ -42,6 +42,8 @@ CoreModule.Module = function (server) {var _c_this = this;
 
 	this.media = null;
 
+	this.transientAccessCode = "";
+
 	this.server = null;
 
 	this.baseConfig = null;
@@ -97,6 +99,14 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		var db = _c_this.server.database.central;
 		_c_this.tags = db.collection("tags");
 		_c_this.tags.schema().field("name", "string").field("namespace", "string").field("description", "string").field("color", "string").field("created", "time").field("objects", "int");
+		var fieldsForSearching = [];
+		fieldsForSearching.push("name");
+		fieldsForSearching.push("namespace");
+		fieldsForSearching.push("description");
+		fieldsForSearching.push("color");
+		fieldsForSearching.push("created");
+		fieldsForSearching.push("objects");
+		_c_this.tags.enableSearching(fieldsForSearching);
 		(await _c_this.registerCollection/* async call */(_c_this.tags));
 		_c_this.server.api.interface(_c_this.tags, "/tags").route("/insert").auth(_c_this.dashboardView).executes("insert").write("name").write("namespace").write("description").write("color").setComputed("created", function (req) {
 			return Websom.Time.now();
@@ -137,6 +147,48 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 			data["config"] = _c_this.server.configService.cacheOptions();
 			data["options"] = _c_this.server.configService.getConfiguredOptions();
 			(await ctx.request.endWithData/* async call */(data));
+			});
+		_c_this.server.api.route("/dashboard/access").executes(async function (ctx) {
+/*async*/
+			if (_c_this.server.config.dev) {
+/*async*/
+				var data = {};
+				var str = "";
+				for (var i = 0; i < 4; i++) {
+					str += ((Math.floor(Math.random() * 10)));
+					}
+				_c_this.transientAccessCode = str;
+				console.log("Dev access code requested: " + _c_this.transientAccessCode);
+				(await ctx.request.endWithSuccess/* async call */("Generated"));
+				}else{
+/*async*/
+					(await ctx.request.endWithError/* async call */("Nice try."));
+				}
+			});
+		_c_this.server.api.route("/dashboard/login-with-access-code").input("code").type("string").executes(async function (ctx) {
+/*async*/
+			if (_c_this.server.config.dev) {
+/*async*/
+				if (_c_this.transientAccessCode != "") {
+/*async*/
+					var code = ctx.get("code");
+					if (code == _c_this.transientAccessCode) {
+/*async*/
+						_c_this.transientAccessCode = "";
+						(await ctx.request.grantSessionRole/* async call */("admin"));
+						(await ctx.request.endWithSuccess/* async call */("Success"));
+						}else{
+/*async*/
+							(await ctx.request.endWithError/* async call */("Invalid"));
+						}
+					}else{
+/*async*/
+						(await ctx.request.endWithError/* async call */("Invalid"));
+					}
+				}else{
+/*async*/
+					(await ctx.request.endWithError/* async call */("This feature is only available on dev servers."));
+				}
 			});}
 
 CoreModule.Module.prototype.registerWithServer = function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -262,6 +314,10 @@ CoreModule.LokiCollection = function (database, name) {var _c_this = this;
 	this.database = null;
 
 	this.appliedSchema = null;
+
+	this.searchable = false;
+
+	this.replicatedSearchFields = null;
 
 	this.name = "";
 
@@ -534,6 +590,10 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 		(await entity.loadFromMap/* async call */(document.data()));
 		return entity;}
 
+CoreModule.LokiCollection.prototype.enableSearching = function (fields) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.searchable = true;
+		_c_this.replicatedSearchFields = fields;}
+
 CoreModule.LokiCollection.prototype.schema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.appliedSchema = new Websom.Adapters.Database.Schema(_c_this);
 		return _c_this.appliedSchema;}
@@ -715,6 +775,10 @@ CoreModule.FirestoreCollection = function (database, name) {var _c_this = this;
 	this.database = null;
 
 	this.appliedSchema = null;
+
+	this.searchable = false;
+
+	this.replicatedSearchFields = null;
 
 	this.name = "";
 
@@ -980,6 +1044,10 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 		entity.id = document.id;
 		(await entity.loadFromMap/* async call */(document.data()));
 		return entity;}
+
+CoreModule.FirestoreCollection.prototype.enableSearching = function (fields) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.searchable = true;
+		_c_this.replicatedSearchFields = fields;}
 
 CoreModule.FirestoreCollection.prototype.schema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.appliedSchema = new Websom.Adapters.Database.Schema(_c_this);

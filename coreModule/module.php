@@ -45,6 +45,8 @@ public $corePublic;
 
 public $media;
 
+public $transientAccessCode;
+
 public $server;
 
 public $baseConfig;
@@ -88,6 +90,7 @@ $this->groupCreate = null;
 $this->groupEdit = null;
 $this->corePublic = null;
 $this->media = null;
+$this->transientAccessCode = "";
 $this->server = null;
 $this->baseConfig = null;
 $this->containers = [];
@@ -128,15 +131,23 @@ function collections() {
 $db = $this->server->database->central;
 $this->tags = $db->collection("tags");
 $this->tags->schema()->field("name", "string")->field("namespace", "string")->field("description", "string")->field("color", "string")->field("created", "time")->field("objects", "int");
+$fieldsForSearching = [];
+array_push($fieldsForSearching, "name");
+array_push($fieldsForSearching, "namespace");
+array_push($fieldsForSearching, "description");
+array_push($fieldsForSearching, "color");
+array_push($fieldsForSearching, "created");
+array_push($fieldsForSearching, "objects");
+$this->tags->enableSearching($fieldsForSearching);
 $this->registerCollection($this->tags);
-$this->server->api->_c__interface($this->tags, "/tags")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("namespace")->write("description")->write("color")->setComputed("created", function ($req) use (&$db, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("namespace", "==")->route("/search")->auth($this->corePublic)->executes("search")->read("*")->filter("default")->field("name", "==")->field("namespace", "==")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("id", "==");
+$this->server->api->_c__interface($this->tags, "/tags")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("namespace")->write("description")->write("color")->setComputed("created", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("namespace", "==")->route("/search")->auth($this->corePublic)->executes("search")->read("*")->filter("default")->field("name", "==")->field("namespace", "==")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("id", "==");
 $this->objects = $db->collection("websom_bucket_objects");
 $this->objects->schema()->field("filename", "string")->field("bucket", "string")->field("acl", "string")->field("uploaded", "boolean")->field("token", "string")->field("sizeLimit", "int");
 $this->registerCollection($this->objects);
 $this->mediaFiles = $db->collection("websom_media");
 $this->mediaFiles->schema()->field("name", "string")->field("file", "string")->field("size", "int")->field("created", "time")->field("owner", "string")->field("type", "string");
 $this->registerCollection($this->mediaFiles);
-$this->server->api->_c__interface($this->mediaFiles, "/media")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("file")->write("size")->write("type")->setComputed("user", function ($req) use (&$db, &$confirmationSchema) {return $req->user()->id;})->setComputed("created", function ($req) use (&$db, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->on("success", function ($req, $docs) use (&$db, &$confirmationSchema) {for ($i = 0; $i < count($docs); $i++) {
+$this->server->api->_c__interface($this->mediaFiles, "/media")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("file")->write("size")->write("type")->setComputed("user", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return $req->user()->id;})->setComputed("created", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->on("success", function ($req, $docs) use (&$db, &$fieldsForSearching, &$confirmationSchema) {for ($i = 0; $i < count($docs); $i++) {
 $doc = _c_lib__arrUtils::readIndex($docs, $i);
 $this->media->deleteObject($doc->get("name"));}})->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->order("*", "dsc")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("file", "==");
 $this->confirmations = $db->collection("confirmations");
@@ -145,13 +156,32 @@ $this->registerCollection($this->confirmations);
 $this->groups = $db->collection("groups");
 Websom_Group::applySchema($this->groups);
 $this->registerCollection($this->groups);
-$this->server->api->_c__interface($this->groups, "/groups")->route("/create")->auth($this->groupCreate)->executes("insert")->write("name")->write("description")->write("permissions")->write("rules")->write("public")->write("user")->setComputed("created", function ($req) use (&$db, &$confirmationSchema) {return Websom_Time::now();})->route("/find")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->order("created", "dsc", true)->route("/read")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->field("id", "==");
-$this->server->api->route("/dashboard/view")->auth($this->dashboardView)->executes(function ($ctx) use (&$db, &$confirmationSchema) {$data = new _carb_map();
+$this->server->api->_c__interface($this->groups, "/groups")->route("/create")->auth($this->groupCreate)->executes("insert")->write("name")->write("description")->write("permissions")->write("rules")->write("public")->write("user")->setComputed("created", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return Websom_Time::now();})->route("/find")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->order("created", "dsc", true)->route("/read")->auth($this->groupRead)->executes("select")->read("*")->filter("default")->field("id", "==");
+$this->server->api->route("/dashboard/view")->auth($this->dashboardView)->executes(function ($ctx) use (&$db, &$fieldsForSearching, &$confirmationSchema) {$data = new _carb_map();
 $data["website"] = $this->server->config->name;
 $data["dev"] = $this->server->config->dev;
 $data["config"] = $this->server->configService->cacheOptions();
 $data["options"] = $this->server->configService->getConfiguredOptions();
-$ctx->request->endWithData($data);});}
+$ctx->request->endWithData($data);});
+$this->server->api->route("/dashboard/access")->executes(function ($ctx) use (&$db, &$fieldsForSearching, &$confirmationSchema) {if ($this->server->config->dev) {
+$data = new _carb_map();
+$str = "";
+for ($i = 0;$i < 4;$i++) {
+$str .= (floor((mt_rand() / mt_getrandmax()) * 10));}
+$this->transientAccessCode = $str;
+;
+$ctx->request->endWithSuccess("Generated");}else{
+$ctx->request->endWithError("Nice try.");}});
+$this->server->api->route("/dashboard/login-with-access-code")->input("code")->type("string")->executes(function ($ctx) use (&$db, &$fieldsForSearching, &$confirmationSchema) {if ($this->server->config->dev) {
+if ($this->transientAccessCode != "") {
+$code = $ctx->get("code");
+if ($code == $this->transientAccessCode) {
+$this->transientAccessCode = "";
+$ctx->request->grantSessionRole("admin");
+$ctx->request->endWithSuccess("Success");}else{
+$ctx->request->endWithError("Invalid");}}else{
+$ctx->request->endWithError("Invalid");}}else{
+$ctx->request->endWithError("This feature is only available on dev servers.");}});}
 
 function registerWithServer() {
 $adapter = new CoreModule_Confirmation($this->server);
@@ -233,6 +263,7 @@ return $bridges;}
 //Relative Stat
 //Relative primitive
 //Relative object
+//Relative Math
 //Relative array
 //Relative bool
 //Relative byte
@@ -264,6 +295,10 @@ public $database;
 
 public $appliedSchema;
 
+public $searchable;
+
+public $replicatedSearchFields;
+
 public $name;
 
 public $entityTemplate;
@@ -272,6 +307,8 @@ function __construct($database, $name) {
 $this->lokiCollection = null;
 $this->database = null;
 $this->appliedSchema = null;
+$this->searchable = false;
+$this->replicatedSearchFields = null;
 $this->name = "";
 $this->entityTemplate = null;
 
@@ -393,6 +430,10 @@ $entity->collection = $this;
 $entity->id = $document->id;
 $entity->loadFromMap($document->data());
 return $entity;}
+
+function enableSearching($fields) {
+$this->searchable = true;
+$this->replicatedSearchFields = $fields;}
 
 function schema() {
 $this->appliedSchema = new Websom_Adapters_Database_Schema($this);
@@ -553,6 +594,10 @@ public $database;
 
 public $appliedSchema;
 
+public $searchable;
+
+public $replicatedSearchFields;
+
 public $name;
 
 public $entityTemplate;
@@ -561,6 +606,8 @@ function __construct($database, $name) {
 $this->firestoreCollection = null;
 $this->database = null;
 $this->appliedSchema = null;
+$this->searchable = false;
+$this->replicatedSearchFields = null;
 $this->name = "";
 $this->entityTemplate = null;
 
@@ -680,6 +727,10 @@ $entity->collection = $this;
 $entity->id = $document->id;
 $entity->loadFromMap($document->data());
 return $entity;}
+
+function enableSearching($fields) {
+$this->searchable = true;
+$this->replicatedSearchFields = $fields;}
 
 function schema() {
 $this->appliedSchema = new Websom_Adapters_Database_Schema($this);
