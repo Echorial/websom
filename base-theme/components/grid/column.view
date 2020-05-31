@@ -96,6 +96,19 @@ style {
 			.define-shift(shift, 1);
 		}
 
+		&.purpose-full {
+			flex: 1;
+		}
+
+		&.purpose-navigation {
+			max-width: 300px;
+			width: 300px;
+
+			@media @small {
+				max-width: 0px;
+			}
+		}
+
 		& > .card:not(:first-child) {
 			margin-top: var(--base-size);
 		}
