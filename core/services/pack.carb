@@ -9,17 +9,17 @@ class Websom.Services.Pack inherits Websom.Service {
 		
 		var pack = new Websom.Pack(this.server, config["name"], packDir, config);
 		
-		#if platform.javascript
+		/*#if platform.javascript
 			if (this.server.config.dev)
 				pack.buildAndSave(void (string err) => {
 					if (err.length > 0)
 						that.server.status.inherit(Websom.Status.singleError("Pack." + pack.name, err));
 				});
-		#end if
+		#end if*/
 
 		this.packs.push(pack);
 
-		native javascript {
+		/*native javascript {
 			if (this.server.config.dev) {
 				var fs = require("fs");
 				console.log("Setup watch on pack " + pack.name);
@@ -37,7 +37,7 @@ class Websom.Services.Pack inherits Websom.Service {
 					});
 				});
 			}
-		}
+		}*/
 	}
 
 	Websom.Status reload(string path) {
@@ -55,10 +55,10 @@ class Websom.Services.Pack inherits Websom.Service {
 			
 			var packDir = path + packs[i];
 			if (FileSystem.isDir(packDir)) {
-				var configFile = packDir + "/pack.json";
+				var configFile = packDir + "/package.json";
 
 				if (FileSystem.exists(configFile) == false)
-					return Websom.Status.singleError("Servics.Pack", "Unable to find config for pack " + packDir);
+					return Websom.Status.singleError("Services.Pack", "Unable to find config for pack " + packDir);
 
 				var map config = Websom.Json.parse(FileSystem.readSync(configFile, "utf8"));
 				var status = this.load(packDir, config);

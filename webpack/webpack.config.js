@@ -1,4 +1,5 @@
 const path = require("path");
+const fs = require("fs");
 const VueLoaderPlugin = require("vue-loader/lib/plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
@@ -9,6 +10,36 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 
 	let gatherViews = () => {
 		let files = [];
+
+		for (let [i, pack] of websomServer().pack.packs.entries()) {
+			let dirs = [];
+			let collectFiles = (dir) => {
+				dirs.push({path: dir});
+
+				for (let f of fs.readdirSync(path.resolve(pack.root, dir))) {
+					if (f == "." || f == "..")
+						continue;
+					
+					if (fs.lstatSync(path.resolve(pack.root, dir + "/" + f)).isDirectory()) {
+						collectFiles(dir + "/" + f);
+					}
+				}
+			};
+			collectFiles("./views");
+			
+			let resources = websomServer().resource.compile(pack.name, pack.root, dirs);
+
+			for (let resource of resources) {
+				if (resource.type == "view") {
+					files.push({
+						file: resource.file,
+						type: "view",
+						package: pack.name,
+						packageType: "package"
+					});
+				}
+			}
+		}
 
 		for (let [i, mod] of websomServer().module.modules.entries()) {
 			let resources = websomServer().resource.compile(mod.name, mod.root, mod.baseConfig.resources);
