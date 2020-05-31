@@ -179,7 +179,14 @@ export async function createApp (api, context) {
 		}
 	}
 
-	if (!store.state.websom.data.navigation.navbar.find((v) => v.props.name == "login-bar"))
+	if (ssr || store.state.websom.data.navigation.navbar.length == 0)
+		if (store.state.websom.data.navigation.config.items) {
+			for (let item of store.state.websom.data.navigation.config.items) {
+				store.commit("addNavItem", item);
+			}
+		}
+
+	if (!store.state.websom.data.navigation.navbar.find((v) => v.props ? v.props.name == "login-bar" : false))
 		store.commit("addNavItem",
 			{
 				type: "component",
