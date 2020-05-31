@@ -2693,33 +2693,7 @@ Websom.Services.Pack.prototype.load = function (packDir, config) {var _c_this = 
 			return Websom.Status.singleError("Pack", "Must provide name in pack config " + packDir);
 			}
 		var pack = new Websom.Pack(_c_this.server, config["name"], packDir, config);
-		if (_c_this.server.config.dev) {
-			pack.buildAndSave(function (err) {
-				if (err.length > 0) {
-					that.server.status.inherit(Websom.Status.singleError("Pack." + pack.name, err));
-					}
-				});
-			}
-		_c_this.packs.push(pack);
-		
-			if (this.server.config.dev) {
-				var fs = require("fs");
-				console.log("Setup watch on pack " + pack.name);
-				
-				fs.watch(packDir, {recursive: true}, (type, file) => {
-					console.log("Saw change on " + file + ". Rebuilding pack");
-					var newConfig = JSON.parse(fs.readFileSync(packDir + "/pack.json", "utf8"))
-					pack.config = newConfig;
-					pack.buildAndSave((err) => {
-						if (err.length > 0) {
-							this.server.status.inherit(Websom.Status.singleError("Pack." + pack.name, err));
-							console.log(err);
-						}else
-							console.log("No errors");
-					});
-				});
-			}
-		}
+		_c_this.packs.push(pack);}
 
 Websom.Services.Pack.prototype.reload = function (path) {var _c_this = this; var _c_root_method_arguments = arguments;
 		if (_c_this.server.config.dev) {
@@ -2735,9 +2709,9 @@ Websom.Services.Pack.prototype.reload = function (path) {var _c_this = this; var
 				}
 			var packDir = path + packs[i];
 			if (Oxygen.FileSystem.isDir(packDir)) {
-				var configFile = packDir + "/pack.json";
+				var configFile = packDir + "/package.json";
 				if (Oxygen.FileSystem.exists(configFile) == false) {
-					return Websom.Status.singleError("Servics.Pack", "Unable to find config for pack " + packDir);
+					return Websom.Status.singleError("Services.Pack", "Unable to find config for pack " + packDir);
 					}
 				var config = Websom.Json.parse(Oxygen.FileSystem.readSync(configFile, "utf8"));
 				var status = _c_this.load(packDir, config);
