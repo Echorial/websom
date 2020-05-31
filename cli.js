@@ -115,6 +115,99 @@ server.startDevelopmentServer().then(() => {
 
 	if (args[0] == "locate") {
 		console.log(chalk.green("[FOUND] " + website));
+	}else if (args[0] == "create") {
+		let type = args[1];
+		let name = args[2];
+
+		if (!(type == "module" || type == "theme") || !name) {
+			console.log("Missing name or type. websom create <theme|module> <name>");
+			return;
+		}
+
+		let packagePath = path.resolve(website, "./website/" + type + "s/" + name);
+
+		if (fs.existsSync(packagePath)) {
+			console.log("A " + type + " with that name already exists.");
+			return;
+		}
+
+		fs.mkdirSync(packagePath);
+		fs.writeFileSync(packagePath + "/" + type + ".json", JSON.stringify({
+			"name": name,
+			"id": name.toLowerCase(),
+			"key": name.toLowerCase(),
+			"resources": [
+				{
+					"path": "./src/client/components"
+				},
+				{
+					"path": "./src/client/state"
+				},
+				{
+					"path": "./src/client/script"
+				},
+				{
+					"path": "./src/client/style"
+				}
+			],
+			"npm": {},
+			"composer": {},
+			"adapters": {},
+			"config": {}
+		}, null, "\t"));
+
+		fs.writeFileSync(packagePath + "/package.json", JSON.stringify({
+			"name": name.toLowerCase(),
+			"version": "1.0.0",
+			"description": "",
+			"main": type + ".js",
+			"scripts": {
+				"test": "echo \"Error: no test specified\" && exit 1"
+			},
+			"author": "",
+			"license": "",
+			"websom": {
+				"type": type
+			}
+		}, null, "\t"));
+
+		fs.mkdirSync(packagePath + "/src");
+		fs.mkdirSync(packagePath + "/src/client");
+		fs.mkdirSync(packagePath + "/src/client/components");
+		fs.mkdirSync(packagePath + "/src/client/state");
+		fs.mkdirSync(packagePath + "/src/client/script");
+		fs.mkdirSync(packagePath + "/src/client/style");
+
+		if (type == "module") {
+			fs.mkdirSync(packagePath + "/src/server");
+			fs.mkdirSync(packagePath + "/src/server/adapters");
+			fs.mkdirSync(packagePath + "/src/server/entities");
+			fs.mkdirSync(packagePath + "/src/server/logic");
+		}
+
+		let classes = {
+			module: "Module",
+			theme: "Theme"
+		};
+
+		if (type == "module")
+		fs.writeFileSync(packagePath + "/" + name + ".carb", `class ${name} extends Websom.${classes[type]} {
+	override Websom.Status start() {
+		// Server start.
+	}
+
+	override void permissions() {
+		// Register your module permissions here.
+		// See docs here.
+	}
+
+	override void collections() {
+		// Create your collections and APIs here.
+		// See docs here.
+	}
+}`);
+
+		console.log(chalk.green("[CREATED] " + name));
 	}else{
 		(async () => {
 			let server = new Server({
