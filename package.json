@@ -58,7 +58,7 @@
 		"mini-css-extract-plugin": "^0.9.0",
 		"ncp": "^2.0.0",
 		"normalize.css": "^8.0.1",
-		"npm": "^6.14.0",
+		"npm": "^6.14.5",
 		"npm-programmatic": "0.0.12",
 		"open": "^7.0.0",
 		"optimize-css-assets-webpack-plugin": "^5.0.3",
