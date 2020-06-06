@@ -90,6 +90,26 @@ class Websom.Services.Config inherits Websom.Service {
 
 	override Websom.Status start() {
 		this.global = this.server.config.configOverrides + "/global.json";
+
+		native javascript {
+			if (this.server.config.dev) {
+				const fs = require("fs");
+
+				let throttle = Date.now();
+
+				fs.watch(this.server.config.configOverrides, {recursive: true}, (type, file) => {
+					if (throttle > (Date.now() - 2000)) {
+						console.log("Throttled " + type + " on " + file);
+						return;
+					}else{
+						throttle = Date.now();
+					}
+
+					if (this.server.restartHandler)
+						this.server.restartHandler();
+				});
+			}
+		}
 	}
 
 	// For debugging
