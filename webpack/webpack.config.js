@@ -6,6 +6,7 @@ const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = (websomServer, deployBundle, production, isServerBundle) => {
+
 	deployBundle = deployBundle || "default";
 
 	let gatherViews = () => {
@@ -275,7 +276,8 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 		context: path.resolve(__dirname),
 		resolve: {
 			modules: [
-				path.resolve(__dirname, "../node_modules")
+				path.resolve(__dirname, "../node_modules"),
+				path.resolve(websomServer().config.root, "../node_modules")
 			],
 			alias: {
 				Util: path.resolve(__dirname, './')
