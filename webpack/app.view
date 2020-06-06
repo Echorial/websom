@@ -30,7 +30,7 @@ template {
 
 		<toaster ref="toaster" />
 
-		<link rel="stylesheet" :href="fonts" as="style" onload="this.onload=null; this.rel = 'stylesheet'">
+		<link v-if="dataLoaded" rel="stylesheet" :href="fonts" as="style" onload="this.onload=null; this.rel = 'stylesheet'">
 	</div>
 }
 
@@ -103,12 +103,20 @@ script {
 
 					for (let key in families) {
 						loads.push(`${key}:${Object.keys(families[key]).join(",")}`);
+
+						if (families[key.toLowerCase()]) {
+							console.info("There seem to be two fonts with the same name. Google fonts are case sensitive. " + key + " vs " + key.toLowerCase());
+						}
 					}
 
 					return `https://fonts.googleapis.com/css?family=${loads.join("|")}&display=swap`;
 				}else{
 					console.error("Custom font loaders are not working yet.");
 				}
+			},
+			dataLoaded() {
+				//console.log(this.$store.state.websom.data.config);
+				return this.$store.state.websom.data.config;
 			}
 		},
 		methods: {
