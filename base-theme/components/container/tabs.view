@@ -4,14 +4,14 @@ info {
 }
 
 template {
-	<div class="tabs" :style="style">
-		<div class="tabs-bar">
-			<div v-for="(vnode, i) in $slots.tab" :style="{'--tab-index': i}" v-if="vnode.tag" class="tabs-tab" :class="{'tabs-active': _selected == i}" :key="i" :data-index="i" @click="select($event, i)" :ref="'tabs' + i">
+	<div class="tabs">
+		<div class="tabs-bar" :style="cStyle">
+			<div v-for="(vnode, i) in tabSlots" :style="{'--tab-index': i}" v-if="vnode.tag" class="tabs-tab" :class="{'tabs-active': mySelected == i}" :key="i" :data-index="i" @click="select($event, i)" :ref="'tabs' + i">
 				<vnode :vnode="vnode" />
 			</div>
 		</div>
-		<div class="tabs-body">
-			<div v-for="(vnode, i) in $slots.body" :style="{'--tab-index': i}" v-if="vnode.tag" class="tab-body" :class="{'tabs-active': _selected == i}" :key="i" :data-index="i" :ref="'body' + i">
+		<div class="tabs-body" :style="cStyle">
+			<div v-for="(vnode, i) in bodySlots" :style="{'--tab-index': i}" v-if="vnode.tag" class="tab-body" :class="{'tabs-active': mySelected == i}" :key="i" :data-index="i" :ref="'body' + i">
 				<vnode :vnode="vnode" />
 			</div>
 		</div>
@@ -28,24 +28,48 @@ script {
 		},
 		data() {
 			return {
-				_selected: this.selected
+				mySelected: this.selected || 0,
+				totalTabs: 0,
+				cStyle: {
+					'--tabs-selected-tab': 0,
+					'--tabs-total-tabs': 0
+				}
 			};
+		},
+		created() {
+			this.mySelected = this.selected;
 		},
 		methods: {
 			select(e, i) {
-				this._selected = i;
+				this.mySelected = i;
+				console.log(this.mySelected);
+				this.computeStyle();
+			},
+			computeTabs() {
+				console.log(this.$slots.tab);
+				if (this.$slots.tab) {
+					this.totalTabs = this.$slots.tab.filter((a) => a.tag).length;
+				}
+				console.log(this.totalTabs);
+				this.computeStyle();
+			},
+			computeStyle() {
+				this.cStyle['--tabs-selected-tab'] = this.mySelected;
+				this.cStyle['--tabs-total-tabs'] = this.totalTabs;
 			}
 		},
 		computed: {
-			totalTabs() {
-				return this.$slots.tab.filter((a) => a.tag).length;
+			tabSlots() {
+				if (this.$slots.tab)
+					return this.$slots.tab.filter((a) => a.tag);
 			},
-			style() {
-				return `
-					--tabs-total-tabs: ${this.totalTabs};
-					--tabs-selected-tab: ${this._selected};
-				`;
+			bodySlots() {
+				if (this.$slots.body)
+					return this.$slots.body.filter((a) => a.tag);
 			}
+		},
+		mounted() {
+			this.computeTabs();
 		}
 	}
 }
@@ -59,6 +83,8 @@ style {
 			display: flex;
 			flex-direction: row;
 
+			min-height: 36px;
+
 			height: var(--base-height);
 
 			.tabs-tab {
@@ -71,7 +97,7 @@ style {
 				transition: var(--transition-color) var(--transition-easing);
 
 				&:hover, &.tabs-active {
-					background: var(--mute);
+					background: rgba(127, 127, 127, 0.2);
 				}
 			}
 		}
@@ -88,6 +114,8 @@ style {
 
 				position: relative;
 				left: calc(var(--tab-index) * -100%);
+
+				overflow: auto;
 
 				&.tabs-active {
 					opacity: 1;
