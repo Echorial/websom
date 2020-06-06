@@ -1,0 +1,40 @@
+info {
+	"name": "vertical-nav",
+	"type": "component"
+}
+
+template {
+	<div class="vertical-nav">
+		<slot />
+	</div>
+}
+
+style {
+	.vertical-nav {
+		height: 100%;
+
+		&.sticky {
+			position: sticky;
+			height: calc(100vh - var(--nav-height));
+			top: var(--nav-height);
+		}
+
+		.nav-item {
+			min-height: var(--base-height);
+			background: var(--background);
+			color: var(--background-contrast);
+
+			transition: var(--transition);
+
+			&:hover {
+				background: var(--primary-dark);
+				color: var(--contrast);
+			}
+			
+			&.router-link-exact-active {
+				background: var(--primary);
+				color: var(--contrast);
+			}
+		}
+	}
+}
