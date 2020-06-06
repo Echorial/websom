@@ -5,6 +5,16 @@ class Websom.Services.Module inherits Websom.Service {
 		<void>array watchers = new <void>array();
 	#end if
 
+	#if platform.documentation
+
+		native inline fixed Websom.Module requireMod(string dir, Websom.Server server)
+		{return "new (require(" + context.arguments[0] + " + 'module.js'))(" + context.arguments[1] + ")";}
+
+		native inline fixed bool checkRequire(string dir)
+		{return "require('fs').existsSync(" + context.arguments[0] + " + 'module.js')";}
+
+	#end if
+
 	#if platform.header
 
 		native inline fixed Websom.Module requireMod(string dir, Websom.Server server)
@@ -61,25 +71,36 @@ class Websom.Services.Module inherits Websom.Service {
 				this.buildModule(modDir, config);
 			}
 		#end if
+
 		var that = this;
 		native javascript {
+			const path = require("path");
+			const fs = require("fs");
+			let cwd = path.resolve(this.server.config.configOverrides, "../");
+			/*if (!fs.existsSync(path.resolve(cwd, "package.json"))) {
+				fs.writeFileSync(path.resolve(cwd, "package.json"), `{"name": "websom-website"}`);
+			}*/
+
 			if (this.server.config.dev && false) {
 				if (config.npm) {
-					const path = require("path");
 					const npm = require('npm-programmatic');
 					
 					(async () => {
 						let packages = [];
 
-						for (let package in config.npm)
-							packages.push(package + "@" + config.npm[package]);
+						for (let package in config.npm) {
+							if (!fs.existsSync(cwd + "/node_modules/" + package))
+								packages.push(package + "@" + config.npm[package]);
+						}
 						
-						await npm.install(packages, {
-							cwd: path.resolve(this.server.config.configOverrides, "../"),
-        					save: true
-						});
+						if (packages.length > 0) {
+							await npm.install(packages, {
+								cwd,
+								save: true
+							});
 
-						console.log("Installed dependencies " + JSON.stringify(packages));
+							console.log("Installed dependencies " + JSON.stringify(packages));
+						}
 					})();
 				}
 
@@ -87,14 +108,13 @@ class Websom.Services.Module inherits Websom.Service {
 					for (let package in config.composer) {
 						const cp = require('child_process');
 						cp.exec("composer require \"" + package + ":" + config.composer[package] + "\"", {cwd: this.server.websomRoot}, (err, stdout, stderr) => {
-							console.log(err || stderr || stdout);
+							//console.log(err || stderr || stdout);
 						});
 					}
 				}
 			}
 
 			if (this.server.config.dev) {
-				var fs = require("fs");
 				let throttle = 0;
 				this.watchers.push(fs.watch(modDir, {recursive: true}, function (type, file) {
 					var ext = file.split(".");
