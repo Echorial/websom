@@ -10,7 +10,7 @@ const targets = {
 	component: {
 		listen(config, event, cb) {
 			document.addEventListener(event, (e) => {
-				if (e.target && ((e.target.closest && e.target.closest("." + config.name)) || (virtualComponents[config.name] && virtualComponents[config.name](e)))) {
+				if (e.target && e.target.closest && ((e.target.closest && e.target.closest("." + config.name)) || (virtualComponents[config.name] && virtualComponents[config.name](e)))) {
 
 					cb(e, e.target.closest("." + config.name) || virtualComponents[config.name](e));
 				}
@@ -20,7 +20,7 @@ const targets = {
 	element: {
 		listen(config, event, cb) {
 			document.addEventListener(event, (e) => {
-				if (e.target && e.target.closest(config.selector)) {
+				if (e.target && e.target.closest && e.target.closest(config.selector)) {
 					cb(e, e.target.closest(config.selector));
 				}
 			}, true);
