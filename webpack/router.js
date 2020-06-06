@@ -59,6 +59,14 @@ export function createRouter (views) {
 				path: "*",
 				component: templatePages["404"].vue
 			}
-		]
+		],
+		scrollBehavior(to, from, savedPosition) {
+			if (document.querySelector(".websom-main-wrap"))
+				document.querySelector(".websom-main-wrap").scrollTo(0, 0);
+			return {
+				x: 0,
+				y: 0
+			};
+		}
 	});
 }
