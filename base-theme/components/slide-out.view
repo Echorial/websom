@@ -93,7 +93,7 @@ script {
 				this.isOpen = false;
 				this.$send("close-shade");
 
-				this.$send("set-css-var", '--slide-out-shift', "translate(0%, 0%)");
+				this.$send("set-css-var", '--slide-out-shift', "");
 			},
 			toggle() {
 				if (this.isOpen)
