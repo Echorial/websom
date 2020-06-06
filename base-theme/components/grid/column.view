@@ -98,6 +98,7 @@ style {
 
 		&.purpose-full {
 			flex: 1;
+			max-width: 100%;
 		}
 
 		&.purpose-navigation {
@@ -106,6 +107,7 @@ style {
 
 			@media @small {
 				max-width: 0px;
+				overflow: hidden;
 			}
 		}
 
