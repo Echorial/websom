@@ -1414,7 +1414,26 @@ Websom.Services.Config.prototype.mergeOptions = function (rawOverrides) {var _c_
 			}}
 
 Websom.Services.Config.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
-		_c_this.global = _c_this.server.config.configOverrides + "/global.json";}
+		_c_this.global = _c_this.server.config.configOverrides + "/global.json";
+		
+			if (this.server.config.dev) {
+				const fs = require("fs");
+
+				let throttle = Date.now();
+
+				fs.watch(this.server.config.configOverrides, {recursive: true}, (type, file) => {
+					if (throttle > (Date.now() - 2000)) {
+						console.log("Throttled " + type + " on " + file);
+						return;
+					}else{
+						throttle = Date.now();
+					}
+
+					if (this.server.restartHandler)
+						this.server.restartHandler();
+				});
+			}
+		}
 
 Websom.Services.Config.prototype.logOptions = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.load();
@@ -2337,23 +2356,33 @@ Websom.Services.Module.prototype.load = function (modDir, config, single) {var _
 			}
 		var that = _c_this;
 		
+			const path = require("path");
+			const fs = require("fs");
+			let cwd = path.resolve(this.server.config.configOverrides, "../");
+			                                                          
+                                                                                       
+      
+
 			if (this.server.config.dev && false) {
 				if (config.npm) {
-					const path = require("path");
 					const npm = require('npm-programmatic');
 					
 					(async () => {
 						let packages = [];
 
-						for (let package in config.npm)
-							packages.push(package + "@" + config.npm[package]);
+						for (let package in config.npm) {
+							if (!fs.existsSync(cwd + "/node_modules/" + package))
+								packages.push(package + "@" + config.npm[package]);
+						}
 						
-						await npm.install(packages, {
-							cwd: path.resolve(this.server.config.configOverrides, "../"),
-        					save: true
-						});
+						if (packages.length > 0) {
+							await npm.install(packages, {
+								cwd,
+								save: true
+							});
 
-						console.log("Installed dependencies " + JSON.stringify(packages));
+							console.log("Installed dependencies " + JSON.stringify(packages));
+						}
 					})();
 				}
 
@@ -2361,14 +2390,13 @@ Websom.Services.Module.prototype.load = function (modDir, config, single) {var _
 					for (let package in config.composer) {
 						const cp = require('child_process');
 						cp.exec("composer require \"" + package + ":" + config.composer[package] + "\"", {cwd: this.server.websomRoot}, (err, stdout, stderr) => {
-							console.log(err || stderr || stdout);
+							                                       
 						});
 					}
 				}
 			}
 
 			if (this.server.config.dev) {
-				var fs = require("fs");
 				let throttle = 0;
 				this.watchers.push(fs.watch(modDir, {recursive: true}, function (type, file) {
 					var ext = file.split(".");
