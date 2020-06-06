@@ -109,7 +109,7 @@ style {
 		display: block !important;
 	}
 
-	.pad-content {
+	html > body #app .pad-content {
 		padding: var(--base-size);
 	}
 
