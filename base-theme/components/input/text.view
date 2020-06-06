@@ -8,8 +8,8 @@ template {
 		<div class="input-text-wrap">
 			<div class="input-text-before"></div>
 			<icon v-if="icon && side != 'right'" :icon="icon" class="input-text-icon start" />
-			<input v-if="type != 'area'" type="text" class="input-text-input" @input="input" v-model="myValue" :type="type"></input>
-			<textarea v-else class="input-text-input" @input="input" v-model="myValue"></textarea>
+			<input v-if="type != 'area'" type="text" class="input-text-input" @input="input" v-model="myValue" :type="type" ref="input"></input>
+			<textarea v-else class="input-text-input" @input="input" v-model="myValue" ref="input"></textarea>
 			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
 			<label class="input-text-placeholder">{{placeholder}}</label>
 			<div class="input-text-after">
@@ -65,6 +65,9 @@ script {
 			};
 		},
 		methods: {
+			giveFocus() {
+				this.$refs.input.focus();
+			},
 			async checkValidation() {
 				if (typeof this.validate == "function") {
 					let res = await this.validate(this.myValue);
