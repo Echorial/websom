@@ -69,7 +69,7 @@ export async function createApp (api, context) {
 				}
 			},
 			title: "Websom Page",
-			metaDescription: "This is a websom page."
+			metaDescription: ""
 		}),
 		actions: {
 			async fetchWebsomData({ commit }) {
@@ -255,7 +255,8 @@ export async function createApp (api, context) {
 		store,
 		websomUtils,
 		injects,
-		overrides
+		overrides,
+		packages: Packages
 	});
 
 	if (!ssr) {

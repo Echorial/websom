@@ -9,11 +9,17 @@ const WebsomVue = {
 		Vue.mixin({
 			created() {
 				this.websom = this.$root.$options.websomUtils;
+				this.websomPackages = this.$root.$options.packages;
 				this.onGlobal = events.bind(this);
 				if (this.$ssrContext) {
 					let t = this.title();
 					if (t) {
 						this.$ssrContext.title = t;
+					}
+
+					let m = this.metaDescription();
+					if (m) {
+						this.$ssrContext.metaDescription = m;
 					}
 				}
 			},
@@ -21,6 +27,19 @@ const WebsomVue = {
 				let t = this.title();
 				if (t)
 					document.title = t;
+
+				let meta = this.metaDescription();
+				if (meta) {
+					let el = document.querySelector(`meta[name="description"]`);
+					if (el) {
+						el.setAttribute("content", meta);
+					}else{
+						el = document.createElement("meta");
+						el.setAttribute("name", "description");
+						el.setAttribute("content", meta);
+						document.head.appendChild(el);
+					}
+				}
 			},
 			unmount() {
 				events.unbind(this);
@@ -29,6 +48,11 @@ const WebsomVue = {
 				title() {
 					if (this.websomView) {
 						return this.websomView.info.title;
+					}
+				},
+				metaDescription() {
+					if (this.websomView) {
+						return this.websomView.info.metaDescription;
 					}
 				}
 			},
