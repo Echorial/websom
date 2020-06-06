@@ -1,0 +1,9 @@
+platform = "documentation.dynamic"
+
+output = "~/Docs"
+
+entry = "websom.carb"
+
+type = "doc"
+
+useOldTemplates = true
