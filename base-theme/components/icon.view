@@ -104,7 +104,9 @@ export default {
 						quote: "quote-right",
 						"list-bulleted": "list-ul",
 						"list-ordered": "list-ol",
-						shipping: "truck"
+						shipping: "truck",
+						day: "sun",
+						night: "moon"
 					},
 					styles: {
 						free: {
@@ -176,7 +178,11 @@ export default {
 						box: "inbox",
 						truck: "local_shipping",
 						shipping: "local_shipping",
-						ruler: "straighten"
+						ruler: "straighten",
+						sun: "wb_sunny",
+						day: "wp_sunny",
+						moon: "brightness_3",
+						night: "brightness_3"
 					},
 					styles: {
 						all: {
@@ -218,7 +224,9 @@ export default {
 						tag: "price-tag",
 						barcode: "barcode-box",
 						box: "archive",
-						shipping: "truck"
+						shipping: "truck",
+						day: "sun",
+						night: "moon"
 					},
 					styles: {
 						all: {
