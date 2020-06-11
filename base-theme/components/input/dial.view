@@ -37,11 +37,13 @@ script {
 			},
 			max: {
 				type: Number,
-				required: true
+				required: true,
+				default: 100
 			},
 			min: {
 				type: Number,
-				required: true
+				required: true,
+				default: 0
 			},
 			format: {
 				type: Function,
