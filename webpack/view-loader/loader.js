@@ -75,8 +75,8 @@ module.exports = async function (source) {
 			if (typeof col == "string") {
 				light = dark = col;
 			}else{
-				light = col.light;
-				dark = col.dark;
+				light = col.light || unsetDefault[k].light || col;
+				dark = col.dark || unsetDefault[k].dark || col;
 			}
 
 			props.push(`@${mapping[k]}Dark: ${dark};`);
