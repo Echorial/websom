@@ -31,27 +31,33 @@ script {
 		props: {
 			value: {
 				type: [Number, String],
-				default: ""
+				default: "",
+				description: "Use this to set the value of the input."
 			},
 			placeholder: {
 				type: String,
-				default: "Input your text"
+				default: "Input your text",
+				description: "The placeholder text."
 			},
 			icon: {
 				type: String,
-				default: ""
+				default: "",
+				description: "The icon to use when rendering. Leave blank for no icon."
 			},
 			side: {
 				type: String,
-				default: "left"
+				default: "left",
+				description: `The alignment of the icon. Accepted values: "left" or "right"`
 			},
 			type: {
 				type: String,
-				default: "text"
+				default: "text",
+				description: `The type of text input. Accepted values: "text", "area", "password", "email", "number", "search"`
 			},
 			validate: {
 				type: [String, Function],
-				default: ""
+				default: "",
+				description: `The function or validator name to use when detecting if a value is malformed. See the validator example for more information.`
 			}
 		},
 		data() {
