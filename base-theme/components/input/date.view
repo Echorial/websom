@@ -72,7 +72,7 @@ script {
 		},
 		data() {
 			let months = ['January', 'Febuary', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
+			
 			return {
 				myValue: this.value || "",
 				year: new Date().getFullYear().toString(),
@@ -110,9 +110,11 @@ script {
 			},
 			parseValue() {
 				let parsed = new Date(this.myValue);
-				this.year = parsed.getFullYear().toString();
-				this.month = this.months[parsed.getMonth()];
-				this.day = parsed.getDate();
+				if (!isNaN(parsed)) {
+					this.year = parsed.getFullYear().toString();
+					this.month = this.months[parsed.getMonth()];
+					this.day = parsed.getDate();
+				}
 			},
 			updateValue() {
 				this.myValue = new Date(this.year, this.months.indexOf(this.month), this.day).toLocaleDateString();
