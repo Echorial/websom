@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<div class="card" :class="{'card-revealed': revealed, 'card-has-reveal fat-action': canReveal, 'fat-action': href}" @click="click">
+	<div class="card" @mouseenter="enter" @mouseleave="leave" :class="{'card-revealed': revealed, 'card-drop-slide-active': dropSlideVisible, 'card-has-reveal fat-action': canReveal, 'fat-action': href, 'card-image-gradient': titlePosition == 'image'}" @click="click">
 		<div class="card-main" @click="open">
 			<div v-if="$slots.image || images.length > 0" class="card-images">
 				<slider v-if="images.length > 0" class="card-images-slider" :images="images" />
@@ -31,6 +31,10 @@ template {
 				<slot class="card-reveal-content" name="reveal" />
 			</div>
 		</div>
+		
+		<div class="card-drop-slide" v-if="canDropSlide">
+			<slot name="drop-slide" />
+		</div>
 	</div>
 }
 
@@ -48,16 +52,25 @@ script {
 			href: {
 				type: String,
 				default: ""
+			},
+			dropSlideTime: {
+				type: Number,
+				default: 300
 			}
 		},
 		data() {
 			return {
-				revealed: false
+				revealed: false,
+				dropSlideTimeout: null,
+				dropSlideVisible: false
 			};
 		},
 		computed: {
 			canReveal() {
 				return !!this.$slots.reveal;
+			},
+			canDropSlide() {
+				return !!this.$slots["drop-slide"];
 			}
 		},
 		methods: {
@@ -71,6 +84,20 @@ script {
 			click() {
 				if (this.href) {
 					this.$router.push(this.href);
+				}
+			},
+			enter() {
+				if (this.canDropSlide)
+					this.dropSlideTimeout = setTimeout(() => {
+						this.dropSlideVisible = true;
+					}, this.dropSlideTime);
+			},
+			leave() {
+				this.dropSlideVisible = false;
+				
+				if (this.dropSlideTimeout) {
+					clearTimeout(this.dropSlideTimeout);
+					this.dropSlideTimeout = null;
 				}
 			}
 		}
@@ -121,6 +148,41 @@ style {
 		}
 	}
 
+	.card-drop-slide {
+		position: absolute;
+		top: 0%;
+		z-index: var(--z-overlay);
+		background: var(--background-overlay);
+		transition: top var(--transition-movement) var(--transition-easing-movement);
+		opacity: 0;
+	}
+
+	.card.card-drop-slide-active {
+		overflow: visible;
+
+		border-bottom-left-radius: 0px;
+		border-bottom-right-radius: 0px;
+		border-bottom: 0;
+
+		.card-main {
+			z-index: var(--z-above-overlay);
+			position: absolute;
+			background: var(--background-overlay);
+		}
+
+		.card-drop-slide {
+			top: 100%;
+			opacity: 1;
+
+			border: 1px solid var(--background-center);
+			border-radius: 4px;
+			border-top-left-radius: 0px;
+			border-top-right-radius: 0px;
+			border-top: 0;
+			width: 100%;
+		}
+	}
+
 	.card {
 		background: var(--background-overlay);
 		border: 1px solid var(--background-center);
@@ -138,6 +200,10 @@ style {
 			height: calc(var(--base-size) * 12);
 
 			margin: calc(var(--base-size) / 2);
+
+			&.free-height {
+				height: auto;
+			}
 		}
 
 		&.card-has-reveal {
@@ -172,6 +238,16 @@ style {
 					opacity: 1;
 				}
 			}
+		}
+
+		&.card-image-gradient .card-images::before {
+			content: "";
+			position: absolute;
+			bottom: 0;
+			height: calc(var(--base-size) * 6);
+			background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
+			width: 100%;
+			left: 0;
 		}
  
 		.card-main {
@@ -213,16 +289,6 @@ style {
 				& > img {
 					max-width: 100%;
 					max-height: 100%;
-				}
-
-				&::before {
-					content: "";
-					position: absolute;
-					bottom: 0;
-					height: calc(var(--base-size) * 6);
-					background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
-					width: 100%;
-					left: 0;
 				}
 			}
 
