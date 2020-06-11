@@ -17,7 +17,7 @@ template {
 		<portal to="app-root">
 			<ul class="input-select-list" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': minWidth + 'px'}">
 				<template v-for="(option, i) in options">
-					<li :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :class="'input-select-option ' + (option === myValue ? 'selected' : '') + (typeof option == 'object' ? (option.class || '') : '')" :data-value="option" @click="select(i)">
+					<li :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :class="'input-select-option ' + (option === myValue ? 'selected' : '') + (typeof option == 'object' ? (option.class || '') : '') + (typeof option == 'object' && option.disabled ? ' disabled' : '')" :data-value="option" @click="select(i)">
 						<input-checkbox v-if="multiple" class="start" :value="myValue[getValueOfOption(option)]" text="" />
 						<slot :option="option">
 							<template v-if="typeof option == 'string'">
@@ -89,6 +89,7 @@ script {
 				if (this.multiple) {
 					let currentValue = this.myValue[value];
 					this.myValue[value] = !this.myValue[value];
+					this.$emit("input", this.myValue);
 				}else{
 					this.myValue = value;
 					this.$emit("input", this.myValue);
@@ -165,7 +166,7 @@ script {
 		},
 		watch: {
 			value() {
-				this.myValue = this.value;
+				this.myValue = JSON.parse(JSON.stringify(this.value));
 			}
 		},
 		computed: {
