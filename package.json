@@ -1,9 +1,10 @@
 {
 	"name": "websom",
-	"version": "1.0.0",
+	"version": "1.2.0",
 	"description": "A web framework built in carbon",
 	"main": "native/javascript/websom.js",
 	"author": "Echorial(https://www.echorial.com)",
+	"homepage": "https://websom.io",
 	"license": "MIT",
 	"dependencies": {
 		"@google-cloud/storage": "^4.7.0",
