@@ -46,12 +46,12 @@ const WebsomVue = {
 			},
 			methods: {
 				title() {
-					if (this.websomView) {
+					if (this.websomView && this.websomView.info) {
 						return this.websomView.info.title;
 					}
 				},
 				metaDescription() {
-					if (this.websomView) {
+					if (this.websomView && this.websomView.info) {
 						return this.websomView.info.metaDescription;
 					}
 				}
