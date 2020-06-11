@@ -72,6 +72,20 @@ style {
 		justify-content: center;
 	}
 
+	.right-align-content {
+		display: flex;
+
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.left-align-content {
+		display: flex;
+
+		align-items: center;
+		justify-content: flex-start;
+	}
+
 	#app.websom-dashboard-slides {
 		.websom-right-portal, .websom-left-portal, .websom-top-portal, .websom-bottom-portal {
 			flex: 0.2;
