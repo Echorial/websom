@@ -12,6 +12,7 @@ template {
 style {
 	.vertical-nav {
 		height: 100%;
+		overflow: auto;
 
 		&.sticky {
 			position: sticky;
@@ -23,6 +24,9 @@ style {
 			min-height: var(--base-height);
 			background: var(--background);
 			color: var(--background-contrast);
+			justify-content: flex-start;
+
+			padding: 0px var(--base-size);
 
 			transition: var(--transition);
 
