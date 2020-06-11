@@ -5,6 +5,7 @@ info {
 
 template {
 	<div class="input-switch" :class="switchClass">
+		<icon v-if="offIcon" :icon="offIcon" class="switch-off-icon" />
 		<div class="input-switch-wrap">
 			<div class="input-switch-before">
 			</div>
@@ -14,6 +15,7 @@ template {
 			<div class="input-switch-after">
 			</div>
 		</div>
+		<icon v-if="onIcon" :icon="onIcon" class="switch-on-icon" />
 		<div class="input-switch-text" @mousedown="mouse(true)" @mouseup="mouse(false)" @touchstart="mouse(true)" @touchend="mouse(false)">
 			{{text}}
 		</div>
@@ -30,6 +32,14 @@ script {
 			text: {
 				type: String,
 				default: "Switch"
+			},
+			offIcon: {
+				type: String,
+				default: ""
+			},
+			onIcon: {
+				type: String,
+				default: ""
 			}
 		},
 		data() {
@@ -111,6 +121,14 @@ script {
 }
 
 style {
+	.websom-icon.switch-off-icon {
+		margin-right: calc(var(--base-size) / 2);
+	}
+
+	.websom-icon.switch-on-icon {
+		margin-left: calc(var(--base-size) / 2);
+	}
+	
 	.input-switch {
 		display: flex;
 		align-items: center;
