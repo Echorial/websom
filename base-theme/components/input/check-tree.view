@@ -1,0 +1,61 @@
+info {
+	"name": "input-check-tree",
+	"type": "component"
+}
+
+template {
+	<div class="input-check-tree">
+		<div class="input-check-tree-node" v-for="opt in options" :key="opt.value" :style="{'--tree-depth': opt.depth || 0}">
+			<input-checkbox :value="isChecked(opt.value)" @input="setChecked(opt.value, $event)" :text="opt.name" />
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			options: {
+				type: Array,
+				default: () => []
+			},
+			value: {
+				type: Array,
+				default: () => []
+			}
+		},
+		data: () => ({
+			myValue: []
+		}),
+		watch: {
+			value() {
+				this.myValue = [...this.value];
+			}
+		},
+		methods: {
+			isChecked(val) {
+				return this.myValue.includes(val);
+			},
+			setChecked(val, to) {
+				if (to) {
+					if (!this.isChecked(val))
+						this.myValue.push(val);
+				}else{
+					if (this.isChecked(val))
+						this.myValue.splice(this.myValue.indexOf(val), 1);
+				}
+
+				this.$emit("input", this.myValue);
+			}
+		},
+		created() {
+			this.myValue = [...this.value];
+		}
+	}
+}
+
+style {
+	.input-check-tree-node {
+		padding-bottom: var(--base-size);
+		padding-left: calc(var(--tree-depth) * var(--base-size) * 2);
+	}
+}
