@@ -10,6 +10,7 @@ class CoreModule.Module inherits Websom.Module {
 	Websom.Adapters.Database.Collection objects = null;
 	Websom.Adapters.Database.Collection mediaFiles = null;
 	Websom.Adapters.Database.Collection tags = null;
+	Websom.Adapters.Database.Collection categories = null;
 
 	public Websom.Permission dashboardView = null;
 
@@ -112,6 +113,48 @@ class CoreModule.Module inherits Websom.Module {
 						.read("*")
 						.filter("default")
 							.field("name", "==")
+							.field("namespace", "==")
+				.route("/get")
+					.auth(this.dashboardView)
+					.executes("select")
+						.read("*")
+						.filter("default")
+							.field("id", "==");
+
+		this.categories = db.collection("categories");
+		this.categories.schema()
+			.field("name", "string")
+			.field("namespace", "string")
+			.field("description", "string")
+			.field("color", "string")
+			.field("created", "time")
+			.field("objects", "int")
+			.field("parent", "string");
+
+		this.registerCollection(this.categories);
+
+		this.server.api.interface(this.categories, "/categories")
+			.route("/insert")
+				.auth(this.dashboardView)
+				.executes("insert")
+					.write("name")
+					.write("namespace")
+					.write("description")
+					.write("color")
+					.write("parent")
+					.setComputed("created", uint64 (Websom.Request req) => {
+						return Websom.Time.now();
+					})
+				.route("/delete")
+					.auth(this.dashboardView)
+					.executes("delete")
+						.filter("default")
+							.field("id", "in")
+				.route("/view")
+					.auth(this.dashboardView)
+					.executes("select")
+						.read("*")
+						.filter("default")
 							.field("namespace", "==")
 				.route("/get")
 					.auth(this.dashboardView)
