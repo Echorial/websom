@@ -126,6 +126,12 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 		this.lazilyGetCollection();
 
 		let docs = this.executeSelect(query).documents;
+		let updates = new <Websom.Adapters.Database.Document>array();
+		let keys = new <string>array();
+		
+		for (let string k in query.sets) {
+			keys.push(k);
+		}
 
 		native javascript {
 			const firebase = require(require.resolve("firebase-admin", {
@@ -157,8 +163,19 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 					}
 				}
 
-				ctx.doc(doc.id).set(doc.rawData);
+				if (this.searchable) {
+					await ctx.doc(doc.id).set(doc.rawData);
+					let newData = await ctx.doc(doc.id).get();
+
+					updates.push(this.documentFromRaw(doc.id, newData.data()));
+				}else{
+					ctx.doc(doc.id).set(doc.rawData);
+				}
 			}
+		}
+
+		if (this.searchable) {
+			this.updateSearch(updates, keys);
 		}
 
 		let res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
@@ -171,9 +188,12 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 		this.lazilyGetCollection();
 
 		let docs = this.executeSelect(query).documents;
+		let ids = new <string>array();
 
 		for (let int i in docs) {
 			let doc = docs[i];
+
+			ids.push(doc.id);
 
 			native javascript {
 				await this.firestoreCollection.doc(doc.id).delete();
@@ -187,6 +207,8 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 				}
 			}
 		}
+
+		this.deleteSearch(ids);
 
 		let results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
 		results.documents = docs;
@@ -213,11 +235,14 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 
 		if (this.appliedSchema != null) {
 			let doc = this.documentFromRaw(id, query.sets);
+			
 			for (let int i in this.appliedSchema.calculators) {
 				let calc = this.appliedSchema.calculators[i];
 
 				calc.insert(doc, this);
 			}
+
+			this.insertSearch(doc);
 		}
 
 		let res = new Websom.Adapters.Database.InsertQueryResult(true, "", id);

@@ -101,7 +101,7 @@
 				"default": ""
 			}
 		},
-		"adapter.email.algolia": {
+		"adapter.search.algolia": {
 			"applicationID": {
 				"name": "Algolia Application ID",
 				"type": "string",

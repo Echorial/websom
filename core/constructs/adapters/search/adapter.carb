@@ -12,7 +12,12 @@ header class Websom.Adapters.Search.Adapter extends Websom.Adapter {
 	}
 
 	[ForceAsync]
-	void updateDocument(Websom.Adapters.Database.Document document) {
+	void updateDocuments(<Websom.Adapters.Database.Document>array documents, <string>array keys) {
+		
+	}
+
+	[ForceAsync]
+	void deleteDocuments(<string>array ids) {
 		
 	}
 
@@ -24,6 +29,8 @@ header class Websom.Adapters.Search.Adapter extends Websom.Adapter {
 
 class Websom.Adapters.Search.Query {
 	string query = "";
+	int page = 0;
+	int perPage = 20;
 
 	void @construct(string baseQuery) {
 		this.query = baseQuery;
@@ -33,6 +40,9 @@ class Websom.Adapters.Search.Query {
 class Websom.Adapters.Search.QueryResult {
 	bool error = false;
 	string message = "";
+
+	int pages = 0;
+	int documentsPerPage = 0;
 
 	<string>array ids = null;
 	<Websom.Adapters.Database.Document>array unsafeDocuments = null;

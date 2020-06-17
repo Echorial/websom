@@ -5,12 +5,32 @@ info {
 
 script {
 	export default ctx => {
+		let _client;
+		let getClient = async () => {
+			if (!_client) {
+				let appID = ctx.websom.getConfig("adapter.search.algolia", "applicationID");
+				let key = ctx.websom.getConfig("adapter.search.algolia", "searchAPIKey");
+
+				const { default: algoliaSearch } = await import(/* webpackChunkName: "algoliasearch" */ "algoliaSearch/lite");
+
+				_client = algoliaSearch(appID, key);
+			}
+
+			return _client
+		};
+
 		ctx.registerAdapter("algolia", {
+			getClient,
 			initialize() {
 
 			},
-			search(collection, query, filters) {
-				
+			async search(collection, query, filters) {
+				let client = await getClient();
+				let index = client.initIndex(collection);
+
+				return (await index.search(query, {
+					hitsPerPage: filters.limit || 20
+				})).hits.map(h => ctx.websom.makeEntity(collection, {...h, id: h.objectID}));
 			}
 		});
 	}

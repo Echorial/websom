@@ -1,4 +1,4 @@
-class CoreModule.Algolia inherits Websom.Adapters.Database.Adapter {
+class CoreModule.Algolia inherits Websom.Adapters.Search.Adapter {
 	void firestore = null;
 
 	string route = "adapter.search.algolia";
@@ -9,6 +9,92 @@ class CoreModule.Algolia inherits Websom.Adapters.Database.Adapter {
 
 	async override void shutdown() {
 		
+	}
+
+	void getAlgoliaIndex(Websom.Adapters.Database.Collection collection) {
+		native javascript {
+			const algoliasearch = require("algoliasearch");
+			const client = algoliasearch(
+				this.server.configService.getString("adapter.search.algolia", "applicationID"),
+				this.server.configService.getString("adapter.search.algolia", "adminAPIKey")
+			);
+
+			return client.initIndex(collection.name);
+		}
+	}
+
+	void initializeCollection(Websom.Adapters.Database.Collection collection) {
+
+	}
+
+	[ForceAsync]
+	override void insertDocument(Websom.Adapters.Database.Document document) {
+		native javascript {
+			let index = this.getAlgoliaIndex(document.collection);
+
+			let data = {
+				objectID: document.id
+			};
+
+			for (let field of document.collection.replicatedSearchFields)
+				data[field] = document.get(field);
+
+			await index.saveObject(data);
+		}
+	}
+
+	[ForceAsync]
+	override void updateDocuments(<Websom.Adapters.Database.Document>array documents, <string>array keys) {
+		native javascript {
+			let index = this.getAlgoliaIndex(document.collection);
+
+			let docs = documents.map(doc => {
+				let data = {
+					objectID: doc.id
+				};
+
+				for (let field of document.collection.replicatedSearchFields)
+					if (keys.includes(field))
+						data[field] = document.get(field);
+					
+				return data;
+			});
+
+			await index.partialUpdateObjects(docs);
+		}
+	}
+
+	[ForceAsync]
+	override void deleteDocuments(<string>array ids) {
+		native javascript {
+			let index = this.getAlgoliaIndex(document.collection);
+
+			await index.deleteObjects(ids);
+		}
+	}
+
+	[ForceAsync]
+	override Websom.Adapters.Search.QueryResult search(Websom.Adapters.Database.Collection collection, Websom.Adapters.Search.Query query) {
+		let qr = new Websom.Adapters.Search.QueryResult(false, "Success");
+
+		native javascript {
+			let index = this.getAlgoliaIndex(document.collection);
+
+			let res = await index.search(query.query, {
+				page: query.page,
+				hitsPerPage: query.perPage
+			});
+
+			let ids = res.hits.map(h => h.objectID);
+			let docs = res.hits.map(h => collection.makeDocumentFromMap(h.objectID, h));
+
+			qr.pages = res.nbPages;
+			qr.documentsPerPage = res.hitsPerPage;
+			qr.ids = ids;
+			qr.unsafeDocuments = docs;
+		}
+
+		return qr;
 	}
 	
 }

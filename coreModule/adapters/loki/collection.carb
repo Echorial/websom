@@ -122,6 +122,12 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		this.lazilyGetCollection();
 
 		let docs = this.executeSelect(query).documents;
+		let updates = new <Websom.Adapters.Database.Document>array();
+		let keys = new <string>array();
+		
+		for (let string k in query.sets) {
+			keys.push(k);
+		}
 
 		native javascript {
 			for (let doc of docs) {
@@ -147,6 +153,7 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 					}
 				}
 
+				updates.push(this.documentFromRaw(doc.rawData));
 				this.lokiCollection.update(doc.rawData);
 			}
 
@@ -154,6 +161,10 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 				if (this.database.server.config.verbose)
 					console.log("Saved db");
 			});
+		}
+
+		if (this.searchable) {
+			this.updateSearch(updates, keys);
 		}
 
 		let res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
@@ -166,9 +177,12 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		this.lazilyGetCollection();
 
 		let docs = this.executeSelect(query).documents;
+		let ids = new <string>array();
 
 		for (let int i in docs) {
 			let doc = docs[i];
+
+			ids.push(doc.id);
 
 			native javascript {
 				this.lokiCollection.remove(doc.rawData);
@@ -189,6 +203,8 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 					console.log("Saved db");
 			});
 		}
+
+		this.deleteSearch(ids);
 
 		let results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
 		results.documents = docs;
@@ -216,6 +232,8 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 
 				calc.insert(doc, this);
 			}
+
+			this.insertSearch(doc);
 		}
 
 		let res = new Websom.Adapters.Database.InsertQueryResult(true, "", id);

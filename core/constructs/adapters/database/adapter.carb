@@ -47,6 +47,33 @@ header class Websom.Adapters.Database.Collection {
 		this.replicatedSearchFields = fields;
 	}
 
+	[ForceAsync]
+	void insertSearch(Websom.Adapters.Database.Document document) {
+		if (this.searchable) {
+			if (this.database.server.database.search != null) {
+				this.database.server.database.search.insertDocument(document);
+			}
+		}
+	}
+
+	[ForceAsync]
+	void updateSearch(<Websom.Adapters.Database.Document>array documents, <string>array keys) {
+		if (this.searchable) {
+			if (this.database.server.database.search != null) {
+				this.database.server.database.search.updateDocuments(documents, keys);
+			}
+		}
+	}
+
+	[ForceAsync]
+	void deleteSearch(<string>array ids) {
+		if (this.searchable) {
+			if (this.database.server.database.search != null) {
+				this.database.server.database.search.deleteDocuments(ids);
+			}
+		}
+	}
+
 	Websom.Adapters.Database.Document makeDocumentFromMap(string id, map data) {
 
 	}
