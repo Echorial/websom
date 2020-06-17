@@ -46,6 +46,10 @@ script {
 			showClose: {
 				type: Boolean,
 				default: false
+			},
+			closeOnRouteChange: {
+				type: Boolean,
+				default: true
 			}
 		},
 		data() {
@@ -106,6 +110,12 @@ script {
 			if (this.isOpen) {
 				this.$send("close-shade");
 				this.$send("set-css-var", '--slide-out-shift', "translate(0%, 0%)");
+			}
+		},
+		watch: {
+			$route() {
+				if (this.isOpen && this.closeOnRouteChange)
+					this.close();
 			}
 		}
 	}
