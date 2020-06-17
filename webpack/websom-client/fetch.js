@@ -1,4 +1,6 @@
 export default (store, context) => {
+	let queryCache = {};
+	
 	return (route, body, opts) => {
 		if (typeof window === "undefined")
 			return context.server.api.hit(context.server.makeRequestFromExpress(context.ssrRequest), route, body);
@@ -10,6 +12,12 @@ export default (store, context) => {
 		}
 
 		opts = opts || {};
+
+		let cacheKey = route + JSON.stringify(body);
+
+		if (opts.cache && !opts.ignoreCache && queryCache[cacheKey]) {
+			return queryCache[cacheKey];
+		}
 
 		let session = sessionStorage.getItem("Websom-Session");
 		
@@ -34,6 +42,11 @@ export default (store, context) => {
 		if (body instanceof FormData) {
 			fetchBody.body = body;
 		}else{
+			if (body.fields === "*")
+				body.fields = {
+					"*": true
+				};
+
 			fetchBody.body = JSON.stringify(body);
 			fetchBody.headers["Content-Type"] = "application/json";
 		}
@@ -50,6 +63,10 @@ export default (store, context) => {
 
 			return res.json().then((data) => {
 				return new Promise((resolve, rej) => {
+					if (opts.cache) {
+						queryCache[cacheKey] = data;
+					}
+
 					resolve(data);
 				});
 			});
