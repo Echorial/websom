@@ -118,7 +118,7 @@ class Websom.Services.View inherits Websom.Service {
 
 					if (("type" in res) == false) {
 						var realPath = FileSystem.resolve(module.root + "/" + path);
-						if (FileSystem.isDir(realPath)) {
+						if (FileSystem.exists(realPath) and FileSystem.isDir(realPath)) {
 							var files = FileSystem.readDirSync(realPath);
 							for (var int f in files) {
 								var file = files[f];
