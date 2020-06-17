@@ -5,7 +5,7 @@ info {
 
 template {
 	<div class="input-radio">
-		<div class="input-radio-option" v-for="option in options" :class="{checked: getValueOfOption(option) == myValue}" @click="select(getValueOfOption(option))">
+		<div class="input-radio-option" v-for="option in options" :class="{checked: getValueOfOption(option) == myValue, [classes(option)]:  true}" @click="select(getValueOfOption(option))">
 			<div class="input-radio-option-left">
 				<div class="input-radio-option-switch">
 					<div class="input-radio-option-switch-inner">
@@ -17,7 +17,7 @@ template {
 					{{option}}
 				</template>
 				<template v-else>
-					<icon v-if="option.icon && typeof option.side === 'undefined'" :icon="option.icon" />
+					<icon v-if="option.icon && typeof option.side === 'undefined'" :icon="option.icon" class="start" />
 					<icon v-if="option.icon && option.side == 'left'" :icon="option.icon" class="start" />
 					{{option.name || option.value || ""}}
 					<icon v-if="option.icon && option.side == 'right'" :icon="option.icon" class="end" />
@@ -36,7 +36,7 @@ script {
 			},
 			options: {
 				type: Array,
-				default: () => []
+				default: () => ['A', 'B', 'C']
 			}
 		},
 		data() {
@@ -55,6 +55,10 @@ script {
 					return option;
 				else
 					return option.value || option.name;
+			},
+			classes(option) {
+				return (typeof option == 'object' ? (option.class || '') : '')
+						+ (typeof option == 'object' && option.disabled ? ' disabled' : '');
 			}
 		},
 		watch: {
