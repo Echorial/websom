@@ -7,7 +7,7 @@ template {
 	<portal to="top">
 		<div class="modal-wrap" :class="{'modal-wrap-open': isOpen}">
 			<div :class="'modal' + (isOpen ? ' modal-open' : '') + ' modal-' + size + (modalTransparent ? ' modal-transparent ' : ' ') + modalClass">
-				<slot />
+				<slot v-if="!dialog" />
 				<button v-if="showClose" @click="close" class="modal-close floating"><icon icon="close" /></button>
 
 				<div class="modal-dialog" v-if="dialog">
@@ -17,7 +17,9 @@ template {
 					</h1>
 					
 					<p class="modal-dialog-body">
-						{{dialogBody}}
+						<slot>
+							{{dialogBody}}
+						</slot>
 					</p>
 
 					<action-bar v-if="dialog" edge="bottom">
@@ -84,6 +86,14 @@ script {
 			dialogCancelColor: {
 				type: String,
 				default: "mute"
+			},
+			closeOnRouteChange: {
+				type: Boolean,
+				default: true
+			},
+			selfClose: {
+				type: Boolean,
+				default: true
 			}
 		},
 		data() {
@@ -95,7 +105,8 @@ script {
 			dialogAction(action) {
 				this.$emit(action);
 				
-				this.close();
+				if (this.selfClose)
+					this.close();
 			},
 			open() {
 				this.isOpen = true;
@@ -116,6 +127,12 @@ script {
 		mounted() {
 			if (this.autoOpen)
 				this.open();
+		},
+		watch: {
+			$route() {
+				if (this.isOpen && this.closeOnRouteChange)
+					this.close();
+			}
 		}
 	}
 }
@@ -175,7 +192,6 @@ style {
 
 		&.modal-prompt {
 			width: 300px;
-			height: 200px;
 			min-width: 300px;
 			min-height: 200px;
 		}
@@ -192,7 +208,7 @@ style {
 
 			p {
 				flex: 1;
-				padding-left: var(--base-size);
+				padding: 0px var(--base-size);
 			}
 
 			h1 {
