@@ -1,0 +1,79 @@
+info {
+	"name": "chip",
+	"type": "component"
+}
+
+template {
+	<div class="chip">
+		<img v-if="image" :src="image" />
+		{{text}}
+		<icon v-if="close" class="action end" @click.native="remove()" :icon="closeIcon" />
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			text: {
+				type: String,
+				default: "Chip"
+			},
+			close: {
+				type: Boolean,
+				default: true
+			},
+			closeIcon: {
+				type: String,
+				default: "close"
+			},
+			image: {
+				type: String,
+				default: ""
+			}
+		},
+		methods: {
+			remove() {
+				this.$emit("close");
+			}
+		}
+	}
+}
+
+style {
+	.chip {
+		display: inline-flex;
+
+		justify-content: center;
+		align-items: center;
+
+		background: var(--primary);
+		--background-contrast: var(--contrast);
+		color: var(--background-contrast);
+
+		height: calc(var(--base-size) * 2.5);
+		margin-right: var(--base-size);
+		margin-top: var(--base-size);
+
+		padding: 0px calc(var(--base-size));
+
+		letter-spacing: 0.5px;
+
+		font-size: calc(var(--base-size) * 1);
+
+		border-radius: calc(var(--base-size) * 2);
+
+		&:hover {
+			background: var(--primary-dark);
+		}
+
+		> .websom-icon {
+			cursor: var(--cursor-action);
+		}
+
+		> img {
+			max-height: calc(var(--base-size) * 2);
+			max-width: calc(var(--base-size) * 2);
+			border-radius: var(--base-size);
+		}
+	}
+}
