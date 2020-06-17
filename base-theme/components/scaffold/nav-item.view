@@ -5,9 +5,10 @@ info {
 
 template {
 	<component @open-mobile-nav="$emit('open-mobile-nav')" @close-mobile-nav="$emit('close-mobile-nav')" v-if="item.type == 'component'" :is="item.component" v-bind="item.props || {}"/>
-	<router-link v-else-if="item.type == 'link'" class="nav-item" :class="(item.color || 'primary') + ' ' + (item.class || '') + ' ' + sizingClass" :id="item.id" :to="item.href" @click.native="menuClick">
+	<component :is="isAbsolute ? 'a' : 'router-link'" v-else-if="item.type == 'link'" class="nav-item" :class="(item.color || 'primary') + ' ' + (item.class || '') + ' ' + sizingClass" :id="item.id" v-bind="url">
+		<icon v-if="item.icon" :icon="item.icon" />
 		<img v-if="item.image" class="nav-image" :src="websom.resolveString(item.image)" /> {{item.title || ""}}
-	</router-link>
+	</component>
 }
 
 script {
@@ -29,6 +30,20 @@ script {
 		computed: {
 			sizingClass() {
 				return this.mobile ? "" : (this.item.sizing || "hide-on-small")
+			},
+			isAbsolute() {
+				return this.item.href.indexOf('://') > 0 || this.item.href.indexOf('//') === 0;
+			},
+			url() {
+				if (this.isAbsolute) {
+					return {
+						href: this.item.href
+					};
+				}else{
+					return {
+						to: this.item.href
+					};
+				}
 			}
 		},
 		methods: {
@@ -62,6 +77,11 @@ style {
 		&:active {
 			background: var(--color-dark);
 			color: var(--contrast-dark);
+		}
+
+		> .websom-icon {
+			margin-right: calc(var(--base-size) / 2);
+			--icon-size: 16px;
 		}
 	}
 
