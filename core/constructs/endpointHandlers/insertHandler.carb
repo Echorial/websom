@@ -37,12 +37,12 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 			let write = cir.writes[i];
 
 			if (clientValues.hasKey(write.field) == false) {
-				req.endWithError("Field '" + write.field + "' must be not null");
+				req.endWithError("Field '" + write.field + "' must not be null");
 				return null;
 			}
 
 			if (clientValues[write.field] == null) {
-				req.endWithError("Field '" + write.field + "' must be not null");
+				req.endWithError("Field '" + write.field + "' must not be null");
 				return null;
 			}
 
