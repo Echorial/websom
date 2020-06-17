@@ -21,12 +21,55 @@ module.exports = async (websomServer, deploy) => {
 
 	let deployBundle = deploy ? deploy.bundle : "default";
 
+	let outputConfig = {
+		output: {
+			path: path.resolve(websomServer.config.root, "../dist_deploy")
+		}
+	};
+
 	let config = require("./webpack.client.config")(() => websomServer, deployBundle, true);
 	let serverConfig = require("./webpack.server.config.js")(() => websomServer, deployBundle, true);
 	//let cssConfig = require("./webpack.css.config.js")(() => websomServer, deployBundle);
 
 	let clientHooks = {};
 	let serverHooks = {};
+
+	for (let p of [...websomServer.module.modules, ...websomServer.theme.themes]) {
+		let conf = p.baseConfig || p.config;
+
+		if (conf.build) {
+			let bScript = path.resolve(p.root, conf.build);
+			
+			if (fs.existsSync(bScript)) {
+				let s = require(bScript);
+
+				let outs = await s({
+					server: websomServer,
+					dist: outputConfig.output.path,
+					api: "",
+					template,
+					bundles: {
+						server: null,
+						client: null
+					},
+					createBundleRenderer
+				});
+
+				if (outs.server && outs.server.webpack) {
+					serverConfig = webpackMerge(serverConfig, outs.server.webpack);
+		
+					serverHooks = outs.server.hooks || {};
+				}
+		
+				if (outs.client && outs.client.webpack) {
+					config = webpackMerge(config, outs.client.webpack);
+					clientHooks = outs.client.hooks || {};
+				}
+			}else{
+				console.log("Unable to find build script " + conf.build + " in package " + p.name);
+			}
+		}
+	}
 
 	if (!deploys[deploy.type]) {
 		return "Invalid deploy type: " + deploy.type;
@@ -46,13 +89,13 @@ module.exports = async (websomServer, deploy) => {
 	}));
 
 	if (outs.server && outs.server.webpack) {
-		serverConfig = webpackMerge(serverConfig, outs.server.webpack);
+		serverConfig = webpackMerge(serverConfig, outputConfig, outs.server.webpack);
 
 		serverHooks = outs.server.hooks || {};
 	}
 
 	if (outs.client && outs.client.webpack) {
-		config = webpackMerge(config, outs.client.webpack);
+		config = webpackMerge(config, outputConfig, outs.client.webpack);
 		clientHooks = outs.client.hooks || {};
 	}
 
@@ -61,10 +104,14 @@ module.exports = async (websomServer, deploy) => {
 		cssHooks = outs.css.hooks || {};
 	}*/
 
-	let compiler = webpack(config);
+	let compiler;
+	
+	if (outs.client) {
+		compiler = webpack(config);
 
-	for (let ch in clientHooks) {
-		compiler.hooks[ch].tap("deploy", clientHooks[ch]);
+		for (let ch in clientHooks) {
+			compiler.hooks[ch].tap("deploy", clientHooks[ch]);
+		}
 	}
 
 	compiler.hooks.done.tap("renderWatcher", stats => {
@@ -76,10 +123,18 @@ module.exports = async (websomServer, deploy) => {
 			return;
 	});
 
-	const serverCompiler = webpack(serverConfig);
+	let serverCompiler;
 	
-	for (let sh in serverHooks) {
-		serverCompiler.hooks[sh].tap("deploy", serverHooks[sh]);
+	if (outs.server) {
+		serverCompiler = webpack(webpackMerge({
+			output: {
+				path: path.resolve(websomServer.config.root, "../dist_deploy")
+			}
+		}, serverConfig));
+	
+		for (let sh in serverHooks) {
+			serverCompiler.hooks[sh].tap("deploy", serverHooks[sh]);
+		}
 	}
 	
 	console.log("Starting build");
@@ -87,17 +142,23 @@ module.exports = async (websomServer, deploy) => {
 	await Promise.all([
 			
 		new Promise((res, rej) => {
-			serverCompiler.run((err, stats) => {
-				console.log(stats.errors);
+			if (serverCompiler)
+				serverCompiler.run((err, stats) => {
+					console.log(stats.errors);
+					res();
+				});
+			else
 				res();
-			});
 		}),
 
 		new Promise((res, rej) => {
-			compiler.run((err, stats) => {
-				console.log(stats.errors);
+			if (compiler)
+				compiler.run((err, stats) => {
+					console.log(stats.errors);
+					res();
+				});
+			else
 				res();
-			});
 		})
 	]);
 
