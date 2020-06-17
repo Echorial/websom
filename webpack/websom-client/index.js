@@ -98,5 +98,32 @@ export default (store, packages, context) => ({
 		websomPrefs[key] = val;
 
 		localStorage.setItem("websom_prefs", JSON.stringify(websomPrefs));
+	},
+	async search(route, collection, query, options) {
+		options = options || {};
+
+		let search = store.state.websom.data.adapters.search;
+		if (search) {
+			let adapter = store.state.websom.registeredAdapters[search];
+
+			return await adapter.search(collection, query, options);
+		}else{
+			let res = await this.fetch(route + "/search", {
+				fields: "*",
+				query: {
+					query
+				}
+			});
+
+			if (res.status == "success") {
+				return {
+					documents: res.documents,
+					page: 0
+				};
+			}else{
+				console.log(res.message);
+				return false;
+			}
+		}
 	}
 });
