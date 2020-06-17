@@ -1422,8 +1422,12 @@ Websom.Services.Config.prototype.start = function () {var _c_this = this; var _c
 				let throttle = Date.now();
 
 				fs.watch(this.server.config.configOverrides, {recursive: true}, (type, file) => {
+					if (file == "optionsCache.json")
+						return;
+					
 					if (throttle > (Date.now() - 2000)) {
 						console.log("Throttled " + type + " on " + file);
+						
 						return;
 					}else{
 						throttle = Date.now();
@@ -1517,13 +1521,15 @@ Websom.Services.Config.prototype.cacheOptionsFromPackage = function (ptype, pid,
 				if (res["type"] == "view") {
 					views.push(root + "/" + res["path"]);
 					}else if (("type" in res) == false) {
-					var dir = Oxygen.FileSystem.readDirSync(root + "/" + res["path"]);
-					for (var di = 0; di < dir.length; di++) {
-						var file = dir[di];
-						var splits = file.split(".");
-						var ext = splits[splits.length - 1];
-						if (ext == "view") {
-							views.push(root + "/" + res["path"] + "/" + file);
+					if (Oxygen.FileSystem.exists(root + "/" + res["path"])) {
+						var dir = Oxygen.FileSystem.readDirSync(root + "/" + res["path"]);
+						for (var di = 0; di < dir.length; di++) {
+							var file = dir[di];
+							var splits = file.split(".");
+							var ext = splits[splits.length - 1];
+							if (ext == "view") {
+								views.push(root + "/" + res["path"] + "/" + file);
+								}
 							}
 						}
 					}
@@ -4724,7 +4730,7 @@ Websom.Services.View.prototype.getModuleViews = function () {var _c_this = this;
 					var path = res["path"];
 					if (("type" in res) == false) {
 						var realPath = Oxygen.FileSystem.resolve(module.root + "/" + path);
-						if (Oxygen.FileSystem.isDir(realPath)) {
+						if (Oxygen.FileSystem.exists(realPath) && Oxygen.FileSystem.isDir(realPath)) {
 							var files = Oxygen.FileSystem.readDirSync(realPath);
 							for (var f = 0; f < files.length; f++) {
 								var file = files[f];
@@ -11111,6 +11117,36 @@ Websom.Adapters.Database.Collection.prototype.enableSearching = function (fields
 		_c_this.searchable = true;
 		_c_this.replicatedSearchFields = fields;}
 
+/*i async*/Websom.Adapters.Database.Collection.prototype.insertSearch = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+				}
+			}}
+
+/*i async*/Websom.Adapters.Database.Collection.prototype.updateSearch = async function (documents, keys) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.updateDocuments/* async call */(documents, keys));
+				}
+			}}
+
+/*i async*/Websom.Adapters.Database.Collection.prototype.deleteSearch = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.deleteDocuments/* async call */(ids));
+				}
+			}}
+
 Websom.Adapters.Database.Collection.prototype.makeDocumentFromMap = function (id, data) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
@@ -11739,7 +11775,10 @@ Websom.Adapters.Search.Adapter = function (server) {var _c_this = this;
 /*i async*/Websom.Adapters.Search.Adapter.prototype.insertDocument = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
-/*i async*/Websom.Adapters.Search.Adapter.prototype.updateDocument = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Adapters.Search.Adapter.prototype.updateDocuments = async function (documents, keys) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Search.Adapter.prototype.deleteDocuments = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
 /*i async*/Websom.Adapters.Search.Adapter.prototype.search = async function (collection, query) {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -11754,6 +11793,10 @@ Websom.Adapters.Search.Adapter = function (server) {var _c_this = this;
 Websom.Adapters.Search.Query = function (baseQuery) {var _c_this = this;
 	this.query = "";
 
+	this.page = 0;
+
+	this.perPage = 20;
+
 		_c_this.query = baseQuery;
 }
 
@@ -11761,6 +11804,10 @@ Websom.Adapters.Search.QueryResult = function (error, message) {var _c_this = th
 	this.error = false;
 
 	this.message = "";
+
+	this.pages = 0;
+
+	this.documentsPerPage = 0;
 
 	this.ids = null;
 
