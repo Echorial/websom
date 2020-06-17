@@ -20,6 +20,14 @@ style {
 			top: var(--nav-height);
 		}
 
+		h1, h2, h3, h4, h5, h6 {
+			padding-left: var(--base-size) !important;
+		}
+
+		&.nested-headings .nav-item {
+			padding-left: calc(var(--base-size) * 2);
+		}
+
 		.nav-item {
 			min-height: var(--base-height);
 			background: var(--background);
