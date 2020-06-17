@@ -21,6 +21,11 @@ const WebsomVue = {
 					if (m) {
 						this.$ssrContext.metaDescription = m;
 					}
+
+					let c = this.canonical();
+					if (c) {
+						this.$ssrContext.canonicalURL = c;
+					}
 				}
 			},
 			mounted() {
@@ -40,6 +45,19 @@ const WebsomVue = {
 						document.head.appendChild(el);
 					}
 				}
+
+				let c = this.canonical();
+				if (c) {
+					let el = document.querySelector(`link[rel="canonical"]`);
+					if (el) {
+						el.setAttribute("href", c);
+					}else{
+						el = document.createElement("link");
+						el.setAttribute("href", c);
+						el.setAttribute("rel", "canonical");
+						document.head.appendChild(el);
+					}
+				}
 			},
 			unmount() {
 				events.unbind(this);
@@ -53,6 +71,46 @@ const WebsomVue = {
 				metaDescription() {
 					if (this.websomView && this.websomView.info) {
 						return this.websomView.info.metaDescription;
+					}
+				},
+				canonical() {
+					if (this.websomView && this.websomView.info) {
+						if (typeof window !== "undefined") {
+							let info = this.websomView.info;
+
+							let link = document.createElement("a");
+							link.href = info.nested ? info.nested + "/" + info.route : info.route;
+							//return link.href;
+						}
+					}
+				},
+				breadcrumb() {
+					if (this.websomView && this.websomView.info) {
+						let info = this.websomView.info;
+						return {
+							name: info.breadcrumb || info.title || info.route,
+							route: info.nested ? info.nested + "/" + info.route : info.route
+						};
+					}
+				},
+				addHeadElement(el) {
+					if (typeof window !== "undefined") {
+						if (document.getElementById("head-tag-" + el.key))
+							return;
+
+						let dEl = document.createElement(el.tag);
+						for (let k of Object.keys(el.attributes || {})) {
+							dEl.setAttribute(k, el.attributes[k]);
+						}
+						
+						if (el.html)
+							dEl.innerHTML = el.html;
+
+						document.head.appendChild(dEl);
+					}else{
+						let tag = el.tag || 'meta';
+						let attr = Object.entries(el.attributes || {}).map(a => `${a[0]}="${a[1]}"`);
+						this.$ssrContext.headElements += `<${tag} id="head-tag-${el.key}" ${attr} ${tag == 'meta' ? '/' : ''}>${el.html || ""}${(tag == 'meta' || tag == 'link') ? '' : '</' + tag + '>'}`;
 					}
 				}
 			},

@@ -41,31 +41,41 @@ script {
 				shade: false,
 				shadeListeners: [],
 				closing: false,
-				vars: {}
+				vars: {},
+				breadcrumbs: {}
 			};
 		},
 		mounted() { // I spent way too long making this.
-			console.log(
+			if (process.env.NODE_ENV) {
+				console.log(
 `%c
-        ryu####r       :_             -,       
-        KB@@@##M       x#z_           ^#3:     
-        KQQB@@@Z       x###3!         *###3!   
-        KQQQQQ#9       x#####b!       *#####M~ 
-        KQQQQQQI       x######O       *#######-
-        KQQQQQQX       x######O       r#######-
-        KQQQQQQX       i######O       r#######-
-        x8QQQQQX       Y@#####O       r######O\`
-         -\\$QQQX       vB@@@##O       r####M~  
-           \`x$QgPPPPPPPDQ8yc#@#OdddddOQ##M!    
-             \`v$QQQQQQQQV-  \`x#@#######3:      
-               \`rdQQQ$Y.       vQ@###h"        
-                  <wv\`           rMX_          
-                                               
-%c        WEBSOM DEVELEPOMENT MODE    `
-			, "color: lime; background: linear-gradient(90deg, rgba(69, 120, 69, 1) 7%, rgba(69, 120, 94, .5) 7%, rgba(69, 120, 94, .5) 14%, rgba(69, 131, 94, 0) 14%);", "background: linear-gradient(90deg, rgba(69, 120, 94, 0.8) 7%, rgba(69, 120, 94, .4) 7%, rgba(69, 120, 94, .4) 100%, rgba(69, 131, 94, 0) 100%); color: white; font-size: 16px; line-height: 48px;");
+		ryu####r       :_             -,       
+		KB@@@##M       x#z_           ^#3:     
+		KQQB@@@Z       x###3!         *###3!   
+		KQQQQQ#9       x#####b!       *#####M~ 
+		KQQQQQQI       x######O       *#######-
+		KQQQQQQX       x######O       r#######-
+		KQQQQQQX       i######O       r#######-
+		x8QQQQQX       Y@#####O       r######O\`
+		-\\$QQQX       vB@@@##O       r####M~  
+		\`x$QgPPPPPPPDQ8yc#@#OdddddOQ##M!    
+			\`v$QQQQQQQQV-  \`x#@#######3:      
+			\`rdQQQ$Y.       vQ@###h"        
+				<wv\`           rMX_          
+											
+%c        WEBSOM DEVELOPMENT MODE    `
+				, "color: lime; background: linear-gradient(90deg, rgba(69, 120, 69, 1) 7%, rgba(69, 120, 94, .5) 7%, rgba(69, 120, 94, .5) 14%, rgba(69, 131, 94, 0) 14%);", "background: linear-gradient(90deg, rgba(69, 120, 94, 0.8) 7%, rgba(69, 120, 94, .4) 7%, rgba(69, 120, 94, .4) 100%, rgba(69, 131, 94, 0) 100%); color: white; font-size: 16px; line-height: 48px;");
 
-			console.log("Websom API: " + this.$store.state.websom.api);
-			console.log("Websom State: ", this.$store.state);
+				console.log("Websom API: " + this.$store.state.websom.api);
+				console.log("Websom State: ", this.$store.state);
+			}
+
+			if (typeof __websom_static !== "undefined" && __websom_static) {
+				let el = document.createElement("link");
+				el.setAttribute("rel", "canonical");
+				el.setAttribute("href", location.protocol + "//" + location.host + location.pathname);
+				document.head.appendChild(el);
+			}
 		},
 		computed: {
 			classes() {
@@ -120,6 +130,31 @@ script {
 			}
 		},
 		methods: {
+			async computeBreadcrumbs() {
+				let crumbs = await Promise.all(this.$route.matched.map(async a => {
+					console.log(a.instances);
+					if (a.instances.default) {
+						return await a.instances.default.breadcrumb();
+					}else{
+						return {name: 'Loading', route: '/'};
+					}
+				}));
+
+				if (crumbs) {
+					crumbs = [].concat.apply([], crumbs);
+
+					this.breadcrumbs = {
+						"@context": "https://schema.org",
+						"@type": "BreadcrumbList",
+						"itemListElement": crumbs.map((c, i) => ({
+							"@type": "ListItem",
+							"position": i + 1,
+							"name": c.name,
+							"item": c.route
+						}))
+					};
+				}
+			},
 			openShade(e) {
 				this.shade = true;
 
@@ -150,6 +185,28 @@ script {
 			doToast(toast) {
 				this.$refs.toaster.add(toast);
 			}
+		},
+		created() {
+			if (this.$config.rasterIcon)
+				this.addHeadElement({
+					key: "faviconRaster",
+					tag: "link",
+					attributes: {
+						rel: "alternate icon",
+						href: "/favicon.ico"
+					}
+				});
+
+			if (this.$config.vectorIcon)
+				this.addHeadElement({
+					key: "faviconVector",
+					tag: "link",
+					attributes: {
+						rel: "icon",
+						type: "image/svg+xml",
+						href: "/favicon.svg"
+					}
+				});
 		}
 	}
 }
@@ -213,6 +270,20 @@ config {
 			"name": "Body Weight",
 			"description": "The default font weight used for all bodies",
 			"default": "300"
+		},
+		"rasterIcon": {
+			"group": "icon",
+			"type": "string",
+			"name": "Raster Icon",
+			"description": "This file is converted into a .ico for favicon use.",
+			"public": true
+		},
+		"vectorIcon": {
+			"group": "icon",
+			"type": "string",
+			"name": "Vector Icon",
+			"description": "This file is used with browsers that support svg favicons.",
+			"public": true
 		}
 	}
 }
