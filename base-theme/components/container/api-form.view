@@ -67,7 +67,9 @@ script {
 						invalid = true;
 					}
 				}
+
 				if (invalid) {
+					this.$emit("invalid");
 					console.error("Invalid form submission");
 					return;
 				}
@@ -80,13 +82,16 @@ script {
 					if (res.status == "success") {
 						this.status = "success";
 						this.message = res.message;
+						this.$emit("success", res);
 					}else if (res.status == "error") {
 						this.status = "error";
 						this.message = res.message;
+						this.$emit("error", res);
 					}else if (res.status == "component") {
 						this.status = "component";
 						this.component = res.component;
 						this.componentContext = res.context;
+						this.$emit("component", res);
 					}
 
 					this.loading = false;
@@ -96,6 +101,7 @@ script {
 					this.loading = false;
 					this.status = "error";
 					this.message = "Connection error";
+					this.$emit("error", {status: "error", message: "Connection error"});
 
 					console.error(e);
 				}
