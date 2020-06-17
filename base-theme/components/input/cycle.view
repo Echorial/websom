@@ -32,11 +32,11 @@ script {
 		props: {
 			value: {
 				type: String,
-				default: ""
+				default: "Option 1"
 			},
 			options: {
 				type: Array,
-				default: []
+				default: ["Option 1", "Option 2", "Option 3"]
 			}
 		},
 		data() {
