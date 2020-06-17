@@ -35,8 +35,11 @@ export async function createApp (api, context) {
 	
 	let ssr = true;
 
+	let clientURL = context ? context.client : null;
+
 	if (typeof window !== "undefined") {
 		ssr = false;
+		clientURL = location.origin;
 		api = window.websom_api || api || (typeof __websom_api !== "undefined" ? __websom_api : null);
 	}
 
@@ -45,6 +48,7 @@ export async function createApp (api, context) {
 			websom: {
 				colorScheme: "light",
 				api,
+				client: clientURL,
 				ssr,
 				registeredAdapters: {},
 				data: {
@@ -69,7 +73,8 @@ export async function createApp (api, context) {
 				}
 			},
 			title: "Websom Page",
-			metaDescription: ""
+			metaDescription: "",
+			breadcrumbs: []
 		}),
 		actions: {
 			async fetchWebsomData({ commit }) {
@@ -93,6 +98,17 @@ export async function createApp (api, context) {
 			}
 		},
 		mutations: {
+			clearBreadcrumbs(store) {
+				store.breadcrumbs.splice(0, store.breadcrumbs.length);
+			},
+			addBreadcrumb(store, b) {
+				if (Array.isArray(b)) {
+					for (let a of b)
+						store.breadcrumbs.push(a);
+				}else{
+					store.breadcrumbs.push(b);
+				}
+			},
 			registerAsset(store, data) {
 				if (!store.assets[data.package])
 					store.assets[data.package] = {};
@@ -155,6 +171,8 @@ export async function createApp (api, context) {
 
 		store.replaceState(window.__INITIAL_STATE__);
 
+		store.commit("clearBreadcrumbs");
+
 		for (let call of stateClientCalls)
 			call(store);
 	}
@@ -186,17 +204,20 @@ export async function createApp (api, context) {
 			}
 		}
 
-	if (!store.state.websom.data.navigation.navbar.find((v) => v.props ? v.props.name == "login-bar" : false))
-		store.commit("addNavItem",
-			{
-				type: "component",
-				component: "user-nav",
-				align: "right",
-				props: {
-					name: "login-bar"
+	if (!store.state.websom.data.navigation.navbar.find((v) => v.props ? v.props.name == "login-bar" : false)) {
+		if (Packages.find(p => p.info.name == "user-nav")) {
+			store.commit("addNavItem",
+				{
+					type: "component",
+					component: "user-nav",
+					align: "right",
+					props: {
+						name: "login-bar"
+					}
 				}
-			}
-		);
+			);
+		}
+	}
 	
 	let formats = {
 		"single-line": new RegExp("^([^\\n]*)$"),
@@ -279,8 +300,9 @@ export async function createApp (api, context) {
 			fillState: typeof __INITIAL_STATE__ === "undefined"
 		});
 	
-	if (typeof __websom_route === "string")
-		router.push(__websom_route);
+	if (typeof window !== "undefined")
+		if (typeof window.__websom_route === "string")
+			router.push(window.__websom_route);
 	
 	return { app, router, store };
 }
