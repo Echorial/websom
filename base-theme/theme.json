@@ -2,6 +2,7 @@
 	"name": "theme",
 	"description": "Base theme used in all of websom",
 	"key": "",
+	"build": "build.js",
 	"resources": [
 		{
 			"path": "./components"
