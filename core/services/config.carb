@@ -98,8 +98,12 @@ class Websom.Services.Config inherits Websom.Service {
 				let throttle = Date.now();
 
 				fs.watch(this.server.config.configOverrides, {recursive: true}, (type, file) => {
+					if (file == "optionsCache.json")
+						return;
+					
 					if (throttle > (Date.now() - 2000)) {
 						console.log("Throttled " + type + " on " + file);
+						
 						return;
 					}else{
 						throttle = Date.now();
@@ -213,15 +217,17 @@ class Websom.Services.Config inherits Websom.Service {
 				if (res["type"] == "view") {
 					views.push(root + "/" + res["path"]);
 				}else if (("type" in res) == false) {
-					let dir = FileSystem.readDirSync(root + "/" + res["path"]);
+					if (FileSystem.exists(root + "/" + res["path"])) {
+						let dir = FileSystem.readDirSync(root + "/" + res["path"]);
 
-					for (let int di in dir) {
-						let string file = dir[di];
-						let splits = file.split(".");
-						let ext = splits[splits.length - 1];
+						for (let int di in dir) {
+							let string file = dir[di];
+							let splits = file.split(".");
+							let ext = splits[splits.length - 1];
 
-						if (ext == "view") {
-							views.push(root + "/" + res["path"] + "/" + file);
+							if (ext == "view") {
+								views.push(root + "/" + res["path"] + "/" + file);
+							}
 						}
 					}
 				}
