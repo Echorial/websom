@@ -38,6 +38,43 @@ module.exports = async (websomServer, apiServer) => {
 	let clientHooks = {};
 	let serverHooks = {};
 
+	for (let p of [...websomServer().module.modules, ...websomServer().theme.themes]) {
+		let conf = p.baseConfig || p.config;
+
+		if (conf.build) {
+			let bScript = path.resolve(p.root, conf.build);
+			
+			if (fs.existsSync(bScript)) {
+				let s = require(bScript);
+
+				let outs = await s({
+					server: websomServer(),
+					dist,
+					api: apiServer,
+					template,
+					bundles: {
+						server: ssrServer,
+						client: ssrClient
+					},
+					createBundleRenderer
+				});
+
+				if (outs.server && outs.server.webpack) {
+					serverConfig = webpackMerge(serverConfig, outs.server.webpack);
+		
+					serverHooks = outs.server.hooks || {};
+				}
+		
+				if (outs.client && outs.client.webpack) {
+					config = webpackMerge(config, outs.client.webpack);
+					clientHooks = outs.client.hooks || {};
+				}
+			}else{
+				console.log("Unable to find build script " + conf.build + " in package " + p.name);
+			}
+		}
+	}
+
 	if (deploy) {
 		if (!deploys[deploy.type]) {
 			console.error("Invalid deploy type: " + deploy.type);
@@ -191,9 +228,13 @@ module.exports = async (websomServer, apiServer) => {
 				ssrRequest: req,
 				url: req.url,
 				api: apiServer,
+				client: websomServer().clientHost,
 				server: websomServer(),
 				title: req.route.path,
 				metaDescription: "",
+				breadcrumbs: [],
+				headElements: "",
+				canonicalURL: req.protocol + '://' + req.get("host") + req.baseUrl + req.path,
 				renderHeadElements() {
 					return `
 						
