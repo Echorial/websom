@@ -17,7 +17,7 @@ template {
 		<portal to="app-root">
 			<ul class="input-select-list" ref="list" :class="{open: active}" :style="{top: top + 'px', left: left + 'px', 'min-width': minWidth + 'px'}">
 				<template v-for="(option, i) in options">
-					<li :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :class="'input-select-option ' + (option === myValue ? 'selected' : '') + (typeof option == 'object' ? (option.class || '') : '') + (typeof option == 'object' && option.disabled ? ' disabled' : '')" :data-value="option" @click="select(i)">
+					<li :key="(typeof option == 'string') ? (option) : (option.value || option.name || i)" :class="'input-select-option ' + (option === myValue ? 'selected' : '') + (typeof option == 'object' ? (option.class || '') : '') + (typeof option == 'object' && option.disabled ? ' disabled' : '')" :data-value="option" @click="select(i)" :style="{'--option-depth': option.depth || 0}">
 						<input-checkbox v-if="multiple" class="start" :value="myValue[getValueOfOption(option)]" text="" />
 						<slot :option="option">
 							<template v-if="typeof option == 'string'">
@@ -50,7 +50,7 @@ script {
 			},
 			options: {
 				type: Array,
-				default: () => []
+				default: () => ['A', 'B', 'C']
 			},
 			multiple: {
 				type: Boolean,
@@ -104,12 +104,30 @@ script {
 			},
 			open() {
 				let listRect = this.$refs.list.getBoundingClientRect();
-				let styleMap = this.$refs.list.computedStyleMap();
+				let mt = 0;
+				let mb = 0;
+				let pt = 0;
+				let pb = 0;
+
+				if (this.$refs.list.computedStyleMap) {
+					let styleMap = this.$refs.list.computedStyleMap();
+					mt = styleMap.get("margin-top").value;
+					mb = styleMap.get("margin-bottom").value;
+					pt = styleMap.get("padding-top").value;
+					pb = styleMap.get("padding-bottom").value;
+				}else{
+					let comp = window.getComputedStyle(this.$refs.list);
+					mt = comp.getPropertyValue("margin-top");
+					mb = comp.getPropertyValue("margin-bottom");
+					pt = comp.getPropertyValue("padding-top");
+					pb = comp.getPropertyValue("padding-bottom");
+				}
+
 				let height = listRect.height
-					+ styleMap.get("margin-top").value
-					+ styleMap.get("margin-bottom").value
-					+ styleMap.get("padding-top").value
-					+ styleMap.get("padding-bottom").value;
+					+ mt
+					+ mb
+					+ pt
+					+ pb;
 				
 				this.$refs.list.style.setProperty("--target-height", height + "px");
 
@@ -259,7 +277,7 @@ style {
 
 		margin-top: var(--base-height);
 
-		z-index: var(--z-overlay);
+		z-index: var(--z-above-modal);
 
 		&.open {
 			opacity: 1;
@@ -268,6 +286,7 @@ style {
 
 		.input-select-option {
 			padding: var(--padding-v) var(--padding-h);
+			padding-left: calc((1 + var(--option-depth)) * var(--padding-h));
 
 			white-space: nowrap;
 			
