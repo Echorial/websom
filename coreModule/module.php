@@ -27,6 +27,8 @@ public $mediaFiles;
 
 public $tags;
 
+public $categories;
+
 public $dashboardView;
 
 public $commentEdit;
@@ -81,6 +83,7 @@ $this->confirmations = null;
 $this->objects = null;
 $this->mediaFiles = null;
 $this->tags = null;
+$this->categories = null;
 $this->dashboardView = null;
 $this->commentEdit = null;
 $this->commentCreate = null;
@@ -141,6 +144,10 @@ array_push($fieldsForSearching, "objects");
 $this->tags->enableSearching($fieldsForSearching);
 $this->registerCollection($this->tags);
 $this->server->api->_c__interface($this->tags, "/tags")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("namespace")->write("description")->write("color")->setComputed("created", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("namespace", "==")->route("/search")->auth($this->corePublic)->executes("search")->read("*")->filter("default")->field("name", "==")->field("namespace", "==")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("id", "==");
+$this->categories = $db->collection("categories");
+$this->categories->schema()->field("name", "string")->field("namespace", "string")->field("description", "string")->field("color", "string")->field("created", "time")->field("objects", "int")->field("parent", "string");
+$this->registerCollection($this->categories);
+$this->server->api->_c__interface($this->categories, "/categories")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("namespace")->write("description")->write("color")->write("parent")->setComputed("created", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("namespace", "==")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("id", "==");
 $this->objects = $db->collection("websom_bucket_objects");
 $this->objects->schema()->field("filename", "string")->field("bucket", "string")->field("acl", "string")->field("uploaded", "boolean")->field("token", "string")->field("sizeLimit", "int");
 $this->registerCollection($this->objects);
@@ -381,7 +388,13 @@ array_push($inserts, $this->executeInsert(_c_lib__arrUtils::readIndex($query->in
 function executeUpdate($query) {
 $this->lazilyGetCollection();
 $docs = &$this->executeSelect($query)->documents;
+$updates = [];
+$keys = [];
+foreach ($query->sets as $k => $_c_v__k0) {
+array_push($keys, $k);}
 
+if ($this->searchable) {
+$this->updateSearch($updates, $keys);}
 $res = new Websom_Adapters_Database_UpdateQueryResult(true, "");
 $res->updateCount = count($docs);
 return $res;}
@@ -389,14 +402,17 @@ return $res;}
 function executeDelete($query) {
 $this->lazilyGetCollection();
 $docs = &$this->executeSelect($query)->documents;
+$ids = [];
 for ($i = 0; $i < count($docs); $i++) {
 $doc = _c_lib__arrUtils::readIndex($docs, $i);
+array_push($ids, $doc->id);
 
 if ($this->appliedSchema != null) {
 for ($j = 0; $j < count($this->appliedSchema->calculators); $j++) {
 $calc = _c_lib__arrUtils::readIndex($this->appliedSchema->calculators, $j);
 $calc->delete($doc, $this);}}}
 
+$this->deleteSearch($ids);
 $results = new Websom_Adapters_Database_DeleteQueryResult(true, "");
 $results->documents = $docs;
 return $results;}
@@ -409,7 +425,8 @@ if ($this->appliedSchema != null) {
 $doc = $this->documentFromRaw($query->sets);
 for ($i = 0; $i < count($this->appliedSchema->calculators); $i++) {
 $calc = _c_lib__arrUtils::readIndex($this->appliedSchema->calculators, $i);
-$calc->insert($doc, $this);}}
+$calc->insert($doc, $this);}
+$this->insertSearch($doc);}
 $res = new Websom_Adapters_Database_InsertQueryResult(true, "", $id);
 return $res;}
 
@@ -434,6 +451,21 @@ return $entity;}
 function enableSearching($fields) {
 $this->searchable = true;
 $this->replicatedSearchFields = $fields;}
+
+function insertSearch($document) {
+if ($this->searchable) {
+if ($this->database->server->database->search != null) {
+$this->database->server->database->search->insertDocument($document);}}}
+
+function updateSearch($documents, $keys) {
+if ($this->searchable) {
+if ($this->database->server->database->search != null) {
+$this->database->server->database->search->updateDocuments($documents, $keys);}}}
+
+function deleteSearch($ids) {
+if ($this->searchable) {
+if ($this->database->server->database->search != null) {
+$this->database->server->database->search->deleteDocuments($ids);}}}
 
 function schema() {
 $this->appliedSchema = new Websom_Adapters_Database_Schema($this);
@@ -675,7 +707,13 @@ return $this->runUpdate($query, $this->firestoreCollection);}
 function runUpdate($query, $ctx) {
 $this->lazilyGetCollection();
 $docs = &$this->executeSelect($query)->documents;
+$updates = [];
+$keys = [];
+foreach ($query->sets as $k => $_c_v__k0) {
+array_push($keys, $k);}
 
+if ($this->searchable) {
+$this->updateSearch($updates, $keys);}
 $res = new Websom_Adapters_Database_UpdateQueryResult(true, "");
 $res->updateCount = count($docs);
 return $res;}
@@ -683,13 +721,16 @@ return $res;}
 function executeDelete($query) {
 $this->lazilyGetCollection();
 $docs = &$this->executeSelect($query)->documents;
+$ids = [];
 for ($i = 0; $i < count($docs); $i++) {
 $doc = _c_lib__arrUtils::readIndex($docs, $i);
+array_push($ids, $doc->id);
 
 if ($this->appliedSchema != null) {
 for ($j = 0; $j < count($this->appliedSchema->calculators); $j++) {
 $calc = _c_lib__arrUtils::readIndex($this->appliedSchema->calculators, $j);
 $calc->delete($doc, $this);}}}
+$this->deleteSearch($ids);
 $results = new Websom_Adapters_Database_DeleteQueryResult(true, "");
 $results->documents = $docs;
 return $results;}
@@ -706,7 +747,8 @@ if ($this->appliedSchema != null) {
 $doc = $this->documentFromRaw($id, $query->sets);
 for ($i = 0; $i < count($this->appliedSchema->calculators); $i++) {
 $calc = _c_lib__arrUtils::readIndex($this->appliedSchema->calculators, $i);
-$calc->insert($doc, $this);}}
+$calc->insert($doc, $this);}
+$this->insertSearch($doc);}
 $res = new Websom_Adapters_Database_InsertQueryResult(true, "", $id);
 return $res;}
 
@@ -731,6 +773,21 @@ return $entity;}
 function enableSearching($fields) {
 $this->searchable = true;
 $this->replicatedSearchFields = $fields;}
+
+function insertSearch($document) {
+if ($this->searchable) {
+if ($this->database->server->database->search != null) {
+$this->database->server->database->search->insertDocument($document);}}}
+
+function updateSearch($documents, $keys) {
+if ($this->searchable) {
+if ($this->database->server->database->search != null) {
+$this->database->server->database->search->updateDocuments($documents, $keys);}}}
+
+function deleteSearch($ids) {
+if ($this->searchable) {
+if ($this->database->server->database->search != null) {
+$this->database->server->database->search->deleteDocuments($ids);}}}
 
 function schema() {
 $this->appliedSchema = new Websom_Adapters_Database_Schema($this);
@@ -1104,8 +1161,33 @@ function initialize() {
 function shutdown() {
 }
 
-function collection($name) {
-return new Websom_Adapters_Database_Collection($this, $name);}
+function getAlgoliaIndex($collection) {
+}
+
+function initializeCollection(...$arguments) {
+if (count($arguments) == 1 and ((_c_lib_run::getClass($arguments[0]) == 'Websom_Adapters_Database_Collection' or (_c_lib_run::getClass($arguments[0]) == 'CoreModule_LokiCollection') or (_c_lib_run::getClass($arguments[0]) == 'CoreModule_FirestoreCollection')) or gettype($arguments[0]) == 'NULL')) {
+$collection = $arguments[0];
+
+}
+else if (count($arguments) == 1 and ((_c_lib_run::getClass($arguments[0]) == 'Websom_Adapters_Database_Collection' or (_c_lib_run::getClass($arguments[0]) == 'CoreModule_LokiCollection') or (_c_lib_run::getClass($arguments[0]) == 'CoreModule_FirestoreCollection')) or gettype($arguments[0]) == 'NULL')) {
+$collection = $arguments[0];
+
+}
+}
+
+function insertDocument($document) {
+}
+
+function updateDocuments($documents, $keys) {
+}
+
+function deleteDocuments($ids) {
+}
+
+function search($collection, $query) {
+$qr = new Websom_Adapters_Search_QueryResult(false, "Success");
+
+return $qr;}
 
 
 }

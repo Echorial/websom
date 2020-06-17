@@ -24,6 +24,8 @@ CoreModule.Module = function (server) {var _c_this = this;
 
 	this.tags = null;
 
+	this.categories = null;
+
 	this.dashboardView = null;
 
 	this.commentEdit = null;
@@ -111,6 +113,12 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 		_c_this.server.api.interface(_c_this.tags, "/tags").route("/insert").auth(_c_this.dashboardView).executes("insert").write("name").write("namespace").write("description").write("color").setComputed("created", function (req) {
 			return Websom.Time.now();
 			}).route("/delete").auth(_c_this.dashboardView).executes("delete").filter("default").field("id", "in").route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("namespace", "==").route("/search").auth(_c_this.corePublic).executes("search").read("*").filter("default").field("name", "==").field("namespace", "==").route("/get").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("id", "==");
+		_c_this.categories = db.collection("categories");
+		_c_this.categories.schema().field("name", "string").field("namespace", "string").field("description", "string").field("color", "string").field("created", "time").field("objects", "int").field("parent", "string");
+		(await _c_this.registerCollection/* async call */(_c_this.categories));
+		_c_this.server.api.interface(_c_this.categories, "/categories").route("/insert").auth(_c_this.dashboardView).executes("insert").write("name").write("namespace").write("description").write("color").write("parent").setComputed("created", function (req) {
+			return Websom.Time.now();
+			}).route("/delete").auth(_c_this.dashboardView).executes("delete").filter("default").field("id", "in").route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("namespace", "==").route("/get").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("id", "==");
 		_c_this.objects = db.collection("websom_bucket_objects");
 		_c_this.objects.schema().field("filename", "string").field("bucket", "string").field("acl", "string").field("uploaded", "boolean").field("token", "string").field("sizeLimit", "int");
 		(await _c_this.registerCollection/* async call */(_c_this.objects));
@@ -432,6 +440,11 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 /*async*/
 		_c_this.lazilyGetCollection();
 		var docs = (await _c_this.executeSelect/* async call */(query)).documents;
+		var updates = [];
+		var keys = [];
+		for (var k in query.sets) {
+			keys.push(k);
+			}
 		
 			for (let doc of docs) {
 				let oldCopy = this.documentFromRaw(Object.assign({}, doc.rawData));
@@ -456,6 +469,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					}
 				}
 
+				updates.push(this.documentFromRaw(doc.rawData));
 				this.lokiCollection.update(doc.rawData);
 			}
 
@@ -464,6 +478,10 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					console.log("Saved db");
 			});
 		
+		if (_c_this.searchable) {
+/*async*/
+			(await _c_this.updateSearch/* async call */(updates, keys));
+			}
 		var res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
 		res.updateCount = docs.length;
 		return res;}
@@ -472,9 +490,11 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 /*async*/
 		_c_this.lazilyGetCollection();
 		var docs = (await _c_this.executeSelect/* async call */(query)).documents;
+		var ids = [];
 		for (var i = 0; i < docs.length; i++) {
 /*async*/
 			var doc = docs[i];
+			ids.push(doc.id);
 			
 				this.lokiCollection.remove(doc.rawData);
 			
@@ -493,6 +513,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					console.log("Saved db");
 			});
 		
+		(await _c_this.deleteSearch/* async call */(ids));
 		var results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
 		results.documents = docs;
 		return results;}
@@ -516,6 +537,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 				var calc = _c_this.appliedSchema.calculators[i];
 				(await calc.insert/* async call */(doc, _c_this));
 				}
+			(await _c_this.insertSearch/* async call */(doc));
 			}
 		var res = new Websom.Adapters.Database.InsertQueryResult(true, "", id);
 		return res;}
@@ -593,6 +615,36 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 CoreModule.LokiCollection.prototype.enableSearching = function (fields) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.searchable = true;
 		_c_this.replicatedSearchFields = fields;}
+
+/*i async*/CoreModule.LokiCollection.prototype.insertSearch = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+				}
+			}}
+
+/*i async*/CoreModule.LokiCollection.prototype.updateSearch = async function (documents, keys) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.updateDocuments/* async call */(documents, keys));
+				}
+			}}
+
+/*i async*/CoreModule.LokiCollection.prototype.deleteSearch = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.deleteDocuments/* async call */(ids));
+				}
+			}}
 
 CoreModule.LokiCollection.prototype.schema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.appliedSchema = new Websom.Adapters.Database.Schema(_c_this);
@@ -897,6 +949,11 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 /*async*/
 		_c_this.lazilyGetCollection();
 		var docs = (await _c_this.executeSelect/* async call */(query)).documents;
+		var updates = [];
+		var keys = [];
+		for (var k in query.sets) {
+			keys.push(k);
+			}
 		
 			const firebase = require(require.resolve("firebase-admin", {
 				paths: [
@@ -927,9 +984,20 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					}
 				}
 
-				ctx.doc(doc.id).set(doc.rawData);
+				if (this.searchable) {
+					await ctx.doc(doc.id).set(doc.rawData);
+					let newData = await ctx.doc(doc.id).get();
+
+					updates.push(this.documentFromRaw(doc.id, newData.data()));
+				}else{
+					ctx.doc(doc.id).set(doc.rawData);
+				}
 			}
 		
+		if (_c_this.searchable) {
+/*async*/
+			(await _c_this.updateSearch/* async call */(updates, keys));
+			}
 		var res = new Websom.Adapters.Database.UpdateQueryResult(true, "");
 		res.updateCount = docs.length;
 		return res;}
@@ -938,9 +1006,11 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 /*async*/
 		_c_this.lazilyGetCollection();
 		var docs = (await _c_this.executeSelect/* async call */(query)).documents;
+		var ids = [];
 		for (var i = 0; i < docs.length; i++) {
 /*async*/
 			var doc = docs[i];
+			ids.push(doc.id);
 			
 				await this.firestoreCollection.doc(doc.id).delete();
 			
@@ -953,6 +1023,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 					}
 				}
 			}
+		(await _c_this.deleteSearch/* async call */(ids));
 		var results = new Websom.Adapters.Database.DeleteQueryResult(true, "");
 		results.documents = docs;
 		return results;}
@@ -979,6 +1050,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 				var calc = _c_this.appliedSchema.calculators[i];
 				(await calc.insert/* async call */(doc, _c_this));
 				}
+			(await _c_this.insertSearch/* async call */(doc));
 			}
 		var res = new Websom.Adapters.Database.InsertQueryResult(true, "", id);
 		return res;}
@@ -1048,6 +1120,36 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 CoreModule.FirestoreCollection.prototype.enableSearching = function (fields) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.searchable = true;
 		_c_this.replicatedSearchFields = fields;}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.insertSearch = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+				}
+			}}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.updateSearch = async function (documents, keys) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.updateDocuments/* async call */(documents, keys));
+				}
+			}}
+
+/*i async*/CoreModule.FirestoreCollection.prototype.deleteSearch = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		if (_c_this.searchable) {
+/*async*/
+			if (_c_this.database.server.database.search != null) {
+/*async*/
+				(await _c_this.database.server.database.search.deleteDocuments/* async call */(ids));
+				}
+			}}
 
 CoreModule.FirestoreCollection.prototype.schema = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.appliedSchema = new Websom.Adapters.Database.Schema(_c_this);
@@ -1524,8 +1626,87 @@ CoreModule.Algolia = function (server) {var _c_this = this;
 /*i async*/CoreModule.Algolia.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
-CoreModule.Algolia.prototype.collection = function (name) {var _c_this = this; var _c_root_method_arguments = arguments;
-		return new Websom.Adapters.Database.Collection(_c_this, name);}
+CoreModule.Algolia.prototype.getAlgoliaIndex = function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			const algoliasearch = require("algoliasearch");
+			const client = algoliasearch(
+				this.server.configService.getString("adapter.search.algolia", "applicationID"),
+				this.server.configService.getString("adapter.search.algolia", "adminAPIKey")
+			);
+
+			return client.initIndex(collection.name);
+		}
+
+CoreModule.Algolia.prototype.initializeCollection = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Collection || (arguments[0] instanceof CoreModule.LokiCollection) || (arguments[0] instanceof CoreModule.FirestoreCollection)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var collection = arguments[0];
+
+	}
+else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Database.Collection || (arguments[0] instanceof CoreModule.LokiCollection) || (arguments[0] instanceof CoreModule.FirestoreCollection)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
+		var collection = arguments[0];
+
+	}
+}
+
+/*i async*/CoreModule.Algolia.prototype.insertDocument = async function (document) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			let index = this.getAlgoliaIndex(document.collection);
+
+			let data = {
+				objectID: document.id
+			};
+
+			for (let field of document.collection.replicatedSearchFields)
+				data[field] = document.get(field);
+
+			await index.saveObject(data);
+		}
+
+/*i async*/CoreModule.Algolia.prototype.updateDocuments = async function (documents, keys) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			let index = this.getAlgoliaIndex(document.collection);
+
+			let docs = documents.map(doc => {
+				let data = {
+					objectID: doc.id
+				};
+
+				for (let field of document.collection.replicatedSearchFields)
+					if (keys.includes(field))
+						data[field] = document.get(field);
+					
+				return data;
+			});
+
+			await index.partialUpdateObjects(docs);
+		}
+
+/*i async*/CoreModule.Algolia.prototype.deleteDocuments = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			let index = this.getAlgoliaIndex(document.collection);
+
+			await index.deleteObjects(ids);
+		}
+
+/*i async*/CoreModule.Algolia.prototype.search = async function (collection, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var qr = new Websom.Adapters.Search.QueryResult(false, "Success");
+		
+			let index = this.getAlgoliaIndex(document.collection);
+
+			let res = await index.search(query.query, {
+				page: query.page,
+				hitsPerPage: query.perPage
+			});
+
+			let ids = res.hits.map(h => h.objectID);
+			let docs = res.hits.map(h => collection.makeDocumentFromMap(h.objectID, h));
+
+			qr.pages = res.nbPages;
+			qr.documentsPerPage = res.hitsPerPage;
+			qr.ids = ids;
+			qr.unsafeDocuments = docs;
+		
+		return qr;}
 
 
 module.exports = CoreModule.Module;
