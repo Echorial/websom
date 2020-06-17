@@ -1,0 +1,132 @@
+info {
+	"name": "dashboard-categories",
+	"type": "component"
+}
+
+template {
+	<div class="dashboard-categories">
+		<input-check-tree :options="categoryOpts" v-model="myValue" />
+
+		<button @click="openModal()"><icon icon="add" class="left" /> New Category</button>
+
+		<modal ref="modal" :self-close="false" size="prompt" :dialog="true" @cancel="close()" @confirm="confirm" dialog-title="New Category" dialog-icon="add" dialog-confirm="Create" dialog-cancel="Cancel">
+			<api-form ref="form" route="/categories/insert">
+				<input-text placeholder="Category Name" v-model="newName" />
+				<input-select placeholder="Parent Category" v-model="newParent" :options="categoryOpts" />
+			</api-form>
+		</modal>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: Array,
+				default: () => []
+			}
+		},
+		data: () => ({
+			myValue: [],
+			categories: [],
+			newName: "",
+			newParent: ""
+		}),
+		methods: {
+			isChecked(category) {
+				return !!this.myValue.find(c => c.id == category.id);
+			},
+			removeCategory(category) {
+				let i = this.myValue.findIndex(c => c.id == category.id);
+				this.myValue.splice(i, 1);
+				this.$emit("input", this.myValue);
+			},
+			async loadCategories(ignoreCache) {
+				this.categories.splice(0, this.categories.length);
+
+				let res = await this.websom.fetch("/categories/view", {
+					fields: "*",
+					query: {
+						namespace: "default"
+					}
+				}, {
+					cache: true,
+					ignoreCache
+				});
+
+				this.categories = res.documents;
+			},
+			openModal() {
+				this.newName = "";
+				this.newParent = "";
+				this.$refs.modal.open();
+			},
+			cancel() {
+				this.$refs.modal.close();
+			},
+			async confirm() {
+				let res = await this.$refs.form.submit({
+					document: {
+						namespace: "default",
+						color: "#FFFFFF",
+						name: this.newName,
+						description: "",
+						parent: this.newParent || ""
+					}
+				});
+
+				if (res.status == "success") {
+					this.$refs.modal.close();
+					this.loadCategories(true);
+				}
+			}
+		},
+		computed: {
+			treeCategories() {
+				let scanCategory = (category) => {
+					let scan = c => !c.parent;
+
+					if (category)
+						scan = c => c.parent == category.id;
+					
+					return this.categories.filter(scan).map(a => ({
+						category: a,
+						children: scanCategory(a)
+					}));
+				};
+
+				return scanCategory();
+			},
+			categoryOpts() {
+				let tree = this.treeCategories;
+				let blocks = [];
+
+				let recur = (n, i) => {
+					blocks.push({
+						name: n.category.name,
+						value: n.category.id,
+						depth: i
+					});
+
+					for (let child of n.children)
+						recur(child, i + 1);
+				};
+
+				for (let n of tree)
+					recur(n, 0);
+				
+				console.log(blocks);
+				return blocks;
+			}
+		},
+		watch: {
+			value(nv) {
+				this.myValue = [...nv];
+			}
+		},
+		created() {
+			this.myValue = [...this.value];
+			this.loadCategories();
+		}
+	}
+}
