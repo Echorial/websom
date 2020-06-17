@@ -61,11 +61,15 @@ exports.websomGCPEntryPoint = async (req, res) => {
 			ssrRequest: req,
 			url: req.url,
 			api: (process.env.WEBSOM_TRIGGER + "/api/v1") || `https://${process.env.FUNCTION_REGION}-${process.env.GCP_PROJECT}.cloudfunctions.net/${process.env.FUNCTION_NAME}`,
+			client: server.clientHost,
 			server,
 			title: req.route.path,
+			breadcrumbs: [],
+			headElements: "",
+			canonicalURL: req.protocol + '://' + req.get("host") + req.baseUrl + req.path,
 			renderHeadElements() {
 				return `
-					<meta name="description" content="Websom page."/>
+				
 				`;
 			}
 		};
