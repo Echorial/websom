@@ -13,7 +13,7 @@ template {
 			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
 			<label class="input-text-placeholder">{{placeholder}}</label>
 			<div class="input-text-after">
-				<icon class="input-text-search-icon" icon="search" v-if="type == 'search'" />
+				<icon class="input-text-search-icon" :icon="searchIcon" v-if="type == 'search'" />
 			</div>
 		</div>
 
@@ -58,6 +58,10 @@ script {
 				type: [String, Function],
 				default: "",
 				description: `The function or validator name to use when detecting if a value is malformed. See the validator example for more information.`
+			},
+			searchIcon: {
+				type: String,
+				default: "search"
 			}
 		},
 		data() {
