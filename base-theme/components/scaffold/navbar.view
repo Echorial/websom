@@ -57,9 +57,6 @@ script {
 			openMobileNav() {
 				this.$refs["mobile-nav"].open();
 			}
-		},
-		mounted() {
-			console.log(this.$refs["mobile-nav"]);
 		}
 	}
 }
