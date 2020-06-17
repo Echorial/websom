@@ -5,18 +5,31 @@ info {
 
 template {
 	<div class="input-entity">
-		<input-text v-model="text" type="search" :placeholder="placeholder" />
+		<input-text v-model="text" type="search" :placeholder="placeholder" :search-icon="!myValue.id ? 'search' : displayIcon" />
 
 		<dropdown>
-			<div class="disabled"><icon icon="danger" class="start" /> Nothing found</div>
-			<div><icon icon="add" class="start" /> Create new {{name}}</div>
+			<div class="disabled" v-if="results.length == 0"><icon icon="danger" class="start" /> Nothing found</div>
+			<template v-else>
+				<div v-for="result in results" :key="result.id" @click="setTo(result)"><icon :icon="displayIcon" class="start" /> {{result[displayProp]}}</div>
+			</template>
+			<div v-if="allowCreate" @click="openCreateModal()"><icon icon="add" class="start" /> Create new {{name}}</div>
 		</dropdown>
+
+		<modal ref="modal" :self-close="false" :size="modalSize" :dialog="true" @cancel="close()" @confirm="create" :dialog-icon="dialogIcon" :dialog-title="dialogTitle" :dialog-cancel-color="dialogCancelColor" :dialog-confirm-color="dialogConfirmColor" :dialog-confirm="dialogConfirm" :dialog-cancel="dialogCancel">
+			<api-form ref="form" :route="route + '/insert'">
+				<slot :request="requestData" />
+			</api-form>
+		</modal>
 	</div>
 }
 
 script {
 	export default {
 		props: {
+			value: {
+				type: Object,
+				default: () => ({})
+			},
 			placeholder: {
 				type: String,
 				default: "Select"
@@ -24,10 +37,122 @@ script {
 			name: {
 				type: String,
 				default: "Entity"
+			},
+			displayProp: {
+				type: String,
+				default: "name"
+			},
+			displayIcon: {
+				type: String,
+				default: "check"
+			},
+			allowCreate: {
+				type: Boolean,
+				default: false
+			},
+			collection: {
+				type: String
+			},
+			route: {
+				type: String
+			},
+			defaults: {
+				type: Object,
+				default: () => ({})
+			},
+			modalSize: {
+				type: String,
+				default: "prompt"
+			},
+			dialogTitle: {
+				type: String,
+				default() {
+					return "Create " + this.name;
+				}
+			},
+			dialogIcon: {
+				type: String,
+				default: "add"
+			},
+			dialogConfirm: {
+				type: String,
+				default: "Create"
+			},
+			dialogConfirmColor: {
+				type: String,
+				default: "success"
+			},
+			dialogCancel: {
+				type: String,
+				default: "Cancel"
+			},
+			dialogCancelColor: {
+				type: String,
+				default: "mute"
+			},
+			bindSearchTo: {
+				type: String,
+				default: "",
+				description: "Use this to pre-fill a request data variable with the search query."
 			}
 		},
-		data: () => ({
-			text: ""
-		})
+		data() {
+			return {
+				myValue: {},
+				text: "",
+				requestData: JSON.parse(JSON.stringify(this.defaults)),
+				results: []
+			};
+		},
+		methods: {
+			setTo(v) {
+				this.myValue = v;
+				this.$emit("input", this.myValue);
+			},
+			openCreateModal() {
+				this.requestData = JSON.parse(JSON.stringify(this.defaults));
+
+				if (this.bindSearchTo)
+					this.requestData[this.bindSearchTo] = this.text;
+
+				this.$refs.modal.open();
+			},
+			async create() {
+				let output = await this.$refs.form.submit({
+					document: this.requestData
+				});
+
+				this.$emit("create", this.requestData);
+
+				if (output.id) {
+					for (let k in this.requestData)
+						this.$set(this.myValue, k, this.requestData[k]);
+					
+					this.$set(this.myValue, "id", output.id);
+
+					this.$emit("input", this.myValue);
+				}
+
+				if (output.status == "success") {
+					this.$refs.modal.close();
+				}
+			},
+			close() {
+				this.$refs.modal.close();
+			}
+		},
+		watch: {
+			value(nv) {
+				this.myValue = nv;
+			},
+			async text() {
+				this.results = await this.websom.search(this.route, this.collection, this.text, {
+					limit: 5
+				});
+			}
+		},
+		create() {
+			this.myValue = this.value;
+		}
 	}
 }
