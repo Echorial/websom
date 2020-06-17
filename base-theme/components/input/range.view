@@ -19,46 +19,59 @@ script {
 	export default {
 		props: {
 			value: {
-				type: Array
+				type: Array,
+				default: () => [0],
+				description: `An array of numbers. If the array contains more than one item, the slider will become a range.`
 			},
 			reverse: {
 				type: Boolean,
-				default: false
+				default: false,
+				description: `Reverses the direction.`
 			},
 			orientation: {
 				type: String,
 				default: "horizontal",
 				validator(v) {
 					return (v != "horizontal" || v != "vertical");
-				}
+				},
+				description: `"horizontal" or "vertical"`
 			},
 			rounding: {
 				type: Number,
-				default: 1
+				default: 1,
+				description: `The step distance.`
 			},
 			snapDistance: {
 				type: Number,
-				default: 10 // In pixels
+				default: 10, // In pixels
+				description: `The distance in pixels to "snap" the cursor to any given snap point.`
 			},
 			max: {
 				type: Number,
-				required: true
+				required: true,
+				default: 100,
+				description: "Maximum value"
 			},
 			min: {
 				type: Number,
-				required: true
+				required: true,
+				default: 0,
+				description: "Minimum value"
 			},
 			format: {
 				type: Function,
-				default: (v) => `${parseFloat(v).toString()}`
+				default: (v) => `${parseFloat(v).toString()}`,
+				description: "A formatting function for custom number displays. e.g. (rawValue) => rawValue.toString()"
 			},
 			snaps: {
 				type: Array,
-				default: () => []
+				default: () => [],
+				description: `An array of values to create snapping points at.`
 			},
 			railClass: {
 				type: String,
-				default: ""
+				default: "",
+				description: `This allows you to add custom CSS classes to the rail. Useful for gradient coloring.`
 			}
 		},
 		data() {
@@ -335,6 +348,9 @@ style {
 
 	.input-range {
 		display: flex;
+		&:not(.input-range-orientation-vertical) {
+			width: 100%;
+		}
 
 		align-items: center;
 
