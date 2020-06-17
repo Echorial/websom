@@ -25,7 +25,8 @@ script {
 	export default {
 		props: {
 			value: {
-				type: Array
+				type: Number,
+				default: 0
 			},
 			rounding: {
 				type: Number,
@@ -51,7 +52,8 @@ script {
 			},
 			mode: {
 				type: String,
-				default: "dial"
+				default: "dial",
+				description: `"dial" or "radial"`
 			}
 		},
 		data() {
