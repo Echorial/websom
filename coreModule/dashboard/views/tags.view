@@ -1,0 +1,68 @@
+info {
+	"name": "dashboard-tags",
+	"type": "component"
+}
+
+template {
+	<div class="dashboard-tags">
+		<input-entity ref="entitySearch" v-model="tag" placeholder="Add Tags" bind-search-to="name" name="Tag" route="/tags" collection="tags" :allow-create="true" display-icon="tag" :defaults="{name: '', namespace: 'default', description: '', color: '#FFFFFF'}">
+			<template v-slot:default="props">
+				<input-text placeholder="Name" v-model="props.request.name" />
+				<input-text type="area" placeholder="Description" v-model="props.request.description" />
+				<div>
+					<label>Color</label>
+					<input-color v-model="props.request.color" />
+				</div>
+			</template>
+		</input-entity>
+
+		<div>
+			<chip v-for="(tag, i) in myValue" :key="tag.id" :text="tag.name" @close="removeTag(i)" />
+		</div>
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			value: {
+				type: Array,
+				default: () => []
+			}
+		},
+		data: () => ({
+			myValue: [],
+			tag: {
+				id: ""
+			}
+		}),
+		methods: {
+			removeTag(i) {
+				this.myValue.splice(i, 1);
+				this.$emit("input", this.myValue);
+			}
+		},
+		watch: {
+			value(nv) {
+				this.myValue = [...nv];
+			},
+			tag() {
+				if (this.tag.id) {
+					if (this.myValue.find(t => t.id == this.tag.id)) {
+						this.tag = {id: ""};
+						this.$refs.entitySearch.text = "";
+
+						return;
+					}
+					
+					this.myValue.push(Object.assign({}, this.tag));
+					this.tag = {id: ""};
+					this.$refs.entitySearch.text = "";
+				}
+			}
+		},
+		created() {
+			this.myValue = [...this.value];
+		}
+	}
+}

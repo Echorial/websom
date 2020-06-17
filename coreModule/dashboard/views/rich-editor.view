@@ -65,7 +65,10 @@ template {
 									</g-h>
 								</card>
 								<dashboard-card name="Tags">
-									<input-entity placeholder="Add Tags" name="Tag" route="/tags" collection="tags" />
+									<dashboard-tags v-model="createData.tags" />
+								</dashboard-card>
+								<dashboard-card name="Categories">
+									<dashboard-categories v-model="createData.categories" />
 								</dashboard-card>
 							</slot>
 						</g-v>
@@ -99,15 +102,19 @@ script {
 			}
 		},
 		data: () => ({
-			createData: {}
+			createData: {
+				tags: [],
+				categories: []
+			},
+			tag: {id: ""}
 		}),
 		watch: {
 			createData(nv) {
-				console.log(nv);
+				//console.log(nv);
 			}
 		},
 		methods: {
-
+			
 		},
 		computed: {
 			viewMode() {
