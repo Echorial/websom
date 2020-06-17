@@ -5,10 +5,14 @@ info {
 
 template {
 	<div class="breadcrumbs">
-		<div v-for="(c, i) in crumbs" class="breadcrumbs-crumb">
-			<span>{{c}}</span>
-			<icon v-if="i != crumbs.length - 1" :icon="$config.breadcrumbsIcon" />
-		</div>
+		<template v-if="!linkedDataOnly">
+			<router-link v-for="(c, i) in items" class="breadcrumbs-crumb" :to="c.route" :key="c.name">
+				<span>{{c.name}}</span>
+				<icon v-if="i != items.length - 1" :icon="$config.breadcrumbsIcon" />
+			</router-link>
+		</template>
+
+		<script v-if="crumbs.length == 0" v-html="breadcrumbs" type="application/ld+json"></script>
 	</div>
 }
 
@@ -17,7 +21,51 @@ script {
 		props: {
 			crumbs: {
 				type: Array,
-				default: () => []
+				default: () => [],
+				description: "Leave blank for auto breadcrumb resolution."
+			},
+			linkedDataOnly: {
+				type: Boolean,
+				default: false,
+				description: "By setting this to true websom will only render the JSON Linked Data version of these breadcrumbs. Useful for SEO."
+			}
+		},
+		computed: {
+			breadcrumbs() {
+				let crumbs = this.items;
+
+				return {
+					"@context": "https://schema.org",
+					"@type": "BreadcrumbList",
+					"itemListElement": crumbs.map((c, i) => ({
+						"@type": "ListItem",
+						"position": i + 1,
+						"name": c.name,
+						"item": this.absolute(c.route)
+					}))
+				};
+			},
+			items() {
+				if (this.crumbs.length > 0) {
+					return this.crumbs;
+				}else{
+					return [].concat.apply([], this.$route.matched.map(a => {
+						if (a.instances.default) {
+							return a.instances.default.breadcrumb();
+						}
+					}));
+				}
+			}
+		},
+		methods: {
+			absolute(to) {
+				if (this.$store.state.websom.ssr) {
+					return this.$store.state.websom.client + to;
+				}else{
+					let link = document.createElement("a");
+					link.href = to;
+					return link.href;
+				}
 			}
 		}
 	}
