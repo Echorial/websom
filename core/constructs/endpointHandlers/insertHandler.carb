@@ -33,56 +33,89 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 			query.set(set.field, set.compute(req));
 		}
 
-		for (let int i in cir.writes) {
-			let write = cir.writes[i];
+		// Wildcard write
+		if (cir.writes.length == 1 and cir.writes[0].field == "*") {
+			for (let string k in clientValues) {
+				let clientValue = clientValues[k];
+					
+				let schemaField = collection.appliedSchema.getField(k);
 
-			if (clientValues.hasKey(write.field) == false) {
-				req.endWithError("Field '" + write.field + "' must not be null");
-				return null;
+				if (schemaField == null) {
+					req.endWithError("Field '" + k + "' has no schema type");
+					return null;
+				}
+
+				if (this.typeCheck(clientValue, schemaField)) {
+					query.set(k, clientValue);
+				}
 			}
+		}else{
+			for (let int i in cir.writes) {
+				let write = cir.writes[i];
 
-			if (clientValues[write.field] == null) {
-				req.endWithError("Field '" + write.field + "' must not be null");
-				return null;
-			}
+				if (clientValues.hasKey(write.field) == false) {
+					req.endWithError("Field '" + write.field + "' must not be null");
+					return null;
+				}
 
-			let clientValue = clientValues[write.field];
+				if (clientValues[write.field] == null) {
+					req.endWithError("Field '" + write.field + "' must not be null");
+					return null;
+				}
 
-			let schemaField = collection.appliedSchema.getField(write.field);
+				let clientValue = clientValues[write.field];
 
-			if (schemaField == null) {
-				req.endWithError("Field '" + write.field + "' has no schema type");
-				return null;
-			}
+				let schemaField = collection.appliedSchema.getField(write.field);
 
-			if (this.typeCheck(clientValue, schemaField)) {
-				for (let int r in write.restrictions) {
-					let restriction = write.restrictions[r];
-					try {
-						if (restriction.testServer(collection, schemaField, clientValue) == false) {
-							req.endWithError(restriction.message(schemaField.name, clientValue));
+				if (schemaField == null) {
+					req.endWithError("Field '" + write.field + "' has no schema type");
+					return null;
+				}
+
+				if (this.typeCheck(clientValue, schemaField)) {
+					for (let int r in write.restrictions) {
+						let restriction = write.restrictions[r];
+						try {
+							if (restriction.testServer(collection, schemaField, clientValue) == false) {
+								req.endWithError(restriction.message(schemaField.name, clientValue));
+								return null;
+							}
+						} catch (Exception e) {
+							req.endWithError("Exception in restriction");
 							return null;
 						}
-					} catch (Exception e) {
-						req.endWithError("Exception in restriction");
-						return null;
 					}
-				}
 
-				for (let int m in write.mutators) {
-					let mutator = write.mutators[m];
-					try {
-						clientValue = mutator.mutate(collection, req, clientValue);
-					} catch (Exception e) {
-						req.endWithError("Exception in mutation");
-						return null;
+					for (let int m in write.mutators) {
+						let mutator = write.mutators[m];
+						try {
+							clientValue = mutator.mutate(collection, req, clientValue);
+						} catch (Exception e) {
+							req.endWithError("Exception in mutation");
+							return null;
+						}
 					}
+					
+					query.set(write.field, clientValue);
+				}else{
+					req.endWithError("'" + write.field + "' is of an invalid type");
+					return null;
 				}
-				
-				query.set(write.field, clientValue);
-			}else{
-				req.endWithError("'" + write.field + "' is of an invalid type");
-				return null;
+			}
+		}
+
+		let ctx = new Websom.APIContext(req);
+		ctx.type = "insert";
+		ctx.insertQuery = query;
+		ctx.inputs = clientValues;
+
+		if (cir.beforeWriteHandler != null) {
+			native javascript {
+				await cir.beforeWriteHandler(ctx);
+			}
+
+			native php {
+				$cir->beforeWriteHandler($ctx);
 			}
 		}
 
