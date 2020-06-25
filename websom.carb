@@ -118,13 +118,6 @@ class Websom.Server {
 
 		this.config = new Websom.Config();
 
-		if (config["dev"]) {
-			if (FileSystem.exists(this.websomRoot + "/tmp") == false)
-				FileSystem.makeDir(this.websomRoot + "/tmp");
-			
-			this.tmp = this.websomRoot + "/tmp";
-		}
-
 		native javascript {
 			const $path = require("path");
 
@@ -135,6 +128,13 @@ class Websom.Server {
 		native php {
 			$this->config->absolute = dirname(__FILE__);
 			$this->config->root = realpath($config->assets);
+		}
+
+		if (config["dev"]) {
+			if (FileSystem.exists(this.config.absolute + "/tmp") == false)
+				FileSystem.makeDir(this.config.absolute + "/tmp");
+			
+			this.tmp = this.config.absolute + "/tmp";
 		}
 
 		if ("dist" in config) {
