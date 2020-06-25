@@ -65,7 +65,7 @@ export default (Vue, options) => {
 
 	Vue.directive("draggable", {
 		inserted(el, binding) {
-			let config = binding.value;
+			let config = binding.value || {};
 
 			if (!config.axis)
 				config.axis = {
