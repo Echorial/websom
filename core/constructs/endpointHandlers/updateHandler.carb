@@ -1,0 +1,175 @@
+class Websom.UpdateHandler inherits Websom.SelectHandler {
+	override void fulfill(Websom.CollectionInterfaceRoute cir, Websom.Request req) {
+		let collection = cir.collection.collection;
+
+		let filterName = req.body["filter"];
+		if (filterName.typeAsString() != "string") {
+			filterName = "default";
+		}
+
+		let filter = cir.findFilter(filterName);
+		
+		if (filter == null) {
+			req.endWithError("Unknown filter provided");
+
+			return null;
+		}
+
+		let query = collection.update();
+
+		let out = this.buildQuery(cir, filter, req, query);
+
+		if (out == null)
+			return null;
+
+		//this.executeQuery(cir, filter, req, query);
+
+		if (collection.appliedSchema == null) {
+			req.endWithError("This collection has no schema applied");
+			return null;
+		}
+
+		if (req.body.hasKey("document") == false) {
+			req.endWithError("No document provided");
+			return null;
+		}
+
+		let map clientValues = req.body["document"];
+
+		if (clientValues.typeAsString() != "map") {
+			req.endWithError("Document must be an object");
+			return null;
+		}
+
+		for (let int i in cir.sets) {
+			let set = cir.sets[i];
+
+			query.set(set.field, set.value);
+		}
+
+		for (let int i in cir.computedSets) {
+			let set = cir.computedSets[i];
+
+			query.set(set.field, set.compute(req));
+		}
+
+		// Wildcard write
+		if (cir.writes.length == 1 and cir.writes[0].field == "*") {
+			for (let string k in clientValues) {
+				let clientValue = clientValues[k];
+					
+				let schemaField = collection.appliedSchema.getField(k);
+
+				if (schemaField == null) {
+					req.endWithError("Field '" + k + "' has no schema type");
+					return null;
+				}
+
+				if (this.typeCheck(clientValue, schemaField)) {
+					query.set(k, clientValue);
+				}
+			}
+		}else{
+			for (let int i in cir.writes) {
+				let write = cir.writes[i];
+
+				if (clientValues.hasKey(write.field) == false) {
+					req.endWithError("Field '" + write.field + "' must not be null");
+					return null;
+				}
+
+				if (clientValues[write.field] == null) {
+					req.endWithError("Field '" + write.field + "' must not be null");
+					return null;
+				}
+
+				let clientValue = clientValues[write.field];
+
+				let schemaField = collection.appliedSchema.getField(write.field);
+
+				if (schemaField == null) {
+					req.endWithError("Field '" + write.field + "' has no schema type");
+					return null;
+				}
+
+				if (this.typeCheck(clientValue, schemaField)) {
+					for (let int r in write.restrictions) {
+						let restriction = write.restrictions[r];
+						try {
+							if (restriction.testServer(collection, schemaField, clientValue) == false) {
+								req.endWithError(restriction.message(schemaField.name, clientValue));
+								return null;
+							}
+						} catch (Exception e) {
+							req.endWithError("Exception in restriction");
+							return null;
+						}
+					}
+
+					for (let int m in write.mutators) {
+						let mutator = write.mutators[m];
+						try {
+							clientValue = mutator.mutate(collection, req, clientValue);
+						} catch (Exception e) {
+							req.endWithError("Exception in mutation");
+							return null;
+						}
+					}
+					
+					query.set(write.field, clientValue);
+				}else{
+					req.endWithError("'" + write.field + "' is of an invalid type");
+					return null;
+				}
+			}
+		}
+
+		native javascript {
+			if (cir.beforeUpdateHandler) {
+				await cir.beforeUpdateHandler(req, query);
+			}
+		}
+
+		native php {
+			if (isset($cir->beforeUpdateHandler)) {
+				$cir->beforeUpdateHandler($req, $query);
+			}
+		}
+
+		let ctx = new Websom.APIContext(req);
+		ctx.type = "update";
+		ctx.updateQuery = query;
+		ctx.inputs = clientValues;
+
+		if (cir.beforeWriteHandler != null) {
+			if (cir.beforeWriteHandler != null) {
+				native javascript {
+					await cir.beforeWriteHandler(ctx);
+				}
+
+				native php {
+					$cir->beforeWriteHandler($ctx);
+				}
+			}
+
+		}
+
+		let updateResult = query.run();
+
+		let res = new map();
+
+		cir.trigger("success", req, new <Websom.Adapters.Database.Document>array());
+
+		res["status"] = "success";
+		res["message"] = "Documents updated";
+		res["updateCount"] = updateResult.updateCount;
+
+		req.header("Content-Type", "application/json");
+		req.header("Access-Control-Allow-Origin", "*");
+		req.end(Websom.Json.encode(res));
+	}
+
+	bool typeCheck(primitive value, Websom.Adapters.Database.Field schemaField) {
+		return this.server.security.typeCheck(value, schemaField.type);
+	}
+}
