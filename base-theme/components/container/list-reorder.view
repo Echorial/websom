@@ -34,6 +34,7 @@ script {
 			let toIndex = 0;
 			let moved = false;
 			let startRelativeOffsetY = 0;
+			let startRelativeOffsetX = 0;
 
 			let axis = {
 				x: 1,
@@ -64,6 +65,7 @@ script {
 
 			let traverseTree = (e) => {
 				startRelativeOffsetY = draggingEl.offsetY;
+				startRelativeOffsetX = draggingEl.offsetLeft;
 
 				computeOffsets();
 
@@ -80,7 +82,7 @@ script {
 
 					let rel = getComputedStyle(relativeElement);
 
-					if (rel.position != "static") {
+					if (rel.position == "static") {
 						break;
 					}
 				}
@@ -119,10 +121,11 @@ script {
 				draggingEl.classList.add("list-reorder-moving");
 
 				setTimeout(() => {
+					let relX = offsets[toIndex] - relativeElement.getBoundingClientRect().left;
 					if (axis.y)
 						draggingEl.style.setProperty("--mouse-y", (offsets[toIndex] - relativeElement.offsetTop) + "px");
 					else
-						draggingEl.style.setProperty("--mouse-x", (offsets[toIndex] - relativeElement.offsetLeft) + "px");
+						draggingEl.style.setProperty("--mouse-x", (relX + relativeElement.offsetLeft) + "px");
 				});
 
 				setTimeout(() => {
@@ -166,7 +169,7 @@ script {
 				let offsetTop = relativeElement.offsetTop;
 				let offsetLeft = relativeElement.offsetLeft;
 
-				draggingEl.style.setProperty("--mouse-x", (pos.x - offsetLeft + startOffsetX) + "px");
+				draggingEl.style.setProperty("--mouse-x", (startRelativeOffsetX + diffX) + "px");
 				if (axis.y)
 					draggingEl.style.setProperty("--mouse-y", (pos.y - offsetTop + startOffsetY) + "px");
 				else
