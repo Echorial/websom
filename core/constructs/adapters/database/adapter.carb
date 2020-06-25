@@ -13,6 +13,8 @@ header class Websom.Adapters.Database.Collection {
 	bool searchable = false;
 	<string>array replicatedSearchFields = null;
 
+	<bool, Websom.Adapters.Database.Document>function searchFilter = null;
+
 	string name = "";
 
 	void entityTemplate = null;
@@ -51,7 +53,20 @@ header class Websom.Adapters.Database.Collection {
 	void insertSearch(Websom.Adapters.Database.Document document) {
 		if (this.searchable) {
 			if (this.database.server.database.search != null) {
-				this.database.server.database.search.insertDocument(document);
+				let doInsert = true;
+
+				if (this.searchFilter != null) {
+					native javascript {
+						doInsert = await this.searchFilter(document);
+					}
+
+					native php {
+						$doInsert = $this->searchFilter($document);
+					}
+				}
+
+				if (doInsert)
+					this.database.server.database.search.insertDocument(document);
 			}
 		}
 	}
@@ -60,7 +75,35 @@ header class Websom.Adapters.Database.Collection {
 	void updateSearch(<Websom.Adapters.Database.Document>array documents, <string>array keys) {
 		if (this.searchable) {
 			if (this.database.server.database.search != null) {
-				this.database.server.database.search.updateDocuments(documents, keys);
+				let docs = new <Websom.Adapters.Database.Document>array();
+				let deletes = new <string>array();
+				
+				if (this.searchFilter != null) {
+					for (let int i in documents) {
+						let doc = documents[i];
+						let doInsert = true;
+
+						native javascript {
+							doInsert = await this.searchFilter(doc);
+						}
+
+						native php {
+							$doInsert = $this->searchFilter($doc);
+						}
+
+						if (doInsert)
+							docs.push(doc);
+						else
+							deletes.push(doc.id);
+					}
+				}else{
+					docs = documents;
+				}
+
+				this.database.server.database.search.updateDocuments(docs, keys);
+
+				if (deletes.length > 0)
+					this.deleteSearch(deletes);
 			}
 		}
 	}
@@ -69,7 +112,7 @@ header class Websom.Adapters.Database.Collection {
 	void deleteSearch(<string>array ids) {
 		if (this.searchable) {
 			if (this.database.server.database.search != null) {
-				this.database.server.database.search.deleteDocuments(ids);
+				this.database.server.database.search.deleteDocuments(this, ids);
 			}
 		}
 	}

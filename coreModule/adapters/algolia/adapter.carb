@@ -45,17 +45,20 @@ class CoreModule.Algolia inherits Websom.Adapters.Search.Adapter {
 
 	[ForceAsync]
 	override void updateDocuments(<Websom.Adapters.Database.Document>array documents, <string>array keys) {
+		if (documents.length == 0)
+			return null;
+
 		native javascript {
-			let index = this.getAlgoliaIndex(document.collection);
+			let index = this.getAlgoliaIndex(documents[0].collection);
 
 			let docs = documents.map(doc => {
 				let data = {
 					objectID: doc.id
 				};
 
-				for (let field of document.collection.replicatedSearchFields)
+				for (let field of doc.collection.replicatedSearchFields)
 					if (keys.includes(field))
-						data[field] = document.get(field);
+						data[field] = doc.get(field);
 					
 				return data;
 			});
@@ -65,9 +68,9 @@ class CoreModule.Algolia inherits Websom.Adapters.Search.Adapter {
 	}
 
 	[ForceAsync]
-	override void deleteDocuments(<string>array ids) {
+	override void deleteDocuments(Websom.Adapters.Database.Collection collection, <string>array ids) {
 		native javascript {
-			let index = this.getAlgoliaIndex(document.collection);
+			let index = this.getAlgoliaIndex(collection);
 
 			await index.deleteObjects(ids);
 		}
@@ -78,20 +81,25 @@ class CoreModule.Algolia inherits Websom.Adapters.Search.Adapter {
 		let qr = new Websom.Adapters.Search.QueryResult(false, "Success");
 
 		native javascript {
-			let index = this.getAlgoliaIndex(document.collection);
+			let index = this.getAlgoliaIndex(collection);
 
-			let res = await index.search(query.query, {
-				page: query.page,
-				hitsPerPage: query.perPage
-			});
+			try {
+				let res = await index.search(query.query, {
+					page: query.page,
+					hitsPerPage: query.perPage
+				});
 
-			let ids = res.hits.map(h => h.objectID);
-			let docs = res.hits.map(h => collection.makeDocumentFromMap(h.objectID, h));
+				let ids = res.hits.map(h => h.objectID);
+				let docs = res.hits.map(h => collection.makeDocumentFromMap(h.objectID, h));
 
-			qr.pages = res.nbPages;
-			qr.documentsPerPage = res.hitsPerPage;
-			qr.ids = ids;
-			qr.unsafeDocuments = docs;
+				qr.pages = res.nbPages;
+				qr.documentsPerPage = res.hitsPerPage;
+				qr.ids = ids;
+				qr.unsafeDocuments = docs;
+			} catch (e) {
+				qr.error = true;
+				qr.message = e;
+			}
 		}
 
 		return qr;

@@ -17,7 +17,7 @@ header class Websom.Adapters.Search.Adapter extends Websom.Adapter {
 	}
 
 	[ForceAsync]
-	void deleteDocuments(<string>array ids) {
+	void deleteDocuments(Websom.Adapters.Database.Collection collection, <string>array ids) {
 		
 	}
 
