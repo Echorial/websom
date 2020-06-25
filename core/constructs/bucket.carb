@@ -4,6 +4,8 @@ class Websom.Bucket {
 	string name = "";
 	string owner = "";
 
+	<void, Websom.BucketObjectContext>function afterWrite = null;
+
 	void @construct(Websom.Server server, string name, map raw) {
 		this.server = server;
 		this.raw = raw;
@@ -34,6 +36,11 @@ class Websom.Bucket {
 
 	void makeDir(string dir, <void, bool>function done);
 
+	[ForceAsync]
+	void writeObject(string destination, string localPath) {
+		this.server.bucket.writeObject(this, destination, localPath);
+	}
+
 	Websom.BucketUpload uploadObject() {
 		return new Websom.BucketUpload(this);
 	}
@@ -56,6 +63,21 @@ class Websom.Bucket {
 	[ForceAsync]
 	string serve(string filename) {
 		return this.server.bucket.serve(this, filename);
+	}
+}
+
+class Websom.BucketObjectContext {
+	Websom.Bucket bucket = null;
+	string name = "";
+
+	void @construct(Websom.Bucket bucket, string name) {
+		this.bucket = bucket;
+		this.name = name;
+	}
+	
+	[ForceAsync]
+	string localFile() {
+		return this.bucket.server.bucket.readToLocalSystemPath(this.bucket, this.name);
 	}
 }
 
