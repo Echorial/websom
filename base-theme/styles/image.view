@@ -7,4 +7,9 @@ style {
 	img.square-framed {
 		border-radius: 50%;
 	}
+
+	img.responsive {
+		max-width: 100%;
+		max-height: 100%;
+	}
 }
