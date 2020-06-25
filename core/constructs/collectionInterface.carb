@@ -18,6 +18,32 @@ class Websom.CollectionInterface {
 		return this;
 	}
 
+	Websom.CollectionInterface generateSearchEndpoint(<string>array excludeFields, Websom.Permission permission) {
+		let fieldsForSearching = new <string>array();
+
+		this.route("/view")
+			.auth(permission)
+			.executes("search");
+
+		if (this.collection.appliedSchema != null) {
+			for (let int i in this.collection.appliedSchema.fields) {
+				let field = this.collection.appliedSchema.fields[i];
+				
+				if (excludeFields.includes(field.name) == false) {
+					fieldsForSearching.push(field.name);
+					this.read(field.name);
+				}
+			}
+		}
+
+		this.filter("default")
+			.field("name", "==");
+
+		this.collection.enableSearching(fieldsForSearching);
+
+		return this;
+	}
+
 	Websom.CollectionInterface exposeSchemaTo(Websom.Permission perm) {
 		this.exposedTo = perm;
 		this.exposeSchema = true;
@@ -155,6 +181,16 @@ class Websom.CollectionInterface {
 		this.routes[this.routes.length - 1].hooks[hook] = func;
 		return this;
 	}
+
+	Websom.CollectionInterface beforeUpdate(<void, Websom.Request, Websom.Adapters.Database.UpdateQuery>function func) {
+		this.routes[this.routes.length - 1].beforeUpdateHandler = func;
+		return this;
+	}
+
+	Websom.CollectionInterface beforeWrite(<void, Websom.APIContext>function func) {
+		this.routes[this.routes.length - 1].beforeWriteHandler = func;
+		return this;
+	}
 }
 
 class Websom.CollectionInterfaceRoute {
@@ -167,6 +203,9 @@ class Websom.CollectionInterfaceRoute {
 	<Websom.CollectionInterfaceWriteSetComputed>array computedSets = new <Websom.CollectionInterfaceWriteSetComputed>array();
 	<Websom.CollectionInterfaceFilter>array filters = new <Websom.CollectionInterfaceFilter>array();
 	<<void, Websom.Request, <Websom.Adapters.Database.Document>array>function>map hooks = new <<void, Websom.Request, <Websom.Adapters.Database.Document>array>function>map();
+
+	<void, Websom.Request, Websom.Adapters.Database.UpdateQuery>function beforeUpdateHandler = null;
+	<void, Websom.APIContext>function beforeWriteHandler = null;
 
 	string route = "";
 
