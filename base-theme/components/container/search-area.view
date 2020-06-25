@@ -1,0 +1,146 @@
+info {
+	"name": "search-area",
+	"type": "component"
+}
+
+template {
+	<div class="search-area" :class="'search-area-' + this.layout">
+		<div class="search-area-filter">
+			<slot name="filter" :filter="filter">
+				<input-text type="search" v-model="filter.search" :placeholder="'Search ' + subjectPlural" />
+			</slot>
+		</div>
+		<transition-group v-if="documents.length > 0" :transition="transition" tag="div" class="search-area-results">
+			<slot v-for="(doc, i) in documents" name="document" :document="doc" :index="i">
+				<card :key="doc.id" :href="'/' + subject.toLowerCase() + '/' + doc.slug || (doc.id + '/' + doc.name)">
+					<template v-if="doc.featuredImage" v-slot:image>
+						<img :src="websom.resolveMedia(doc.featuredImage)" />
+					</template>
+					<template v-slot:title>
+						<h2>{{doc.name}}</h2>
+					</template>
+					<template v-slot:content>
+						<p>{{doc.excerpt}}</p>
+					</template>
+				</card>
+			</slot>
+		</transition-group>
+		<no-data v-else />
+	</div>
+}
+
+script {
+	export default {
+		props: {
+			layout: {
+				type: String,
+				default: "split",
+				description: "Options are: split, vertical, plain"
+			},
+			transition: {
+				type: String,
+				default: "fade"
+			},
+			defaultFilter: {
+				type: Object,
+				default: () => ({}),
+				description: "Use this to fill the default filtering fields. e.g. { 'color': 'blue' }"
+			},
+			filterName: {
+				type: String,
+				default: "default"
+			},
+			subject: {
+				type: String,
+				default: "Entity"
+			},
+			subjectPlural: {
+				type: String,
+				default: "Entities"
+			},
+			collection: {
+				type: String,
+				default: "",
+				description: "The collection to assign fetched entities to."
+			},
+			route: {
+				type: String,
+				default: "/entities/view",
+				description: "The select route to hit when fetching entities. Typically ends with /view."
+			},
+			fields: {
+				type: [Object, String],
+				default: "*",
+				description: "Limit the fields returned. Use this to save on data."
+			},
+			fetchOptions: {
+				type: Object,
+				default: () => ({})
+			},
+			processDocuments: {
+				type: Function, 
+				default(docs) {
+					return docs;
+				},
+				description: "Use this to do any data processing before displaying data to the client. This can be async."
+			},
+			customFetcher: {
+				type: Function,
+				default: null,
+				description: "Use this to add custom fetching functionality. This will be called instead of websom.fetch. This can be async."
+			}
+		},
+		data: () => ({
+			documents: [],
+			filter: {}
+		}),
+		serverPrefetch() {
+			return this.refresh();
+		},
+		methods: {
+			async refresh() {
+				let docs;
+				
+				if (!this.customFetcher) {
+					if (Object.keys(this.filter).length == 1 && this.filter.search) {
+						docs = await this.websom.search(this.route, this.collection, this.filter.search, {});
+					} else {
+						docs = await this.websom.fetch(this.route, {
+							filter: this.filterName,
+							query: this.filter,
+							fields: this.fields
+						}, this.fetchOptions);
+
+						docs = docs.documents;
+					}
+				} else {
+					docs = await this.customFetcher(this.filter, this);
+				}
+
+				this.documents = await this.processDocuments(docs);
+			},
+			clearFilter() {
+				this.filter = JSON.parse(JSON.stringify(this.defaultFilter));
+			}
+		},
+		watch: {
+			filter() {
+				this.refresh();
+			}
+		},
+		created() {
+			this.clearFilter();
+		},
+		mounted() {
+			console.log(this.documents);
+			if (this.documents.length == 0)
+				this.refresh();
+		}
+	}
+}
+
+style {
+	main > .search-area {
+		min-width: 70%;
+	}
+}
