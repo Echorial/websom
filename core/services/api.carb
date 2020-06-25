@@ -14,6 +14,7 @@ class Websom.Services.API inherits Websom.Service {
 		this.registerEndpointHandler("insert", new Websom.InsertHandler(this.server));
 		this.registerEndpointHandler("delete", new Websom.DeleteHandler(this.server));
 		this.registerEndpointHandler("search", new Websom.SearchHandler(this.server));
+		this.registerEndpointHandler("update", new Websom.UpdateHandler(this.server));
 	}
 
 	void registerEndpointHandler(string key, Websom.EndpointHandler handler) {
@@ -178,11 +179,67 @@ class Websom.Services.API inherits Websom.Service {
 	}
 
 	trust Websom.CollectionInterface generateAdminEndpoints(Websom.Adapters.Database.Collection collection, string baseRoute, Websom.Permission perm) {
+		let cacheHandler = void (Websom.APIContext ctx) => {
+			let <string>array tags = ctx.get("tags");
+			let tagNames = new <string>array();
+			if (tags != null) {
+				let docs = this.server.coreModule.tags.getAll(tags);
+
+				for (let int i in docs) {
+					if (docs[i] != null)
+						tagNames.push(docs[i].get("name"));
+				}
+
+				if (ctx.type == "update") {
+					ctx.updateQuery.set("tagsCache", tagNames);
+				}else if (ctx.type == "insert") {
+					ctx.insertQuery.set("tagsCache", tagNames);
+				}
+			}
+
+			let <string>array categories = ctx.get("categories");
+			let categoryNames = new <string>array();
+			if (categories != null) {
+				let docs = this.server.coreModule.categories.getAll(categories);
+
+				for (let int i in docs) {
+					if (docs[i] != null)
+						categoryNames.push(docs[i].get("name"));
+				}
+
+				if (ctx.type == "update") {
+					ctx.updateQuery.set("categoriesCache", categoryNames);
+				}else if (ctx.type == "insert") {
+					ctx.insertQuery.set("categoriesCache", categoryNames);
+				}
+			}
+		};
+
 		return this.interface(collection, baseRoute)
 			.route("/create")
 				.auth(perm)
 				.executes("insert")
 					.write("*")
+					.setComputed("created", uint64 (Websom.Request req) => {
+						return Websom.Time.now();
+					})
+					.setComputed("modified", uint64 (Websom.Request req) => {
+						return Websom.Time.now();
+					})
+					.beforeWrite(cacheHandler)
+			.route("/edit")
+				.auth(perm)
+				.executes("update")
+					.write("*")
+					.setComputed("modified", uint64 (Websom.Request req) => {
+						return Websom.Time.now();
+					})
+					.beforeUpdate(void (Websom.Request req, Websom.Adapters.Database.UpdateQuery query) => {
+						query.increment("revisions", 1);
+					})
+					.beforeWrite(cacheHandler)
+					.filter("default")
+						.field("id", "==")
 			.route("/get")
 				.auth(perm)
 				.executes("select")
@@ -268,6 +325,12 @@ class Websom.Services.API inherits Websom.Service {
 class Websom.APIContext {
 	Websom.Request request = null;
 	map inputs = new map();
+
+	string type = "";
+
+	Websom.Adapters.Database.UpdateQuery updateQuery = null;
+	Websom.Adapters.Database.InsertQuery insertQuery = null;
+	Websom.Adapters.Database.Document subject = null;
 
 
 	void @construct(Websom.Request req) {
