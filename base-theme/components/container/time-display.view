@@ -4,7 +4,7 @@ info {
 }
 
 template {
-	<span>
+	<span :title="(new Date(time)).toLocaleString()">
 		{{display}}
 	</span>
 }
