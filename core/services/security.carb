@@ -205,8 +205,8 @@ class Websom.Services.Security inherits Websom.Service {
 
 					let typeAsString = v.typeAsString();
 
-					if (typeAsString == "map" or typeAsString == "array")
-						return false;
+					/*if (typeAsString == "map" or typeAsString == "array")
+						return false;*/
 				}
 
 				return true;
