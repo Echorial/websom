@@ -47,7 +47,7 @@ template {
 							<slot name="row" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" :selected="selected[d.id]">
 								<tr :key="d.id" :class="{selected: selected[d.id]}" ref="rows">
 									<td class="center-content table-bulk-checkbox" v-if="bulk">
-										<input-checkbox v-model="selected[d.id]" text="" />
+										<input-checkbox v-model="selected[d.id]" @input="checkboxInput(d.id, $event)" text="" />
 									</td>
 									<template v-for="(col, ci) in displayColumns">
 										<slot :column="col" :entity="d" :index="ci" :data="d[col]" :name="'column-' + col">
@@ -76,9 +76,9 @@ template {
 			<transition-group v-if="!error" tag="div" class="rich-view-collection" :class="'rich-view-layout-' + myLayout + (selectedCount > 0 ? ' rich-view-selected' : '')" :name="transition" :mode="transitionMode">
 				<template v-if="documents.length > 0">
 					<template v-for="(d, i) in documents">
-						<div :key="d.id" class="rich-view-grid-item" :class="{'rich-view-grid-item-selected': selected[d.id]}">
+						<div :key="d.id" class="rich-view-grid-item" :class="{'rich-view-grid-item-selected': selected[d.id]}" @click="tryFullSelect(d.id)">
 							<div class="rich-view-grid-item-checkbox">
-								<input-checkbox v-model="selected[d.id]" text="" />
+								<input-checkbox v-model="selected[d.id]" @input="checkboxInput(d.id, $event)" text="" :class="{disabled: fullSelect}"/>
 							</div>
 							<slot name="grid" :entity="d" :index="i" :class="{'data-view': true, [transition]: true}" :selected="selected[d.id]" />
 						</div>
@@ -179,6 +179,14 @@ script {
 			deleteOptions: {
 				type: Object,
 				default: () => ({})
+			},
+			fullSelect: {
+				type: Boolean,
+				default: false
+			},
+			singleSelect: {
+				type: Boolean,
+				default: false
 			}
 		},
 		data() {
@@ -196,6 +204,19 @@ script {
 			};
 		},
 		methods: {
+			checkboxInput(id, v) {
+				if (this.singleSelect) {
+					this.clearSelection();
+
+					if (v)
+						this.setSelected(id, true);
+				}
+			},
+			tryFullSelect(id) {
+				if (this.fullSelect) {
+					this.setSelected(id, !this.selected[id]);
+				}
+			},
 			makeOrderQuery() {
 				if (this.sortable) {
 					return {
@@ -322,6 +343,9 @@ script {
 				this.$refs.deletionDialog.open();
 			},
 			setSelected(id, e) {
+				if (this.singleSelect)
+					this.clearSelection();
+
 				this.$set(this.selected, id, e);
 				this.emitSelection();
 			},
@@ -392,8 +416,12 @@ script {
 				return true;
 			},
 			checkAll(set) {
-				for (let k in this.selected)
-					this.selected[k] = set;
+				if (!this.singleSelect) {
+					for (let k in this.selected)
+						this.selected[k] = set;
+				}else{
+					this.clearSelection();
+				}
 					
 				this.emitSelection();
 			},
