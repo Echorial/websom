@@ -1,0 +1,43 @@
+info {
+	"name": "media-image",
+	"type": "component"
+}
+
+template {
+	<picture>
+		<source :srcset="imageLocation('webp')" type="image/webp">
+		<source :srcset="imageLocation('png')" type="image/jpeg"> 
+		<img :src="imageLocation('png')" :alt="alt">
+	</picture>
+}
+
+script {
+	export default {
+		props: {
+			alt: {
+				type: String,
+				default: ""
+			},
+			file: {
+				type: String,
+				default: ""
+			},
+			type: {
+				type: String,
+				default: "thumbnail"
+			}
+		},
+		computed: {
+			fileWithoutExtension() {
+				let x = this.file.split(".");
+				x.pop();
+				return x.join(".");
+			}
+		},
+		methods: {
+			imageLocation(ext) {
+				return `${this.fileWithoutExtension}_${this.type}.${ext}`;
+			}
+		}
+	}
+}
