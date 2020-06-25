@@ -5,13 +5,18 @@ info {
 
 template {
 	<div class="websom-media">
-		<rich-view :sortable="true" :bulk="true" :layout="layout" collection="/media" route="/media/view" class="dashboard-files-block" ref="mediaView" @input="catchSelections">
+		<rich-view :single-select="!multi" :sortable="true" :bulk="true" :full-select="fullSelect" :layout="layout" collection="/media" route="/media/view" class="dashboard-files-block" ref="mediaView" @input="catchSelections">
 			<template v-slot:grid="slotProps">
 				<card class="dashboard-file-item full-image hover-title" :key="slotProps.entity.id">
 					<img v-if="slotProps.entity.type.split('/')[0] == 'image'" slot="image" :src="slotProps.entity.file" />
 					<icon v-else slot="image" :icon="getIconFor(slotProps.entity.type)" />
 
-					<h4 slot="title"><router-link :to="slotProps.entity.id" append>{{slotProps.entity.name}}</router-link></h4>
+					<h4 slot="title">
+						<router-link v-if="link" :to="slotProps.entity.id" append>{{slotProps.entity.name}}</router-link>
+						<template v-else>
+							{{slotProps.entity.name}}
+						</template>
+					</h4>
 				</card>
 			</template>
 
@@ -35,7 +40,7 @@ template {
 				<td key="file">
 					<icon v-if="s.entity.type.split('/')[0] != 'image'" :icon="getIconFor(s.entity.type)" />
 					<div v-else class="dashboard-file-table-image">
-						<img :src="s.data" />
+						<media-image :file="s.data" :alt="s.data" />
 					</div>
 				</td>
 			</template>
@@ -80,6 +85,18 @@ script {
 			layout: {
 				type: String,
 				default: "table"
+			},
+			link: {
+				type: Boolean,
+				default: true
+			},
+			fullSelect: {
+				type: Boolean,
+				default: false
+			},
+			multi: {
+				type: Boolean,
+				default: true
 			}
 		},
 		data: () => ({
@@ -87,6 +104,9 @@ script {
 			uploading: []
 		}),
 		methods: {
+			didFullSelect(item) {
+
+			},
 			getIconFor(type) {
 				let g = type.split("/")[0];
 
@@ -285,6 +305,12 @@ style {
 		img {
 			max-width: 90%;
 			max-height: 90%;
+		}
+
+		> picture {
+			display: flex;
+			align-items: center;
+			justify-content: center;
 		}
 	}
 }

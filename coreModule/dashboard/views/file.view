@@ -7,21 +7,48 @@ info {
 
 template {
 	<modal ref="modal" @close="closed" size="display">
-		<g-l>
+		<g-l v-if="file">
 			<g-h>
 				<g-v m="6" class="file-display-wrap center-content">
 					<template v-if="isImage">
-						<img :src="file.file" class="file-preview" @load="setImageDimensions"/>
+						<img :src="file.file" class="file-preview" @load="setImageDimensions" v-draggable="{position: 'transform'}" />
 						<span class="file-display-dimensions">{{imageDimensions}}</span>
 					</template>
 				</g-v>
 				<g-v m="6">
-					<h1>
+					<h1 class="pad-content">
 						{{file.name}}
 					</h1>
+					<div class="pad-content">
+						ID: <label>{{file.id}}</label>
+					</div>
+					<div class="pad-content">
+						Name: <label>{{file.name}}</label>
+					</div>
+					<div class="pad-content">
+						Type: <label>{{file.type}}</label>
+					</div>
+					<div class="pad-content">
+						Size: <label>{{(file.size / (1024 * 1024)).toFixed(2)}}MB</label>
+					</div>
+					<div class="pad-content">
+						Created: <label><time-display :time="file.created" /></label>
+					</div>
+					<div class="pad-content">
+						<input-text placeholder="Public Location" readonly :value="file.file" />
+					</div>
+					<div class="pad-content" v-if="isImage">
+						<input-text placeholder="Thumbnail (webp)" readonly :value="toThumbnail(file.file, 'webp')" />
+					</div>
+					<div class="pad-content">
+						<label>Owner</label>
+						<br><br>
+						<user-block :user="file.owner" />
+					</div>
 				</g-v>
 			</g-h>
 		</g-l>
+		<no-data v-else />
 	</modal>
 }
 
@@ -37,17 +64,26 @@ script {
 			},
 			setImageDimensions(e) {
 				this.imageDimensions = e.target.width + "x" + e.target.height;
+			},
+			toThumbnail(file, ext) {
+				file = file || "";
+				let x = file.split(".");
+				x.pop();
+				return x.join(".") + "_thumbnail." + ext;
 			}
 		},
 		computed: {
 			isImage() {
-				return this.file.type ? this.file.type.split("/")[0] == "image" : false;
+				if (this.file)
+					return this.file.type ? this.file.type.split("/")[0] == "image" : false;
+				else
+					return false;
 			}
 		},
 		async mounted() {
+			this.file = await this.websom.getEntity("/media", this.$route.params.id, "id");
+			
 			this.$refs.modal.open();
-
-			this.file = await this.websom.getEntity("/media", this.$route.params.id);
 		}
 	}
 }
@@ -59,6 +95,8 @@ style {
 		background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 
 		position: relative;
+
+		overflow: hidden;
 	}
 
 	.file-preview {
