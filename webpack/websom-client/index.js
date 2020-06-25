@@ -26,13 +26,16 @@ export default (store, packages, context) => ({
 	getConfig(route, key) {
 		return store.state.websom.data.config[route + "." + key];
 	},
-	async getEntity(collection, id) {
+	async getEntity(collection, id, filter) {
+		filter = filter || "default";
+		
 		if (store.state.entities[collection] && store.state.entities[collection][id]) {
 			return store.state.entities[collection][id];
 		}else{
 			let res = await this.fetch(collection + "/get", {
 				fields: { "*": true },
-				query: { id }
+				query: { id },
+				filter
 			});
 			
 			if (res && res.documents && res.documents.length > 0)
@@ -125,5 +128,31 @@ export default (store, packages, context) => ({
 				return false;
 			}
 		}
+	},
+	flattenDocument(doc) {
+		let output = {};
+
+		for (let [k, v] of Object.entries(doc)) {
+			if (typeof v == "object") {
+				if (Array.isArray(v)) {
+					output[k] = v.map(sub => {
+						if (sub.$collection && "id" in sub) {
+							return sub.id;
+						}else{
+							return sub;
+						}
+					});
+				}else{
+					if (v && v.$collection && "id" in v) {
+						output[k] = v.id;
+					}
+				}
+			}else{
+				if (k && k[0] != "$")
+					output[k] = v;
+			}
+		}
+
+		return output;
 	}
 });
