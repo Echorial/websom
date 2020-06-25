@@ -37,9 +37,7 @@ class CoreModule.LokiCollection inherits Websom.Adapters.Database.Collection {
 		let <map>array docs = null;
 
 		native javascript {
-			docs = this.lokiCollection.find({
-				$loki: {"$in": ids}
-			});
+			docs = ids.map(id => this.lokiCollection.get(parseInt(id)))
 		}
 		
 		let outputs = new <Websom.Adapters.Database.Document>array();
