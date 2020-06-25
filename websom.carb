@@ -33,6 +33,7 @@ class Websom.Server {
 	//Websom.Standard.Dashboard.Module dashboard = null;
 	Websom.Standard.UserSystem.Module userSystem = null;
 	Websom.Standard.CommerceSystem.Module commerceSystem = null;
+	Websom.Standard.CoreModule coreModule = null;
 	//Websom.Standard.PaymentSystem.Module paymentSystem = null;
 
 	Websom.Config config = null;
@@ -50,6 +51,10 @@ class Websom.Server {
 	string clientHost = "http://localhost:8080";
 	string clientDomain = "localhost:8080";
 	string websiteName = "Websom site";
+
+
+	// A location to store temporary files. This is changed to /tmp in serverless environments.
+	string tmp = "";
 
 	Websom.Status status = new Websom.Status();
 
@@ -112,6 +117,13 @@ class Websom.Server {
 		this.websomRoot = FileSystem.resolve(FileSystem.dirName(this.scriptPath) + "/../../");
 
 		this.config = new Websom.Config();
+
+		if (config["dev"]) {
+			if (FileSystem.exists(this.websomRoot + "/tmp") == false)
+				FileSystem.makeDir(this.websomRoot + "/tmp");
+			
+			this.tmp = this.websomRoot + "/tmp";
+		}
 
 		native javascript {
 			const $path = require("path");
@@ -205,6 +217,8 @@ class Websom.Server {
 		if (this.config.dev) {
 			this.bucket.registerBucket(bucket);
 		}
+
+		this.buckets.push(bucket);
 	}
 
 	trust void registerServiceCollection(Websom.Adapters.Database.Collection collection) {
@@ -286,8 +300,11 @@ class Websom.Server {
 		this.status.inherit(this.session.start());
 		this.status.inherit(this.module.start());
 
+		let everything trickTheStupidCompiler = this.module.getModule("coreModule");
+		this.coreModule = trickTheStupidCompiler;
+
 		if (this.bucketAdapter.loadFromConfig() == false) {
-			this.bucketAdapter.load(this.module.getModule("coreModule"), "CoreModule.FileSystemBucket");
+			this.bucketAdapter.load(this.coreModule, "CoreModule.FileSystemBucket");
 		}
 
 		this.bucket = this.bucketAdapter.adapter;
