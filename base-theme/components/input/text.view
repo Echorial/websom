@@ -8,8 +8,8 @@ template {
 		<div class="input-text-wrap">
 			<div class="input-text-before"></div>
 			<icon v-if="icon && side != 'right'" :icon="icon" class="input-text-icon start" />
-			<input v-if="type != 'area'" type="text" class="input-text-input" @input="input" v-model="myValue" :type="type" ref="input"></input>
-			<textarea v-else class="input-text-input" @input="input" v-model="myValue" ref="input"></textarea>
+			<input :readonly="readonly" v-if="type != 'area'" type="text" class="input-text-input" @input="input" v-model="myValue" :type="type" ref="input"></input>
+			<textarea v-else :readonly="readonly" class="input-text-input" @input="input" v-model="myValue" ref="input"></textarea>
 			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
 			<label class="input-text-placeholder">{{placeholder}}</label>
 			<div class="input-text-after">
@@ -59,9 +59,18 @@ script {
 				default: "",
 				description: `The function or validator name to use when detecting if a value is malformed. See the validator example for more information.`
 			},
+			required: {
+				type: Boolean,
+				default: false,
+				description: "A validator shorthand for requiring at least 1 character of content."
+			},
 			searchIcon: {
 				type: String,
 				default: "search"
+			},
+			readonly: {
+				type: Boolean,
+				default: false
 			}
 		},
 		data() {
@@ -79,6 +88,14 @@ script {
 				this.$refs.input.focus();
 			},
 			async checkValidation() {
+				if (this.required)
+					if (this.myValue.length == 0) {
+						this.success = false;
+						this.error = true;
+						this.errorMessage = "This cannot be empty.";
+						return false;
+					}
+
 				if (typeof this.validate == "function") {
 					let res = await this.validate(this.myValue);
 					
