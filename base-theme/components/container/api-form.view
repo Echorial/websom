@@ -5,12 +5,19 @@ info {
 
 template {
 	<div class="api-form" :class="{'api-form-loading': loading, 'api-form-done-success': singleShot && status == 'success'}">
+		<template v-if="statusLocation == 'top'">
+			<status-box v-if="status.length > 0 && status != 'component'" :message="message" :status="status" class="api-form-status" />
+			<component v-else-if="status == 'component'" :is="component" :context="componentContext"/>
+		</template>
+
 		<div class="api-form-fields">
 			<slot />
 		</div>
 
-		<status-box v-if="status.length > 0 && status != 'component'" :message="message" :status="status" class="api-form-status" />
-		<component v-else-if="status == 'component'" :is="component" :context="componentContext"/>
+		<template v-if="statusLocation == 'bottom'">
+			<status-box v-if="status.length > 0 && status != 'component'" :message="message" :status="status" class="api-form-status" />
+			<component v-else-if="status == 'component'" :is="component" :context="componentContext"/>
+		</template>
 
 		<div class="api-form-loader"><loader :type="loaderType" /></div>
 	</div>
@@ -38,6 +45,11 @@ script {
 			"use-local-storage": {
 				type: Boolean,
 				default: false
+			},
+			statusLocation: {
+				type: String,
+				default: "bottom",
+				description: "Accepted values: top or bottom"
 			}
 		},
 		data: () => ({
