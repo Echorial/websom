@@ -39,19 +39,21 @@ script {
 			}
 		},
 		data() {
-			let value = this.value || [];
+			let value = JSON.parse(JSON.stringify(this.value)) || [];
 
 			return {
 				myValue: value,
 				toggles: {},
 				dragTarget: -1,
-				dragSpacing: 0
+				dragSpacing: 0,
+				valueChange: false
 			};
 		},
 		methods: {
 			remove(i) {
 				this.toggles[i] = false;
 				this.myValue.splice(i, 1);
+				this.$emit("input", this.myValue);
 			},
 			addItem() {
 				this.myValue.push(JSON.parse(JSON.stringify(this.template)));
@@ -136,7 +138,18 @@ script {
 		},
 		watch: {
 			value() {
-				this.myValue = this.value;
+				this.valueChange = true;
+				this.myValue = JSON.parse(JSON.stringify(this.value));
+			},
+			myValue: {
+				deep: true,
+				handler() {
+					if (this.valueChange) {
+						this.valueChange = false;
+						return;
+					}
+					this.$emit("input", this.myValue);
+				}
 			}
 		}
 	}
