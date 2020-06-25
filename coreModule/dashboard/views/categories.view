@@ -5,7 +5,7 @@ info {
 
 template {
 	<div class="dashboard-categories">
-		<input-check-tree :options="categoryOpts" v-model="myValue" />
+		<input-check-tree :options="categoryOpts" :value="myValue" @input="updateFromTree($event)" />
 
 		<button @click="openModal()"><icon icon="add" class="left" /> New Category</button>
 
@@ -61,24 +61,29 @@ script {
 				this.newParent = "";
 				this.$refs.modal.open();
 			},
-			cancel() {
+			close() {
 				this.$refs.modal.close();
 			},
 			async confirm() {
-				let res = await this.$refs.form.submit({
-					document: {
-						namespace: "default",
-						color: "#FFFFFF",
-						name: this.newName,
-						description: "",
-						parent: this.newParent || ""
-					}
-				});
+				if (this.newName) {
+					let res = await this.$refs.form.submit({
+						document: {
+							namespace: "default",
+							color: "#FFFFFF",
+							name: this.newName,
+							description: "",
+							parent: this.newParent || ""
+						}
+					});
 
-				if (res.status == "success") {
-					this.$refs.modal.close();
-					this.loadCategories(true);
+					if (res.status == "success") {
+						this.$refs.modal.close();
+						this.loadCategories(true);
+					}
 				}
+			},
+			updateFromTree(val) {
+				this.$emit("input", val);
 			}
 		},
 		computed: {

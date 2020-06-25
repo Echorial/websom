@@ -59,6 +59,8 @@ script {
 					this.tag = {id: ""};
 					this.$refs.entitySearch.text = "";
 				}
+
+				this.$emit("input", this.myValue);
 			}
 		},
 		created() {

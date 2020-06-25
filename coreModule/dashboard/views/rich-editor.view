@@ -19,61 +19,70 @@ template {
 					</div>
 				</div>
 
-				<rich-view :sortable="true" :bulk="true" :collection="collection" :route="route" class="dashboard-products-block" ref="productView">
-					
+				<rich-view :sortable="true" :bulk="true" :collection="collection" :route="route + '/list'" class="dashboard-products-block" ref="productView" :columns="columns">
+					<template v-slot:column-name="p">
+						<td>
+							<router-link :to="'edit/' + p.entity.id" append>{{p.data}}</router-link>
+						</td>
+					</template>
 				</rich-view>
 			</div>
-			<div class="dashboard-editor-main" v-if="viewMode == 'create'" key="create">
-				<g-l class="space">
-					<g-h purpose="header">
-						<div class="dashboard-rich-editor-bar">
-							<h1>
-								New {{displayName}}
-							</h1>
-							<div>
-								<router-link :to="basePath" class="button danger">
-									<icon icon="back" left/> Cancel
-								</router-link>
+			<div class="dashboard-editor-main" v-if="viewMode == 'create' || viewMode == 'edit'" key="editor">
+				<api-form status-location="top" ref="editingForm" :route="route + '/' + viewMode">
+					<g-l class="space">
+						<g-h purpose="header">
+							<div class="dashboard-rich-editor-bar">
+								<h1>
+									{{viewMode == "create" ? "New" : "Update"}} {{displayName}}
+								</h1>
+								<div>
+									<router-link :to="basePath" class="button danger">
+										<icon icon="back" left/> {{viewMode == "create" ? "Cancel" : "Back"}}
+									</router-link>
+								</div>
 							</div>
-						</div>
-					</g-h>
-					<g-h>
-						<g-v m="9">
-							<slot name="edit-main" :data="createData">
-								<card v-for="k in Object.keys(schema.schema)" :key="k">
-									<template v-slot:body>
-										<div>
-											<div class="rich-editor-row">
-												<input-rich-text v-if="k == 'description'" :placeholder="k" />
-												<input-text :placeholder="k" v-else />
+						</g-h>
+						<g-h>
+							<g-v m="9">
+								<slot name="edit-main" :data="editingData">
+									<card v-for="k in Object.keys(schema.schema)" :key="k">
+										<template v-slot:body>
+											<div>
+												<div class="rich-editor-row">
+													<input-rich-text v-if="k == 'description'" :placeholder="k" />
+													<input-text :placeholder="k" v-else />
+												</div>
 											</div>
-										</div>
-									</template>
-								</card>
-							</slot>
-						</g-v>
-						<g-v m="3">
-							<slot name="edit-side" :data="createData">
-								<card>
-									<g-h>
-										<g-v s="6">
-											<input-select :options="[{value: 'Draft', name: 'Draft', icon: 'send'}, {value: 'private', name: 'Private', icon: 'lock'}, {value: 'publish', name: 'Publish', icon: 'public'}]" value="Draft" />
-										</g-v>
-										<g-v s="5" shift="1">
-											<button class="success"><icon icon="add" left /> Create</button>
-										</g-v>
-									</g-h>
-								</card>
-								<dashboard-card name="Tags">
-									<dashboard-tags v-model="createData.tags" />
-								</dashboard-card>
-								<dashboard-card name="Categories">
-									<dashboard-categories v-model="createData.categories" />
-								</dashboard-card>
-							</slot>
-						</g-v>
-					</g-h>
-				</g-l>
+										</template>
+									</card>
+								</slot>
+							</g-v>
+							<g-v m="3">
+								<slot name="edit-side" :data="editingData">
+									<card>
+										<g-h>
+											<g-v s="6">
+												<input-select :options="[{value: 'Draft', name: 'Draft', icon: 'send'}, {value: 'private', name: 'Private', icon: 'lock'}, {value: 'publish', name: 'Publish', icon: 'public'}]" v-model="editingData.displayStatus" />
+											</g-v>
+											<g-v s="5" shift="1">
+												<button class="success" @click="create"><icon icon="add" left /> {{viewMode == "create" ? "Create" : "Update"}}</button>
+											</g-v>
+										</g-h>
+									</card>
+									<dashboard-card name="Tags">
+										<dashboard-tags v-model="editingData.tags" />
+									</dashboard-card>
+									<dashboard-card name="Categories">
+										<dashboard-categories v-model="editingData.categories" />
+									</dashboard-card>
+									<dashboard-card name="Featured Image">
+										<input-media :multi="false" v-model="editingData.featuredImage" />
+									</dashboard-card>
+								</slot>
+							</g-v>
+						</g-h>
+					</g-l>
+				</api-form>
 			</div>
 		</transition>
 	</div>
@@ -99,22 +108,121 @@ script {
 			},
 			entity: {
 				type: String
+			},
+			columns: {
+				type: Object,
+				default: () => ({
+					"name": true,
+					"displayStatus": true,
+					"authors": true,
+					"created": true,
+					"modified": true
+				})
 			}
 		},
 		data: () => ({
-			createData: {
-				tags: [],
-				categories: []
-			},
+			editingData: {},
+			initialEditingData: {},
 			tag: {id: ""}
 		}),
 		watch: {
-			createData(nv) {
+			editingData(nv) {
 				//console.log(nv);
+			},
+			viewMode() {
+				if (this.viewMode == "create")
+					this.createEditingData();
+				else if (this.viewMode == "edit")
+					this.loadEditingData();
+			},
+			entityId() {
+				if (this.viewMode == "create")
+					this.createEditingData();
+				else if (this.viewMode == "edit")
+					this.loadEditingData();
 			}
 		},
 		methods: {
-			
+			async create() {
+				if (this.viewMode == "create") {
+					await this.$refs.editingForm.submit({
+						document: this.websom.flattenDocument(this.editingData)
+					});
+				}else if (this.viewMode == "edit") {
+					let changedFields = {};
+
+					let eD = this.websom.flattenDocument(this.editingData);
+					let iD = this.websom.flattenDocument(this.initialEditingData);
+
+					for (let [k, v] of Object.entries(eD)) {
+						if (JSON.stringify(v) != JSON.stringify(iD[k]))
+							changedFields[k] = v;
+					}
+
+					await this.$refs.editingForm.submit({
+						fields: "*",
+						filter: "default",
+						query: {
+							id: this.entityId
+						},
+						document: changedFields
+					});
+				}
+			},
+			createEditingData() {
+				this.editingData = {
+					tags: [],
+					categories: [],
+					displayStatus: "Draft"
+				};
+
+				for (let k in this.schema.schema) {
+					let type = this.schema.schema[k];
+					let v = null;
+
+					if (type == "string")
+						v = "";
+					else if (type == "integer" || type == "float")
+						v = 0;
+					else if (type == "array")
+						v = [];
+					else if (type == "map")
+						v = {};
+					else if (type == "boolean")
+						v = false;
+
+					this.$set(this.editingData, k, v);
+				}
+			},
+			async loadEditingData() {
+				let id = this.entityId;
+				let res = await this.websom.fetch(this.route + "/get", {
+					fields: "*",
+					query: {
+						id
+					}
+				});
+
+				if (res.status == "error") {
+					// Handle it
+					return;
+				}
+
+				let entity = this.websom.makeEntity(this.collection, res.documents[0]);
+
+				for (let [i, v] of entity.tags.entries())
+					entity.tags[i] = {
+						$collection: "tags",
+						$fields: {
+							name: true
+						},
+						id: v,
+						name: entity.tagsCache[i]
+					};
+
+				this.editingData = {...entity};
+				this.initialEditingData = {...entity};
+			}
 		},
 		computed: {
 			viewMode() {
@@ -140,23 +248,10 @@ script {
 			if (!this.schema)
 				console.error("Unable to find schema for collection " + this.collection + " in rich-editor. Did you forget to collectionInterface.exposeSchemaTo(permission)?");
 
-			for (let k in this.schema.schema) {
-				let type = this.schema.schema[k];
-				let v = null;
-
-				if (type == "string")
-					v = "";
-				else if (type == "integer" || type == "float")
-					v = 0;
-				else if (type == "array")
-					v = [];
-				else if (type == "map")
-					v = {};
-				else if (type == "boolean")
-					v = false;
-
-				this.$set(this.createData, k, v);
-				
+			if (this.viewMode == "create")
+				this.createEditingData();
+			else if (this.viewMode == "edit") {
+				this.loadEditingData();
 			}
 		}
 	}
@@ -207,7 +302,7 @@ style {
 		.rich-view {
 			flex: 1;
 
-			.rich-view-table-wrap, .rich-view-grid-wrap, .rich-view-layout-grid, .rich-view-table {
+			.rich-view-table-wrap, .rich-view-grid-wrap, .rich-view-layout-grid {
 				height: 100%;
 
 				.no-data {
