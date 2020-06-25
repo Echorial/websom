@@ -7,7 +7,7 @@ template {
 	<div class="input-media">
 		<modal ref="media-modal" :modal-transparent="true">
 			<div class="modal-media-row" :class="{'media-selected': isSelected}">
-				<websom-media ref="media" layout="grid" @input="handleSelections"/>
+				<websom-media ref="media" :full-select="true" :multi="multi" layout="grid" :link="false" @input="handleSelections"/>
 				<div class="modal-media-info">
 					<div class="modal-media-sub">
 						<transition-group name="list-slide" tag="div" class="modal-media-list">
@@ -21,26 +21,47 @@ template {
 			</div>
 		</modal>
 
-		<div class="gallery-view center-content">
-			<img :src="selectedImage" v-if="myValue.length > 0" />
-			<div v-else>
-				<div class="center-content"><icon icon="image" class="huge" /></div>
-				<h1>No media selected</h1>
-			</div>
-		</div>
-		<div class="gallery-row">
-			<list-reorder horizontal @input="reorder">
-				<div v-for="(media, i) in myValue" :key="media">
-					<div class="gallery-media">
-						<img draggable="false" :src="websom.resolveMedia(media)" @click="selectImage(media)"/>
-						<button @click="remove(i)" class="danger floating tiny"><icon icon="remove" /></button>
-					</div>
+		<template v-if="multi">
+			<div class="gallery-view center-content">
+				<img :src="selectedImage" v-if="myValue.length > 0" />
+				<div v-else>
+					<div class="center-content"><icon icon="image" class="huge" /></div>
+					<h1>No media selected</h1>
 				</div>
-			</list-reorder>
-			<div class="gallery-add fat-action" @click="openMedia">
-				<icon icon="add" class="large color-primary" />
 			</div>
-		</div>
+			<div class="gallery-row">
+				<list-reorder horizontal @input="reorder">
+					<div v-for="(media, i) in myValue" :key="media">
+						<div class="gallery-media">
+							<img draggable="false" :src="websom.resolveMedia(media)" @click="selectImage(media)"/>
+							<button @click="remove(i)" class="danger floating tiny"><icon icon="remove" /></button>
+						</div>
+					</div>
+				</list-reorder>
+				<div class="gallery-add fat-action" @click="openMedia">
+					<icon icon="add" class="large color-primary" />
+				</div>
+			</div>
+		</template>
+		<template v-else>
+			<g-h class="fat-action" @click.native="openMedia">
+				<g-v l="3" class="center-content">
+					<div class="center-content">
+						<icon v-if="!myValue" icon="image" class="huge" />
+						<img v-else class="responsive" :src="websom.resolveMedia(myValue)" />
+					</div>
+				</g-v>
+				<g-v l="9" class="center-content">
+					<template v-if="!myValue">
+						<h2 style="padding-top: 0px;">No media selected</h2>
+						<label>Click here to upload some. <br>You can also drag and drop</label>
+					</template>
+					<template v-else>
+						<h3>{{myValue}}</h3>
+					</template>
+				</g-v>
+			</g-h>
+		</template>
 	</div>
 }
 
@@ -49,11 +70,17 @@ script {
 		props: {
 			value: {
 				type: [Array, Number, String],
-				default: () => []
+				default() {
+					return this.multi ? [] : "";
+				}
 			},
 			type: {
 				type: [String, Array],
 				default: "*"
+			},
+			multi: {
+				type: Boolean,
+				default: true
 			}
 		},
 		methods: {
@@ -64,6 +91,20 @@ script {
 				this.selectedModalMedia = selected;
 			},
 			selectImages() {
+				if (!this.multi) {
+					if (this.selectedModalMedia.length > 0)
+						this.myValue = this.selectedModalMedia[0].name;
+					else
+						this.myValue = "";
+					
+					this.$refs["media-modal"].close();
+					this.$refs.media.clearSelection();
+
+					this.$emit("input", this.myValue);
+
+					return;
+				}
+
 				for (let media of this.selectedModalMedia)
 					this.myValue.push(media.name);
 
@@ -90,9 +131,21 @@ script {
 				return this.selectedModalMedia.length > 0;
 			}
 		},
+		watch: {
+			value() {
+				this.myValue = JSON.parse(JSON.stringify(this.value));
+				if (!this.multi && this.myValue.length == 0)
+					this.myValue = "";
+			}
+		},
 		data() {
+			let myVal = [];
+
+			if (!this.multi)
+				myVal = "";
+
 			return {
-				myValue: this.value || [],
+				myValue: JSON.parse(JSON.stringify(this.value)) || myVal,
 				selectedModalMedia: [],
 				selectedImage: ""
 			};
