@@ -182,7 +182,7 @@ class Websom.Request {
 		native javascript {
 			const fs = require("fs");
 			const mime = require("mime");
-			this.response.jsResponse.type(mime.getType(path));
+			this.response.jsResponse.type(mime.getType(path) || "application/octet-stream");
 			fs.createReadStream(path).pipe(this.response.jsResponse);
 		}
 
