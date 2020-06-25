@@ -4,6 +4,23 @@ namespace Websom.Standard {
 
 #include "userSystem.carb"
 #include "commerceSystem.carb"
+#include "coreModule.carb"
+
+header relative Websom.Standard.RichEntity {
+	field <string>array tags = new <string>array();
+	field <string>array tagsCache = new <string>array();
+	field <string>array categories = new <string>array();
+	field <string>array categoriesCache = new <string>array();
+	field string slug = "";
+	field string displayTitle = "";
+	field Websom.Time created = null;
+	field Websom.Time modified = null;
+	field string excerpt = "";
+	field string featuredImage = "";
+	field string displayStatus = "public";
+	field int revisions = 0;
+	field <Websom.Standard.UserSystem.User>array authors = null;
+}
 
 #script Carbon
 

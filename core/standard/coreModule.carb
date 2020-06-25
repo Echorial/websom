@@ -1,0 +1,22 @@
+header relative Websom.Standard.CoreModule {
+	Websom.Adapters.Database.Collection groups = null;
+	Websom.Adapters.Database.Collection confirmations = null;
+	Websom.Adapters.Database.Collection objects = null;
+	Websom.Adapters.Database.Collection mediaFiles = null;
+	Websom.Adapters.Database.Collection tags = null;
+	Websom.Adapters.Database.Collection categories = null;
+
+	public Websom.Permission dashboardView = null;
+
+	public Websom.Permission commentEdit = null;
+	public Websom.Permission commentCreate = null;
+	public Websom.Permission commentRead = null;
+
+	Websom.Permission groupRead = null;
+	Websom.Permission groupCreate = null;
+	Websom.Permission groupEdit = null;
+
+	Websom.Permission corePublic = null;
+
+	Websom.Bucket media = null;
+}

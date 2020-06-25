@@ -1,30 +1,6 @@
 namespace CoreModule {}
 
-#script Carbon
-	print("Core module");
-#end script
-
-class CoreModule.Module inherits Websom.Module {
-	Websom.Adapters.Database.Collection groups = null;
-	Websom.Adapters.Database.Collection confirmations = null;
-	Websom.Adapters.Database.Collection objects = null;
-	Websom.Adapters.Database.Collection mediaFiles = null;
-	Websom.Adapters.Database.Collection tags = null;
-	Websom.Adapters.Database.Collection categories = null;
-
-	public Websom.Permission dashboardView = null;
-
-	public Websom.Permission commentEdit = null;
-	public Websom.Permission commentCreate = null;
-	public Websom.Permission commentRead = null;
-
-	Websom.Permission groupRead = null;
-	Websom.Permission groupCreate = null;
-	Websom.Permission groupEdit = null;
-
-	Websom.Permission corePublic = null;
-
-	Websom.Bucket media = null;
+class CoreModule.Module inherits Websom.Module, Websom.Standard.CoreModule {
 
 	string transientAccessCode = "";
 
@@ -207,8 +183,14 @@ class CoreModule.Module inherits Websom.Module {
 					.on("success", void (Websom.Request req, <Websom.Adapters.Database.Document>array docs) => {
 						for (let int i in docs) {
 							let doc = docs[i];
+							let string name = doc.get("name");
+							let ext = name.split(".");
+							ext.pop();
+							let rawName = ext.join(".");
 
-							this.media.deleteObject(doc.get("name"));
+							this.media.deleteObject(name);
+							this.media.deleteObject(rawName + "_thumbnail.png");
+							this.media.deleteObject(rawName + "_thumbnail.webp");
 						}
 					})
 			.route("/view")
@@ -222,7 +204,9 @@ class CoreModule.Module inherits Websom.Module {
 				.executes("select")
 					.read("*")
 					.filter("default")
-						.field("file", "==");
+						.field("file", "==")
+					.filter("id")
+						.field("id", "==");
 
 		this.confirmations = db.collection("confirmations");
 		let confirmationSchema = this.confirmations.schema()
@@ -337,6 +321,42 @@ class CoreModule.Module inherits Websom.Module {
 
 	override Websom.Status start() {
 		this.media = this.registerBucket("media");
+
+		this.media.afterWrite = void (Websom.BucketObjectContext ctx) => {
+			let filePath = ctx.localFile();
+
+			native javascript {
+				const sharp = require("sharp");
+				const fs = require("fs");
+				const mime = require("mime");
+
+				let mimeType = mime.getType(filePath);
+
+				if (mimeType.split("/")[0] != "image")
+					return;
+				
+				let name = ctx.name.split(".");
+				if (name[name.length - 2].endsWith("_thumbnail"))
+					return;
+
+				let info = await sharp(filePath)
+					.resize(256)
+					.webp()
+					.toFile(_c_this.server.tmp + "/output.webp");
+				
+				let info2 = await sharp(filePath)
+					.resize(256)
+					.png()
+					.toFile(_c_this.server.tmp + "/output.png");
+				
+				name.pop();
+				let dest = name.join(".") + "_thumbnail.webp";
+				let destLegacy = name.join(".") + "_thumbnail.png";
+
+				_c_this.media.writeObject(dest, _c_this.server.tmp + "/output.webp");
+				_c_this.media.writeObject(destLegacy, _c_this.server.tmp + "/output.png");
+			}
+		};
 
 		this.server.api.route("/media/upload")
 			.auth(this.dashboardView)
