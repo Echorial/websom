@@ -17,6 +17,11 @@ header class Websom.Adapters.Bucket.Adapter extends Websom.Adapter {
 	}
 
 	[ForceAsync]
+	void writeObject(Websom.Bucket bucket, string destination, string localPath) {
+		
+	}
+
+	[ForceAsync]
 	void setObjectACL(Websom.Bucket bucket, string filename, string acl) {
 		
 	}
@@ -27,6 +32,11 @@ header class Websom.Adapters.Bucket.Adapter extends Websom.Adapter {
 
 	[ForceAsync]
 	string serve(Websom.Bucket bucket, string filename) {
+
+	}
+
+	[ForceAsync]
+	string readToLocalSystemPath(Websom.Bucket bucket, string filename) {
 
 	}
 }

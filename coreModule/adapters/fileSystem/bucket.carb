@@ -45,6 +45,7 @@ class CoreModule.FileSystemBucket extends Websom.Adapters.Bucket.Adapter {
 		});
 	}
 
+	[ForceAsync]
 	void handleUpload(Websom.Request req, string token) {
 		let objects = this.coreModule.objects.where("token", "==", token).get();
 
@@ -60,6 +61,20 @@ class CoreModule.FileSystemBucket extends Websom.Adapters.Bucket.Adapter {
 
 			if (req.files["upload"] != null) {
 				FileSystem.writeSync(objectPath, FileSystem.readSync(req.files["upload"], null));
+
+				let bucket = this.server.getBucket(obj.get("bucket"));
+
+				let ctx = new Websom.BucketObjectContext(bucket, obj.get("filename"));
+
+				if (bucket.afterWrite != null) {
+					native javascript {
+						await bucket.afterWrite(ctx);
+					}
+
+					native php {
+						$bucket->afterWrite($ctx);
+					}
+				}
 
 				this.coreModule.objects.update()
 					.where("id", "==", obj.get("id"))
@@ -96,6 +111,24 @@ class CoreModule.FileSystemBucket extends Websom.Adapters.Bucket.Adapter {
 		FileSystem.unlink(bucketPath + "/" + filename);
 	}
 
+	override void writeObject(Websom.Bucket bucket, string destination, string localPath) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+
+		FileSystem.writeSync(bucketPath + "/" + destination, FileSystem.readSync(localPath, null));
+
+		let ctx = new Websom.BucketObjectContext(bucket, destination);
+
+		if (bucket.afterWrite != null) {
+			native javascript {
+				await bucket.afterWrite(ctx);
+			}
+
+			native php {
+				$bucket->afterWrite($ctx);
+			}
+		}
+	}
+
 	override void createDirectory(Websom.Bucket bucket, string path) {
 		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
 
@@ -118,5 +151,9 @@ class CoreModule.FileSystemBucket extends Websom.Adapters.Bucket.Adapter {
 
 	override string serve(Websom.Bucket bucket, string filename) {
 		return this.server.apiHost + "/buckets/" + bucket.name + "/" + filename;
+	}
+
+	override string readToLocalSystemPath(Websom.Bucket bucket, string filename) {
+		return this.server.config.devBuckets + "/" + bucket.name + "/" + filename;
 	}
 }
