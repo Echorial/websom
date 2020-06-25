@@ -50,6 +50,8 @@ Websom.Server = function () {var _c_this = this;
 
 	this.commerceSystem = null;
 
+	this.coreModule = null;
+
 	this.config = null;
 
 	this.configService = null;
@@ -71,6 +73,8 @@ Websom.Server = function () {var _c_this = this;
 	this.clientDomain = "localhost:8080";
 
 	this.websiteName = "Websom site";
+
+	this.tmp = "";
 
 	this.status = new Websom.Status();
 
@@ -125,6 +129,12 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof ar
 			this.config.root = $path.resolve(basePath + "/" + config.assets);
 		
 		
+		if (config["dev"]) {
+			if (Oxygen.FileSystem.exists(_c_this.config.absolute + "/tmp") == false) {
+				Oxygen.FileSystem.makeDir(_c_this.config.absolute + "/tmp");
+				}
+			_c_this.tmp = _c_this.config.absolute + "/tmp";
+			}
 		if ("dist" in config) {
 			_c_this.config.javascriptOutput = Oxygen.FileSystem.resolve(basePath + "/" + config["dist"]);
 			_c_this.config.cssOutput = Oxygen.FileSystem.resolve(basePath + "/" + config["dist"]);
@@ -190,7 +200,8 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof ar
 Websom.Server.prototype.registerBucket = function (bucket) {var _c_this = this; var _c_root_method_arguments = arguments;
 		if (_c_this.config.dev) {
 			_c_this.bucket.registerBucket(bucket);
-			}}
+			}
+		_c_this.buckets.push(bucket);}
 
 /*i async*/Websom.Server.prototype.registerServiceCollection = async function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
@@ -260,9 +271,11 @@ Websom.Server.prototype.logException = function (e) {var _c_this = this; var _c_
 		_c_this.status.inherit(_c_this.confirmation.start());
 		_c_this.status.inherit(_c_this.session.start());
 		_c_this.status.inherit((await _c_this.module.start/* async call */()));
+		var trickTheStupidCompiler = _c_this.module.getModule("coreModule");
+		_c_this.coreModule = trickTheStupidCompiler;
 		if ((await _c_this.bucketAdapter.loadFromConfig/* async call */()) == false) {
 /*async*/
-			(await _c_this.bucketAdapter.load/* async call */(_c_this.module.getModule("coreModule"), "CoreModule.FileSystemBucket"));
+			(await _c_this.bucketAdapter.load/* async call */(_c_this.coreModule, "CoreModule.FileSystemBucket"));
 			}
 		_c_this.bucket = _c_this.bucketAdapter.adapter;
 		(await _c_this.database.loadAdapter/* async call */());
@@ -907,7 +920,8 @@ Websom.Services.API.prototype.start = function () {var _c_this = this; var _c_ro
 		_c_this.registerEndpointHandler("select", new Websom.SelectHandler(_c_this.server));
 		_c_this.registerEndpointHandler("insert", new Websom.InsertHandler(_c_this.server));
 		_c_this.registerEndpointHandler("delete", new Websom.DeleteHandler(_c_this.server));
-		_c_this.registerEndpointHandler("search", new Websom.SearchHandler(_c_this.server));}
+		_c_this.registerEndpointHandler("search", new Websom.SearchHandler(_c_this.server));
+		_c_this.registerEndpointHandler("update", new Websom.UpdateHandler(_c_this.server));}
 
 Websom.Services.API.prototype.registerEndpointHandler = function (key, handler) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.handlers[key] = handler;}
@@ -1063,7 +1077,50 @@ Websom.Services.API.prototype.compareRoute = function (base, request) {var _c_th
 			}}
 
 Websom.Services.API.prototype.generateAdminEndpoints = function (collection, baseRoute, perm) {var _c_this = this; var _c_root_method_arguments = arguments;
-		return _c_this.interface(collection, baseRoute).route("/create").auth(perm).executes("insert").write("*").route("/get").auth(perm).executes("select").read("*").filter("default").field("id", "==").route("/list").auth(perm).executes("select").read("*").filter("default").order("*", "dsc");}
+		var cacheHandler = async function (ctx) {
+/*async*/
+			var tags = ctx.get("tags");
+			var tagNames = [];
+			if (tags != null) {
+/*async*/
+				var docs = (await _c_this.server.coreModule.tags.getAll/* async call */(tags));
+				for (var i = 0; i < docs.length; i++) {
+					if (docs[i] != null) {
+						tagNames.push(docs[i].get("name"));
+						}
+					}
+				if (ctx.type == "update") {
+					ctx.updateQuery.set("tagsCache", tagNames);
+					}else if (ctx.type == "insert") {
+					ctx.insertQuery.set("tagsCache", tagNames);
+					}
+				}
+			var categories = ctx.get("categories");
+			var categoryNames = [];
+			if (categories != null) {
+/*async*/
+				var docs = (await _c_this.server.coreModule.categories.getAll/* async call */(categories));
+				for (var i = 0; i < docs.length; i++) {
+					if (docs[i] != null) {
+						categoryNames.push(docs[i].get("name"));
+						}
+					}
+				if (ctx.type == "update") {
+					ctx.updateQuery.set("categoriesCache", categoryNames);
+					}else if (ctx.type == "insert") {
+					ctx.insertQuery.set("categoriesCache", categoryNames);
+					}
+				}
+			};
+		return _c_this.interface(collection, baseRoute).route("/create").auth(perm).executes("insert").write("*").setComputed("created", function (req) {
+			return Websom.Time.now();
+			}).setComputed("modified", function (req) {
+			return Websom.Time.now();
+			}).beforeWrite(cacheHandler).route("/edit").auth(perm).executes("update").write("*").setComputed("modified", function (req) {
+			return Websom.Time.now();
+			}).beforeUpdate(function (req, query) {
+			query.increment("revisions", 1);
+			}).beforeWrite(cacheHandler).filter("default").field("id", "==").route("/get").auth(perm).executes("select").read("*").filter("default").field("id", "==").route("/list").auth(perm).executes("select").read("*").filter("default").order("*", "dsc");}
 
 Websom.Services.API.prototype.interface = function (collection, baseRoute) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var ci = new Websom.CollectionInterface(collection, baseRoute);
@@ -1144,6 +1201,14 @@ Websom.APIContext = function (req) {var _c_this = this;
 	this.request = null;
 
 	this.inputs = {};
+
+	this.type = "";
+
+	this.updateQuery = null;
+
+	this.insertQuery = null;
+
+	this.subject = null;
 
 		_c_this.request = req;
 }
@@ -4410,9 +4475,6 @@ Websom.Services.Security.prototype.typeCheck = function (value, type) {var _c_th
 				for (var i = 0; i < castToArray.length; i++) {
 					var v = castToArray[i];
 					var typeAsString = (typeof v == 'object' ? (Array.isArray(v) ? 'array' : 'map') : (typeof v == 'number' ? 'float' : typeof v));
-					if (typeAsString == "map" || typeAsString == "array") {
-						return false;
-						}
 					}
 				return true;
 				}
@@ -4904,6 +4966,8 @@ Websom.Bucket = function () {var _c_this = this;
 
 	this.owner = "";
 
+	this.afterWrite = null;
+
 	if (arguments.length == 3 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'object' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
 		var server = arguments[0];
 		var name = arguments[1];
@@ -4933,6 +4997,10 @@ Websom.Bucket.make = function (server, name, type, raw) {var _c_this = this; var
 			return new Websom.Buckets.Local(server, name, raw);
 			}}
 
+/*i async*/Websom.Bucket.prototype.writeObject = async function (destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.writeObject/* async call */(_c_this, destination, localPath));}
+
 Websom.Bucket.prototype.uploadObject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		return new Websom.BucketUpload(_c_this);}
 
@@ -4952,6 +5020,19 @@ Websom.Bucket.prototype.uploadObject = function () {var _c_this = this; var _c_r
 /*async*/
 		return (await _c_this.server.bucket.serve/* async call */(_c_this, filename));}
 
+Websom.BucketObjectContext = function (bucket, name) {var _c_this = this;
+	this.bucket = null;
+
+	this.name = "";
+
+		_c_this.bucket = bucket;
+		_c_this.name = name;
+}
+
+/*i async*/Websom.BucketObjectContext.prototype.localFile = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		return (await _c_this.bucket.server.bucket.readToLocalSystemPath/* async call */(_c_this.bucket, _c_this.name));}
+
 Websom.Buckets = function () {var _c_this = this;
 
 
@@ -4967,6 +5048,8 @@ Websom.Buckets.Local = function () {var _c_this = this;
 	this.name = "";
 
 	this.owner = "";
+
+	this.afterWrite = null;
 
 	if (arguments.length == 3 && ((arguments[0] instanceof Websom.Server) || typeof arguments[0] == 'undefined' || arguments[0] === null) && (typeof arguments[1] == 'string' || typeof arguments[1] == 'undefined' || arguments[1] === null) && (typeof arguments[2] == 'object' || typeof arguments[2] == 'undefined' || arguments[2] === null)) {
 		var server = arguments[0];
@@ -5010,6 +5093,10 @@ Websom.Buckets.Local.make = function (server, name, type, raw) {var _c_this = th
 		if (type == "local") {
 			return new Websom.Buckets.Local(server, name, raw);
 			}}
+
+/*i async*/Websom.Buckets.Local.prototype.writeObject = async function (destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.writeObject/* async call */(_c_this, destination, localPath));}
 
 Websom.Buckets.Local.prototype.uploadObject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		return new Websom.BucketUpload(_c_this);}
@@ -5090,6 +5177,22 @@ Websom.CollectionInterface = function (collection, route) {var _c_this = this;
 
 Websom.CollectionInterface.prototype.route = function (route) {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.routes.push(new Websom.CollectionInterfaceRoute(_c_this, route));
+		return _c_this;}
+
+Websom.CollectionInterface.prototype.generateSearchEndpoint = function (excludeFields, permission) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var fieldsForSearching = [];
+		_c_this.route("/view").auth(permission).executes("search");
+		if (_c_this.collection.appliedSchema != null) {
+			for (var i = 0; i < _c_this.collection.appliedSchema.fields.length; i++) {
+				var field = _c_this.collection.appliedSchema.fields[i];
+				if ((excludeFields.indexOf(field.name) !== -1) == false) {
+					fieldsForSearching.push(field.name);
+					_c_this.read(field.name);
+					}
+				}
+			}
+		_c_this.filter("default").field("name", "==");
+		_c_this.collection.enableSearching(fieldsForSearching);
 		return _c_this;}
 
 Websom.CollectionInterface.prototype.exposeSchemaTo = function (perm) {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -5241,6 +5344,14 @@ Websom.CollectionInterface.prototype.on = function (hook, func) {var _c_this = t
 		_c_this.routes[_c_this.routes.length - 1].hooks[hook] = func;
 		return _c_this;}
 
+Websom.CollectionInterface.prototype.beforeUpdate = function (func) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.routes[_c_this.routes.length - 1].beforeUpdateHandler = func;
+		return _c_this;}
+
+Websom.CollectionInterface.prototype.beforeWrite = function (func) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.routes[_c_this.routes.length - 1].beforeWriteHandler = func;
+		return _c_this;}
+
 Websom.CollectionInterfaceRoute = function (collection, route) {var _c_this = this;
 	this.collection = null;
 
@@ -5257,6 +5368,10 @@ Websom.CollectionInterfaceRoute = function (collection, route) {var _c_this = th
 	this.filters = [];
 
 	this.hooks = {};
+
+	this.beforeUpdateHandler = null;
+
+	this.beforeWriteHandler = null;
 
 	this.route = "";
 
@@ -8711,7 +8826,7 @@ Websom.Request.prototype.serve = function (path) {var _c_this = this; var _c_roo
 		
 			const fs = require("fs");
 			const mime = require("mime");
-			this.response.jsResponse.type(mime.getType(path));
+			this.response.jsResponse.type(mime.getType(path) || "application/octet-stream");
 			fs.createReadStream(path).pipe(this.response.jsResponse);
 		
 		}
@@ -8986,7 +9101,7 @@ Websom.SinkRequest.prototype.serve = function (path) {var _c_this = this; var _c
 		
 			const fs = require("fs");
 			const mime = require("mime");
-			this.response.jsResponse.type(mime.getType(path));
+			this.response.jsResponse.type(mime.getType(path) || "application/octet-stream");
 			fs.createReadStream(path).pipe(this.response.jsResponse);
 		
 		}
@@ -11093,6 +11208,8 @@ Websom.Adapters.Database.Collection = function (database, name) {var _c_this = t
 
 	this.replicatedSearchFields = null;
 
+	this.searchFilter = null;
+
 	this.name = "";
 
 	this.entityTemplate = null;
@@ -11123,7 +11240,17 @@ Websom.Adapters.Database.Collection.prototype.enableSearching = function (fields
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+				var doInsert = true;
+				if (_c_this.searchFilter != null) {
+					
+						doInsert = await this.searchFilter(document);
+					
+					
+					}
+				if (doInsert) {
+/*async*/
+					(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+					}
 				}
 			}}
 
@@ -11133,7 +11260,30 @@ Websom.Adapters.Database.Collection.prototype.enableSearching = function (fields
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.updateDocuments/* async call */(documents, keys));
+				var docs = [];
+				var deletes = [];
+				if (_c_this.searchFilter != null) {
+					for (var i = 0; i < documents.length; i++) {
+						var doc = documents[i];
+						var doInsert = true;
+						
+							doInsert = await this.searchFilter(doc);
+						
+						
+						if (doInsert) {
+							docs.push(doc);
+							}else{
+								deletes.push(doc.id);
+							}
+						}
+					}else{
+						docs = documents;
+					}
+				(await _c_this.database.server.database.search.updateDocuments/* async call */(docs, keys));
+				if (deletes.length > 0) {
+/*async*/
+					(await _c_this.deleteSearch/* async call */(deletes));
+					}
 				}
 			}}
 
@@ -11143,7 +11293,7 @@ Websom.Adapters.Database.Collection.prototype.enableSearching = function (fields
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.deleteDocuments/* async call */(ids));
+				(await _c_this.database.server.database.search.deleteDocuments/* async call */(_c_this, ids));
 				}
 			}}
 
@@ -11778,7 +11928,7 @@ Websom.Adapters.Search.Adapter = function (server) {var _c_this = this;
 /*i async*/Websom.Adapters.Search.Adapter.prototype.updateDocuments = async function (documents, keys) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
-/*i async*/Websom.Adapters.Search.Adapter.prototype.deleteDocuments = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/Websom.Adapters.Search.Adapter.prototype.deleteDocuments = async function (collection, ids) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
 /*i async*/Websom.Adapters.Search.Adapter.prototype.search = async function (collection, query) {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -12187,6 +12337,9 @@ Websom.Adapters.Bucket.Adapter = function (server) {var _c_this = this;
 /*i async*/Websom.Adapters.Bucket.Adapter.prototype.createDirectory = async function (bucket, path) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.writeObject = async function (bucket, destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
 /*i async*/Websom.Adapters.Bucket.Adapter.prototype.setObjectACL = async function (bucket, filename, acl) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
@@ -12194,6 +12347,9 @@ Websom.Adapters.Bucket.Adapter.prototype.registerBucket = function (bucket) {var
 }
 
 /*i async*/Websom.Adapters.Bucket.Adapter.prototype.serve = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.readToLocalSystemPath = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
 /*i async*/Websom.Adapters.Bucket.Adapter.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
@@ -12446,68 +12602,96 @@ Websom.InsertHandler = function (server) {var _c_this = this;
 			var set = cir.computedSets[i];
 			query.set(set.field, (await set.compute/* async call */(req)));
 			}
-		for (var i = 0; i < cir.writes.length; i++) {
+		if (cir.writes.length == 1 && cir.writes[0].field == "*") {
 /*async*/
-			var write = cir.writes[i];
-			if ((write.field in clientValues) == false) {
+			for (var k in clientValues) {
 /*async*/
-				(await req.endWithError/* async call */("Field '" + write.field + "' must be not null"));
-				return null;
-				}
-			if (clientValues[write.field] == null) {
+				var clientValue = clientValues[k];
+				var schemaField = collection.appliedSchema.getField(k);
+				if (schemaField == null) {
 /*async*/
-				(await req.endWithError/* async call */("Field '" + write.field + "' must be not null"));
-				return null;
-				}
-			var clientValue = clientValues[write.field];
-			var schemaField = collection.appliedSchema.getField(write.field);
-			if (schemaField == null) {
-/*async*/
-				(await req.endWithError/* async call */("Field '" + write.field + "' has no schema type"));
-				return null;
-				}
-			if (_c_this.typeCheck(clientValue, schemaField)) {
-/*async*/
-				for (var r = 0; r < write.restrictions.length; r++) {
-/*async*/
-					var restriction = write.restrictions[r];
-					try {
-/*async*/
-						if ((await restriction.testServer/* async call */(collection, schemaField, clientValue)) == false) {
-/*async*/
-							(await req.endWithError/* async call */(restriction.message(schemaField.name, clientValue)));
-							return null;
-							}
-					} catch (_carb_catch_var) {
-						if (_carb_catch_var instanceof Error || typeof _carb_catch_var == 'undefined' || _carb_catch_var === null) {
-							var e = _carb_catch_var;
-/*async*/
-						(await req.endWithError/* async call */("Exception in restriction"));
-						return null;
-						}
-					}
-					}
-				for (var m = 0; m < write.mutators.length; m++) {
-/*async*/
-					var mutator = write.mutators[m];
-					try {
-/*async*/
-						clientValue = (await mutator.mutate/* async call */(collection, req, clientValue));
-					} catch (_carb_catch_var) {
-						if (_carb_catch_var instanceof Error || typeof _carb_catch_var == 'undefined' || _carb_catch_var === null) {
-							var e = _carb_catch_var;
-/*async*/
-						(await req.endWithError/* async call */("Exception in mutation"));
-						return null;
-						}
-					}
-					}
-				query.set(write.field, clientValue);
-				}else{
-/*async*/
-					(await req.endWithError/* async call */("'" + write.field + "' is of an invalid type"));
+					(await req.endWithError/* async call */("Field '" + k + "' has no schema type"));
 					return null;
+					}
+				if (_c_this.typeCheck(clientValue, schemaField)) {
+					query.set(k, clientValue);
+					}
 				}
+			}else{
+/*async*/
+				for (var i = 0; i < cir.writes.length; i++) {
+/*async*/
+					var write = cir.writes[i];
+					if ((write.field in clientValues) == false) {
+/*async*/
+						(await req.endWithError/* async call */("Field '" + write.field + "' must not be null"));
+						return null;
+						}
+					if (clientValues[write.field] == null) {
+/*async*/
+						(await req.endWithError/* async call */("Field '" + write.field + "' must not be null"));
+						return null;
+						}
+					var clientValue = clientValues[write.field];
+					var schemaField = collection.appliedSchema.getField(write.field);
+					if (schemaField == null) {
+/*async*/
+						(await req.endWithError/* async call */("Field '" + write.field + "' has no schema type"));
+						return null;
+						}
+					if (_c_this.typeCheck(clientValue, schemaField)) {
+/*async*/
+						for (var r = 0; r < write.restrictions.length; r++) {
+/*async*/
+							var restriction = write.restrictions[r];
+							try {
+/*async*/
+								if ((await restriction.testServer/* async call */(collection, schemaField, clientValue)) == false) {
+/*async*/
+									(await req.endWithError/* async call */(restriction.message(schemaField.name, clientValue)));
+									return null;
+									}
+							} catch (_carb_catch_var) {
+								if (_carb_catch_var instanceof Error || typeof _carb_catch_var == 'undefined' || _carb_catch_var === null) {
+									var e = _carb_catch_var;
+/*async*/
+								(await req.endWithError/* async call */("Exception in restriction"));
+								return null;
+								}
+							}
+							}
+						for (var m = 0; m < write.mutators.length; m++) {
+/*async*/
+							var mutator = write.mutators[m];
+							try {
+/*async*/
+								clientValue = (await mutator.mutate/* async call */(collection, req, clientValue));
+							} catch (_carb_catch_var) {
+								if (_carb_catch_var instanceof Error || typeof _carb_catch_var == 'undefined' || _carb_catch_var === null) {
+									var e = _carb_catch_var;
+/*async*/
+								(await req.endWithError/* async call */("Exception in mutation"));
+								return null;
+								}
+							}
+							}
+						query.set(write.field, clientValue);
+						}else{
+/*async*/
+							(await req.endWithError/* async call */("'" + write.field + "' is of an invalid type"));
+							return null;
+						}
+					}
+			}
+		var ctx = new Websom.APIContext(req);
+		ctx.type = "insert";
+		ctx.insertQuery = query;
+		ctx.inputs = clientValues;
+		if (cir.beforeWriteHandler != null) {
+			
+				await cir.beforeWriteHandler(ctx);
+			
+			
 			}
 		(await query.run/* async call */());
 		var res = {};
@@ -12534,11 +12718,17 @@ Websom.SearchHandler = function (server) {var _c_this = this;
 			var res = {};
 			var q = new Websom.Adapters.Search.Query("");
 			var docs = (await _c_this.server.database.search.search/* async call */(cir.collection.collection, q));
-			res["status"] = "success";
-			res["message"] = "Query successful!";
-			var mp = {};
-			mp["*"] = true;
-			res["documents"] = (await _c_this.exposeDocuments/* async call */(cir, req, mp, docs.unsafeDocuments));
+			if (docs.error) {
+				res["status"] = "error";
+				res["message"] = docs.message;
+				}else{
+/*async*/
+					res["status"] = "success";
+					res["message"] = "Query successful!";
+					var mp = {};
+					mp["*"] = true;
+					res["documents"] = (await _c_this.exposeDocuments/* async call */(cir, req, mp, docs.unsafeDocuments));
+				}
 			req.header("Content-Type", "application/json");
 			(await req.end/* async call */(Websom.Json.encode(res)));
 			}else{
@@ -12932,11 +13122,345 @@ Websom.SelectHandler = function (server) {var _c_this = this;
 		req.header("Content-Type", "application/json");
 		(await req.end/* async call */(Websom.Json.encode(res)));}
 
+Websom.UpdateHandler = function (server) {var _c_this = this;
+	this.server = null;
+
+		_c_this.server = server;
+}
+
+/*i async*/Websom.UpdateHandler.prototype.fulfill = async function (cir, req) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var filterName = req.body["filter"];
+		if ((typeof filterName == 'object' ? (Array.isArray(filterName) ? 'array' : 'map') : (typeof filterName == 'number' ? 'float' : typeof filterName)) != "string") {
+			filterName = "default";
+			}
+		var filter = cir.findFilter(filterName);
+		if (filter == null) {
+/*async*/
+			(await req.endWithError/* async call */("Unknown filter provided"));
+			return null;
+			}
+		var query = collection.update();
+		var out = (await _c_this.buildQuery/* async call */(cir, filter, req, query));
+		if (out == null) {
+			return null;
+			}
+		if (collection.appliedSchema == null) {
+/*async*/
+			(await req.endWithError/* async call */("This collection has no schema applied"));
+			return null;
+			}
+		if (("document" in req.body) == false) {
+/*async*/
+			(await req.endWithError/* async call */("No document provided"));
+			return null;
+			}
+		var clientValues = req.body["document"];
+		if ((typeof clientValues == 'object' ? (Array.isArray(clientValues) ? 'array' : 'map') : (typeof clientValues == 'number' ? 'float' : typeof clientValues)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("Document must be an object"));
+			return null;
+			}
+		for (var i = 0; i < cir.sets.length; i++) {
+			var set = cir.sets[i];
+			query.set(set.field, set.value);
+			}
+		for (var i = 0; i < cir.computedSets.length; i++) {
+/*async*/
+			var set = cir.computedSets[i];
+			query.set(set.field, (await set.compute/* async call */(req)));
+			}
+		if (cir.writes.length == 1 && cir.writes[0].field == "*") {
+/*async*/
+			for (var k in clientValues) {
+/*async*/
+				var clientValue = clientValues[k];
+				var schemaField = collection.appliedSchema.getField(k);
+				if (schemaField == null) {
+/*async*/
+					(await req.endWithError/* async call */("Field '" + k + "' has no schema type"));
+					return null;
+					}
+				if (_c_this.typeCheck(clientValue, schemaField)) {
+					query.set(k, clientValue);
+					}
+				}
+			}else{
+/*async*/
+				for (var i = 0; i < cir.writes.length; i++) {
+/*async*/
+					var write = cir.writes[i];
+					if ((write.field in clientValues) == false) {
+/*async*/
+						(await req.endWithError/* async call */("Field '" + write.field + "' must not be null"));
+						return null;
+						}
+					if (clientValues[write.field] == null) {
+/*async*/
+						(await req.endWithError/* async call */("Field '" + write.field + "' must not be null"));
+						return null;
+						}
+					var clientValue = clientValues[write.field];
+					var schemaField = collection.appliedSchema.getField(write.field);
+					if (schemaField == null) {
+/*async*/
+						(await req.endWithError/* async call */("Field '" + write.field + "' has no schema type"));
+						return null;
+						}
+					if (_c_this.typeCheck(clientValue, schemaField)) {
+/*async*/
+						for (var r = 0; r < write.restrictions.length; r++) {
+/*async*/
+							var restriction = write.restrictions[r];
+							try {
+/*async*/
+								if ((await restriction.testServer/* async call */(collection, schemaField, clientValue)) == false) {
+/*async*/
+									(await req.endWithError/* async call */(restriction.message(schemaField.name, clientValue)));
+									return null;
+									}
+							} catch (_carb_catch_var) {
+								if (_carb_catch_var instanceof Error || typeof _carb_catch_var == 'undefined' || _carb_catch_var === null) {
+									var e = _carb_catch_var;
+/*async*/
+								(await req.endWithError/* async call */("Exception in restriction"));
+								return null;
+								}
+							}
+							}
+						for (var m = 0; m < write.mutators.length; m++) {
+/*async*/
+							var mutator = write.mutators[m];
+							try {
+/*async*/
+								clientValue = (await mutator.mutate/* async call */(collection, req, clientValue));
+							} catch (_carb_catch_var) {
+								if (_carb_catch_var instanceof Error || typeof _carb_catch_var == 'undefined' || _carb_catch_var === null) {
+									var e = _carb_catch_var;
+/*async*/
+								(await req.endWithError/* async call */("Exception in mutation"));
+								return null;
+								}
+							}
+							}
+						query.set(write.field, clientValue);
+						}else{
+/*async*/
+							(await req.endWithError/* async call */("'" + write.field + "' is of an invalid type"));
+							return null;
+						}
+					}
+			}
+		
+			if (cir.beforeUpdateHandler) {
+				await cir.beforeUpdateHandler(req, query);
+			}
+		
+		
+		var ctx = new Websom.APIContext(req);
+		ctx.type = "update";
+		ctx.updateQuery = query;
+		ctx.inputs = clientValues;
+		if (cir.beforeWriteHandler != null) {
+			if (cir.beforeWriteHandler != null) {
+				
+					await cir.beforeWriteHandler(ctx);
+				
+				
+				}
+			}
+		var updateResult = (await query.run/* async call */());
+		var res = {};
+		cir.trigger("success", req, []);
+		res["status"] = "success";
+		res["message"] = "Documents updated";
+		res["updateCount"] = updateResult.updateCount;
+		req.header("Content-Type", "application/json");
+		req.header("Access-Control-Allow-Origin", "*");
+		(await req.end/* async call */(Websom.Json.encode(res)));}
+
+Websom.UpdateHandler.prototype.typeCheck = function (value, schemaField) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.server.security.typeCheck(value, schemaField.type);}
+
+/*i async*/Websom.UpdateHandler.prototype.buildQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var limit = filter.limits[0];
+		if ("limit" in req.body) {
+			var reqLimit = req.body["limit"];
+			for (var i = 0; i < filter.limits.length; i++) {
+				var l = filter.limits[i];
+				if (reqLimit == l) {
+					limit = l;
+					}
+				}
+			}
+		var offset = 0;
+		if ("page" in req.body) {
+			var page = req.body["page"];
+			if ((typeof page == 'object' ? (Array.isArray(page) ? 'array' : 'map') : (typeof page == 'number' ? 'float' : typeof page)) == "float") {
+				var pageAsFloat = page;
+				if (pageAsFloat % 1 === 0) {
+					offset = pageAsFloat * limit;
+					}
+				}
+			}
+		query.startOffset(offset);
+		query.limit(limit);
+		for (var i = 0; i < filter.forces.length; i++) {
+			var force = filter.forces[i];
+			query.where(force.name, force.operator, force.value);
+			}
+		for (var i = 0; i < filter.orders.length; i++) {
+			var order = filter.orders[i];
+			var ordered = false;
+			if ("order" in req.body) {
+				var clientOrder = req.body["order"];
+				if ((typeof clientOrder == 'object' ? (Array.isArray(clientOrder) ? 'array' : 'map') : (typeof clientOrder == 'number' ? 'float' : typeof clientOrder)) == "map") {
+					var orderField = clientOrder["field"];
+					var orderDirection = clientOrder["direction"];
+					if ((typeof orderField == 'object' ? (Array.isArray(orderField) ? 'array' : 'map') : (typeof orderField == 'number' ? 'float' : typeof orderField)) == "string") {
+						var allowed = false;
+						var schema = collection.appliedSchema;
+						if (order.name == "*") {
+							for (var f = 0; f < schema.fields.length; f++) {
+								var schemaField = schema.fields[f];
+								if (schemaField.name == orderField) {
+									allowed = true;
+									}
+								}
+							}else if (order.name == orderField) {
+							allowed = true;
+							}
+						if (orderDirection != "dsc" && orderDirection != "asc") {
+							allowed = false;
+							}
+						if (allowed) {
+							query.orderBy(orderField, orderDirection);
+							ordered = true;
+							}
+						}
+					}
+				}
+			if (ordered == false) {
+				if (order.name == "*") {
+					query.orderBy("id", order.operator);
+					}else{
+						query.orderBy(order.name, order.operator);
+					}
+				}
+			}
+		var clientQuery = req.body["query"];
+		if ((typeof clientQuery == 'object' ? (Array.isArray(clientQuery) ? 'array' : 'map') : (typeof clientQuery == 'number' ? 'float' : typeof clientQuery)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("Query must be an object. ( e.g. { name: Hello } )"));
+			return null;
+			}
+		for (var i = 0; i < filter.fields.length; i++) {
+/*async*/
+			var field = filter.fields[i];
+			if (field.name in clientQuery) {
+				query.where(field.name, field.operator, clientQuery[field.name]);
+				}else{
+/*async*/
+					(await req.endWithError/* async call */("No query for field '" + field.name + "' was provided."));
+					return null;
+				}
+			}
+		for (var i = 0; i < filter.computed.length; i++) {
+			var field = filter.computed[i];
+			var value = null;
+			
+				value = await field.handler(req);
+			
+			
+			if (req.sent) {
+				return null;
+				}
+			query.where(field.name, field.operator, value);
+			}
+		if (filter.handler != null) {
+			
+				await filter.handler(req, query);
+			
+			
+			}
+		if (req.sent) {
+			return null;
+			}
+		return query;}
+
+/*i async*/Websom.UpdateHandler.prototype.exposeDocuments = async function (cir, req, returnFields, docs) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var output = [];
+		for (var i = 0; i < docs.length; i++) {
+/*async*/
+			var doc = docs[i];
+			var mp = {};
+			if (cir.reads.length > 0) {
+/*async*/
+				if (cir.reads[0].field == "*") {
+/*async*/
+					if (collection.appliedSchema == null) {
+/*async*/
+						(await req.endWithError/* async call */("This collection has no schema applied"));
+						return null;
+						}
+					var schema = collection.appliedSchema;
+					for (var f = 0; f < schema.fields.length; f++) {
+						var field = schema.fields[f];
+						mp[field.name] = doc.get(field.name);
+						}
+					}
+				}
+			for (var j = 0; j < cir.reads.length; j++) {
+/*async*/
+				var read = cir.reads[j];
+				if (read.field in returnFields || "*" in returnFields) {
+/*async*/
+					var val = doc.get(read.field);
+					for (var t = 0; t < read.transformers.length; t++) {
+/*async*/
+						var transformer = read.transformers[t];
+						val = (await transformer.transform/* async call */(req, doc, read.field, val));
+						}
+					mp[read.field] = val;
+					}
+				}
+			if ("*" in returnFields) {
+				mp["id"] = doc.get("id");
+				}
+			output.push(mp);
+			}
+		return output;}
+
+/*i async*/Websom.UpdateHandler.prototype.executeQuery = async function (cir, filter, req, query) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var collection = cir.collection.collection;
+		var res = {};
+		res["status"] = "success";
+		res["message"] = "Query successful!";
+		var results = (await query.get/* async call */());
+		var returnFields = req.body["fields"];
+		if ((typeof returnFields == 'object' ? (Array.isArray(returnFields) ? 'array' : 'map') : (typeof returnFields == 'number' ? 'float' : typeof returnFields)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("No fields object provided. See the api request docs."));
+			return null;
+			}
+		var output = (await _c_this.exposeDocuments/* async call */(cir, req, returnFields, results.documents));
+		res["documents"] = output;
+		cir.trigger("success", req, results.documents);
+		req.header("Content-Type", "application/json");
+		(await req.end/* async call */(Websom.Json.encode(res)));}
+
 Websom.Standard = function () {var _c_this = this;
 
 
 }
 
+//Relative RichEntity
 Oxygen.FileSystem = function () {var _c_this = this;
 
 
@@ -15814,4 +16338,5 @@ Websom.Standard.CommerceSystem.ShippingMethod.prototype.getSchema = function () 
 		var schema = new Websom.Adapters.Database.Schema(null);
 		return schema.field("name", "string").field("description", "string").field("enabled", "boolean").field("type", "string").field("price", "string").field("shippingClassOverrides", "map");}
 
+//Relative CoreModule
 module.exports = Websom;
