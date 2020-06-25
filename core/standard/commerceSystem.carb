@@ -54,13 +54,15 @@ header class Websom.Standard.CommerceSystem.OrderItem extends Websom.Serializabl
 	field map variation = null;
 }
 
-header relative Websom.Standard.CommerceSystem.Product {
+header relative Websom.Standard.CommerceSystem.Product inherits Websom.Standard.RichEntity {
 	field string name = "";
 	field string description = "";
 	field string sku = "";
 	field string upc = "";
 	field int stock = 0;
 	field string stock = 0;
+
+	field <string>array gallery = null;
 
 	field float regularPrice = 0;
 	field float salePrice = 0;
@@ -84,7 +86,7 @@ header relative Websom.Standard.CommerceSystem.Product {
 	field bool downloadable = true;
 	field bool virtual = true;
 
-	field <map>array attributes = new map();
+	field <map>array attributes = new <map>array();
 	field <map>array variations = new <map>array();
 
 	Websom.Standard.CommerceSystem.OrderItem pick(int quantity, map variation) {
