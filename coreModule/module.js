@@ -1,3 +1,4 @@
+//Relative RichEntity
 //Relative Module
 //Relative User
 //Relative Login
@@ -8,42 +9,13 @@
 //Relative Cart
 //Relative ShippingClass
 //Relative ShippingZone
+//Relative CoreModule
 CoreModule = function () {var _c_this = this;
 
 
 }
 
 CoreModule.Module = function (server) {var _c_this = this;
-	this.groups = null;
-
-	this.confirmations = null;
-
-	this.objects = null;
-
-	this.mediaFiles = null;
-
-	this.tags = null;
-
-	this.categories = null;
-
-	this.dashboardView = null;
-
-	this.commentEdit = null;
-
-	this.commentCreate = null;
-
-	this.commentRead = null;
-
-	this.groupRead = null;
-
-	this.groupCreate = null;
-
-	this.groupEdit = null;
-
-	this.corePublic = null;
-
-	this.media = null;
-
 	this.transientAccessCode = "";
 
 	this.server = null;
@@ -73,6 +45,36 @@ CoreModule.Module = function (server) {var _c_this = this;
 	this.license = "";
 
 	this.repo = "";
+
+	this.groups = null;
+
+	this.confirmations = null;
+
+	this.objects = null;
+
+	this.mediaFiles = null;
+
+	this.tags = null;
+
+	this.categories = null;
+
+	this.dashboardView = null;
+
+	this.commentEdit = null;
+
+	this.commentCreate = null;
+
+	this.commentRead = null;
+
+	this.groupRead = null;
+
+	this.groupCreate = null;
+
+	this.groupEdit = null;
+
+	this.corePublic = null;
+
+	this.media = null;
 
 		_c_this.server = server;
 		_c_this.registerWithServer();
@@ -135,9 +137,15 @@ CoreModule.Module.prototype.permissions = function () {var _c_this = this; var _
 			for (var i = 0; i < docs.length; i++) {
 /*async*/
 				var doc = docs[i];
-				(await _c_this.media.deleteObject/* async call */(doc.get("name")));
+				var name = doc.get("name");
+				var ext = name.split(".");
+				ext.pop();
+				var rawName = ext.join(".");
+				(await _c_this.media.deleteObject/* async call */(name));
+				(await _c_this.media.deleteObject/* async call */(rawName + "_thumbnail.png"));
+				(await _c_this.media.deleteObject/* async call */(rawName + "_thumbnail.webp"));
 				}
-			}).route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").order("*", "dsc").route("/get").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("file", "==");
+			}).route("/view").auth(_c_this.dashboardView).executes("select").read("*").filter("default").order("*", "dsc").route("/get").auth(_c_this.dashboardView).executes("select").read("*").filter("default").field("file", "==").filter("id").field("id", "==");
 		_c_this.confirmations = db.collection("confirmations");
 		var confirmationSchema = _c_this.confirmations.schema().field("secret", "string").field("key", "string").field("ip", "string").field("created", "time").field("storage", "string").field("expires", "time").field("confirmed", "boolean").field("service", "string").field("method", "string").field("to", "string");
 		(await _c_this.registerCollection/* async call */(_c_this.confirmations));
@@ -207,6 +215,41 @@ CoreModule.Module.prototype.registerWithServer = function () {var _c_this = this
 
 /*i async*/CoreModule.Module.prototype.start = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		_c_this.media = _c_this.registerBucket("media");
+		_c_this.media.afterWrite = async function (ctx) {
+/*async*/
+			var filePath = (await ctx.localFile/* async call */());
+			
+				const sharp = require("sharp");
+				const fs = require("fs");
+				const mime = require("mime");
+
+				let mimeType = mime.getType(filePath);
+
+				if (mimeType.split("/")[0] != "image")
+					return;
+				
+				let name = ctx.name.split(".");
+				if (name[name.length - 2].endsWith("_thumbnail"))
+					return;
+
+				let info = await sharp(filePath)
+					.resize(256)
+					.webp()
+					.toFile(_c_this.server.tmp + "/output.webp");
+				
+				let info2 = await sharp(filePath)
+					.resize(256)
+					.png()
+					.toFile(_c_this.server.tmp + "/output.png");
+				
+				name.pop();
+				let dest = name.join(".") + "_thumbnail.webp";
+				let destLegacy = name.join(".") + "_thumbnail.png";
+
+				_c_this.media.writeObject(dest, _c_this.server.tmp + "/output.webp");
+				_c_this.media.writeObject(destLegacy, _c_this.server.tmp + "/output.png");
+			
+			};
 		_c_this.server.api.route("/media/upload").auth(_c_this.dashboardView).input("filename").type("string").input("type").type("string").input("size").type("integer").executes(async function (ctx) {
 /*async*/
 			var filename = ctx.get("filename");
@@ -327,6 +370,8 @@ CoreModule.LokiCollection = function (database, name) {var _c_this = this;
 
 	this.replicatedSearchFields = null;
 
+	this.searchFilter = null;
+
 	this.name = "";
 
 	this.entityTemplate = null;
@@ -362,9 +407,7 @@ CoreModule.LokiCollection.prototype.makeDocumentFromMap = function (id, data) {v
 		_c_this.lazilyGetCollection();
 		var docs = null;
 		
-			docs = this.lokiCollection.find({
-				$loki: {"$in": ids}
-			});
+			docs = ids.map(id => this.lokiCollection.get(parseInt(id)))
 		
 		var outputs = [];
 		for (var i = 0; i < docs.length; i++) {
@@ -622,7 +665,17 @@ CoreModule.LokiCollection.prototype.enableSearching = function (fields) {var _c_
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+				var doInsert = true;
+				if (_c_this.searchFilter != null) {
+					
+						doInsert = await this.searchFilter(document);
+					
+					
+					}
+				if (doInsert) {
+/*async*/
+					(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+					}
 				}
 			}}
 
@@ -632,7 +685,30 @@ CoreModule.LokiCollection.prototype.enableSearching = function (fields) {var _c_
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.updateDocuments/* async call */(documents, keys));
+				var docs = [];
+				var deletes = [];
+				if (_c_this.searchFilter != null) {
+					for (var i = 0; i < documents.length; i++) {
+						var doc = documents[i];
+						var doInsert = true;
+						
+							doInsert = await this.searchFilter(doc);
+						
+						
+						if (doInsert) {
+							docs.push(doc);
+							}else{
+								deletes.push(doc.id);
+							}
+						}
+					}else{
+						docs = documents;
+					}
+				(await _c_this.database.server.database.search.updateDocuments/* async call */(docs, keys));
+				if (deletes.length > 0) {
+/*async*/
+					(await _c_this.deleteSearch/* async call */(deletes));
+					}
 				}
 			}}
 
@@ -642,7 +718,7 @@ CoreModule.LokiCollection.prototype.enableSearching = function (fields) {var _c_
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.deleteDocuments/* async call */(ids));
+				(await _c_this.database.server.database.search.deleteDocuments/* async call */(_c_this, ids));
 				}
 			}}
 
@@ -831,6 +907,8 @@ CoreModule.FirestoreCollection = function (database, name) {var _c_this = this;
 	this.searchable = false;
 
 	this.replicatedSearchFields = null;
+
+	this.searchFilter = null;
 
 	this.name = "";
 
@@ -1127,7 +1205,17 @@ CoreModule.FirestoreCollection.prototype.enableSearching = function (fields) {va
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+				var doInsert = true;
+				if (_c_this.searchFilter != null) {
+					
+						doInsert = await this.searchFilter(document);
+					
+					
+					}
+				if (doInsert) {
+/*async*/
+					(await _c_this.database.server.database.search.insertDocument/* async call */(document));
+					}
 				}
 			}}
 
@@ -1137,7 +1225,30 @@ CoreModule.FirestoreCollection.prototype.enableSearching = function (fields) {va
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.updateDocuments/* async call */(documents, keys));
+				var docs = [];
+				var deletes = [];
+				if (_c_this.searchFilter != null) {
+					for (var i = 0; i < documents.length; i++) {
+						var doc = documents[i];
+						var doInsert = true;
+						
+							doInsert = await this.searchFilter(doc);
+						
+						
+						if (doInsert) {
+							docs.push(doc);
+							}else{
+								deletes.push(doc.id);
+							}
+						}
+					}else{
+						docs = documents;
+					}
+				(await _c_this.database.server.database.search.updateDocuments/* async call */(docs, keys));
+				if (deletes.length > 0) {
+/*async*/
+					(await _c_this.deleteSearch/* async call */(deletes));
+					}
 				}
 			}}
 
@@ -1147,7 +1258,7 @@ CoreModule.FirestoreCollection.prototype.enableSearching = function (fields) {va
 /*async*/
 			if (_c_this.database.server.database.search != null) {
 /*async*/
-				(await _c_this.database.server.database.search.deleteDocuments/* async call */(ids));
+				(await _c_this.database.server.database.search.deleteDocuments/* async call */(_c_this, ids));
 				}
 			}}
 
@@ -1566,6 +1677,14 @@ CoreModule.FileSystemBucket = function (server) {var _c_this = this;
 			if (req.files["upload"] != null) {
 /*async*/
 				Oxygen.FileSystem.writeSync(objectPath, Oxygen.FileSystem.readSync(req.files["upload"], null));
+				var bucket = _c_this.server.getBucket(obj.get("bucket"));
+				var ctx = new Websom.BucketObjectContext(bucket, obj.get("filename"));
+				if (bucket.afterWrite != null) {
+					
+						await bucket.afterWrite(ctx);
+					
+					
+					}
 				(await _c_this.coreModule.objects.update().where("id", "==", obj.get("id")).set("uploaded", true).run/* async call */());
 				(await req.endWithSuccess/* async call */("Uploaded"));
 				}else{
@@ -1587,6 +1706,17 @@ CoreModule.FileSystemBucket = function (server) {var _c_this = this;
 		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;
 		Oxygen.FileSystem.unlink(bucketPath + "/" + filename);}
 
+/*i async*/CoreModule.FileSystemBucket.prototype.writeObject = async function (bucket, destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;
+		Oxygen.FileSystem.writeSync(bucketPath + "/" + destination, Oxygen.FileSystem.readSync(localPath, null));
+		var ctx = new Websom.BucketObjectContext(bucket, destination);
+		if (bucket.afterWrite != null) {
+			
+				await bucket.afterWrite(ctx);
+			
+			
+			}}
+
 /*i async*/CoreModule.FileSystemBucket.prototype.createDirectory = async function (bucket, path) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;
 		if (Oxygen.FileSystem.exists(bucketPath + "/" + path) == false) {
@@ -1604,6 +1734,9 @@ CoreModule.FileSystemBucket.prototype.registerBucket = function (bucket) {var _c
 
 /*i async*/CoreModule.FileSystemBucket.prototype.serve = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
 		return _c_this.server.apiHost + "/buckets/" + bucket.name + "/" + filename;}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.readToLocalSystemPath = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return _c_this.server.config.devBuckets + "/" + bucket.name + "/" + filename;}
 
 /*i async*/CoreModule.FileSystemBucket.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
@@ -1663,17 +1796,20 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 		}
 
 /*i async*/CoreModule.Algolia.prototype.updateDocuments = async function (documents, keys) {var _c_this = this; var _c_root_method_arguments = arguments;
+		if (documents.length == 0) {
+			return null;
+			}
 		
-			let index = this.getAlgoliaIndex(document.collection);
+			let index = this.getAlgoliaIndex(documents[0].collection);
 
 			let docs = documents.map(doc => {
 				let data = {
 					objectID: doc.id
 				};
 
-				for (let field of document.collection.replicatedSearchFields)
+				for (let field of doc.collection.replicatedSearchFields)
 					if (keys.includes(field))
-						data[field] = document.get(field);
+						data[field] = doc.get(field);
 					
 				return data;
 			});
@@ -1681,9 +1817,9 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			await index.partialUpdateObjects(docs);
 		}
 
-/*i async*/CoreModule.Algolia.prototype.deleteDocuments = async function (ids) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*i async*/CoreModule.Algolia.prototype.deleteDocuments = async function (collection, ids) {var _c_this = this; var _c_root_method_arguments = arguments;
 		
-			let index = this.getAlgoliaIndex(document.collection);
+			let index = this.getAlgoliaIndex(collection);
 
 			await index.deleteObjects(ids);
 		}
@@ -1691,20 +1827,25 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 /*i async*/CoreModule.Algolia.prototype.search = async function (collection, query) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var qr = new Websom.Adapters.Search.QueryResult(false, "Success");
 		
-			let index = this.getAlgoliaIndex(document.collection);
+			let index = this.getAlgoliaIndex(collection);
 
-			let res = await index.search(query.query, {
-				page: query.page,
-				hitsPerPage: query.perPage
-			});
+			try {
+				let res = await index.search(query.query, {
+					page: query.page,
+					hitsPerPage: query.perPage
+				});
 
-			let ids = res.hits.map(h => h.objectID);
-			let docs = res.hits.map(h => collection.makeDocumentFromMap(h.objectID, h));
+				let ids = res.hits.map(h => h.objectID);
+				let docs = res.hits.map(h => collection.makeDocumentFromMap(h.objectID, h));
 
-			qr.pages = res.nbPages;
-			qr.documentsPerPage = res.hitsPerPage;
-			qr.ids = ids;
-			qr.unsafeDocuments = docs;
+				qr.pages = res.nbPages;
+				qr.documentsPerPage = res.hitsPerPage;
+				qr.ids = ids;
+				qr.unsafeDocuments = docs;
+			} catch (e) {
+				qr.error = true;
+				qr.message = e;
+			}
 		
 		return qr;}
 

@@ -1,4 +1,5 @@
 <?php
+//Relative RichEntity
 //Relative Module
 //Relative User
 //Relative Login
@@ -9,6 +10,7 @@
 //Relative Cart
 //Relative ShippingClass
 //Relative ShippingZone
+//Relative CoreModule
 class CoreModule {
 
 function __construct(...$arguments) {
@@ -17,36 +19,6 @@ function __construct(...$arguments) {
 }
 
 }class CoreModule_Module {
-public $groups;
-
-public $confirmations;
-
-public $objects;
-
-public $mediaFiles;
-
-public $tags;
-
-public $categories;
-
-public $dashboardView;
-
-public $commentEdit;
-
-public $commentCreate;
-
-public $commentRead;
-
-public $groupRead;
-
-public $groupCreate;
-
-public $groupEdit;
-
-public $corePublic;
-
-public $media;
-
 public $transientAccessCode;
 
 public $server;
@@ -77,22 +49,37 @@ public $license;
 
 public $repo;
 
+public $groups;
+
+public $confirmations;
+
+public $objects;
+
+public $mediaFiles;
+
+public $tags;
+
+public $categories;
+
+public $dashboardView;
+
+public $commentEdit;
+
+public $commentCreate;
+
+public $commentRead;
+
+public $groupRead;
+
+public $groupCreate;
+
+public $groupEdit;
+
+public $corePublic;
+
+public $media;
+
 function __construct($server) {
-$this->groups = null;
-$this->confirmations = null;
-$this->objects = null;
-$this->mediaFiles = null;
-$this->tags = null;
-$this->categories = null;
-$this->dashboardView = null;
-$this->commentEdit = null;
-$this->commentCreate = null;
-$this->commentRead = null;
-$this->groupRead = null;
-$this->groupCreate = null;
-$this->groupEdit = null;
-$this->corePublic = null;
-$this->media = null;
 $this->transientAccessCode = "";
 $this->server = null;
 $this->baseConfig = null;
@@ -108,6 +95,21 @@ $this->version = "";
 $this->author = "";
 $this->license = "";
 $this->repo = "";
+$this->groups = null;
+$this->confirmations = null;
+$this->objects = null;
+$this->mediaFiles = null;
+$this->tags = null;
+$this->categories = null;
+$this->dashboardView = null;
+$this->commentEdit = null;
+$this->commentCreate = null;
+$this->commentRead = null;
+$this->groupRead = null;
+$this->groupCreate = null;
+$this->groupEdit = null;
+$this->corePublic = null;
+$this->media = null;
 
 $this->server = $server;
 $this->registerWithServer();
@@ -156,7 +158,13 @@ $this->mediaFiles->schema()->field("name", "string")->field("file", "string")->f
 $this->registerCollection($this->mediaFiles);
 $this->server->api->_c__interface($this->mediaFiles, "/media")->route("/insert")->auth($this->dashboardView)->executes("insert")->write("name")->write("file")->write("size")->write("type")->setComputed("user", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return $req->user()->id;})->setComputed("created", function ($req) use (&$db, &$fieldsForSearching, &$confirmationSchema) {return Websom_Time::now();})->route("/delete")->auth($this->dashboardView)->executes("delete")->filter("default")->field("id", "in")->on("success", function ($req, $docs) use (&$db, &$fieldsForSearching, &$confirmationSchema) {for ($i = 0; $i < count($docs); $i++) {
 $doc = _c_lib__arrUtils::readIndex($docs, $i);
-$this->media->deleteObject($doc->get("name"));}})->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->order("*", "dsc")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("file", "==");
+$name = $doc->get("name");
+$ext = explode(".", $name);
+array_pop($ext);
+$rawName = implode(".", $ext);
+$this->media->deleteObject($name);
+$this->media->deleteObject($rawName . "_thumbnail.png");
+$this->media->deleteObject($rawName . "_thumbnail.webp");}})->route("/view")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->order("*", "dsc")->route("/get")->auth($this->dashboardView)->executes("select")->read("*")->filter("default")->field("file", "==")->filter("id")->field("id", "==");
 $this->confirmations = $db->collection("confirmations");
 $confirmationSchema = $this->confirmations->schema()->field("secret", "string")->field("key", "string")->field("ip", "string")->field("created", "time")->field("storage", "string")->field("expires", "time")->field("confirmed", "boolean")->field("service", "string")->field("method", "string")->field("to", "string");
 $this->registerCollection($this->confirmations);
@@ -198,6 +206,8 @@ $adapter->registerCollection();}
 
 function start() {
 $this->media = $this->registerBucket("media");
+$this->media->afterWrite = function ($ctx)  {$filePath = $ctx->localFile();
+};
 $this->server->api->route("/media/upload")->auth($this->dashboardView)->input("filename")->type("string")->input("type")->type("string")->input("size")->type("integer")->executes(function ($ctx)  {$filename = $ctx->get("filename");
 $res = $this->mediaFiles->where("name", "==", $filename)->get();
 $data = new _carb_map();
@@ -306,6 +316,8 @@ public $searchable;
 
 public $replicatedSearchFields;
 
+public $searchFilter;
+
 public $name;
 
 public $entityTemplate;
@@ -316,6 +328,7 @@ $this->database = null;
 $this->appliedSchema = null;
 $this->searchable = false;
 $this->replicatedSearchFields = null;
+$this->searchFilter = null;
 $this->name = "";
 $this->entityTemplate = null;
 
@@ -455,17 +468,40 @@ $this->replicatedSearchFields = $fields;}
 function insertSearch($document) {
 if ($this->searchable) {
 if ($this->database->server->database->search != null) {
-$this->database->server->database->search->insertDocument($document);}}}
+$doInsert = true;
+if ($this->searchFilter != null) {
+
+
+						$doInsert = $this->searchFilter($document);
+					}
+if ($doInsert) {
+$this->database->server->database->search->insertDocument($document);}}}}
 
 function updateSearch($documents, $keys) {
 if ($this->searchable) {
 if ($this->database->server->database->search != null) {
-$this->database->server->database->search->updateDocuments($documents, $keys);}}}
+$docs = [];
+$deletes = [];
+if ($this->searchFilter != null) {
+for ($i = 0; $i < count($documents); $i++) {
+$doc = _c_lib__arrUtils::readIndex($documents, $i);
+$doInsert = true;
+
+
+							$doInsert = $this->searchFilter($doc);
+						
+if ($doInsert) {
+array_push($docs, $doc);}else{
+array_push($deletes, $doc->id);}}}else{
+$docs = $documents;}
+$this->database->server->database->search->updateDocuments($docs, $keys);
+if (count($deletes) > 0) {
+$this->deleteSearch($deletes);}}}}
 
 function deleteSearch($ids) {
 if ($this->searchable) {
 if ($this->database->server->database->search != null) {
-$this->database->server->database->search->deleteDocuments($ids);}}}
+$this->database->server->database->search->deleteDocuments($this, $ids);}}}
 
 function schema() {
 $this->appliedSchema = new Websom_Adapters_Database_Schema($this);
@@ -630,6 +666,8 @@ public $searchable;
 
 public $replicatedSearchFields;
 
+public $searchFilter;
+
 public $name;
 
 public $entityTemplate;
@@ -640,6 +678,7 @@ $this->database = null;
 $this->appliedSchema = null;
 $this->searchable = false;
 $this->replicatedSearchFields = null;
+$this->searchFilter = null;
 $this->name = "";
 $this->entityTemplate = null;
 
@@ -777,17 +816,40 @@ $this->replicatedSearchFields = $fields;}
 function insertSearch($document) {
 if ($this->searchable) {
 if ($this->database->server->database->search != null) {
-$this->database->server->database->search->insertDocument($document);}}}
+$doInsert = true;
+if ($this->searchFilter != null) {
+
+
+						$doInsert = $this->searchFilter($document);
+					}
+if ($doInsert) {
+$this->database->server->database->search->insertDocument($document);}}}}
 
 function updateSearch($documents, $keys) {
 if ($this->searchable) {
 if ($this->database->server->database->search != null) {
-$this->database->server->database->search->updateDocuments($documents, $keys);}}}
+$docs = [];
+$deletes = [];
+if ($this->searchFilter != null) {
+for ($i = 0; $i < count($documents); $i++) {
+$doc = _c_lib__arrUtils::readIndex($documents, $i);
+$doInsert = true;
+
+
+							$doInsert = $this->searchFilter($doc);
+						
+if ($doInsert) {
+array_push($docs, $doc);}else{
+array_push($deletes, $doc->id);}}}else{
+$docs = $documents;}
+$this->database->server->database->search->updateDocuments($docs, $keys);
+if (count($deletes) > 0) {
+$this->deleteSearch($deletes);}}}}
 
 function deleteSearch($ids) {
 if ($this->searchable) {
 if ($this->database->server->database->search != null) {
-$this->database->server->database->search->deleteDocuments($ids);}}}
+$this->database->server->database->search->deleteDocuments($this, $ids);}}}
 
 function schema() {
 $this->appliedSchema = new Websom_Adapters_Database_Schema($this);
@@ -1105,6 +1167,13 @@ return null;}
 $objectPath = $this->server->config->devBuckets . "/" . $obj->get("bucket") . "/" . $obj->get("filename");
 if ($req->files["upload"] != null) {
 Oxygen_FileSystem::writeSync($objectPath, Oxygen_FileSystem::readSync($req->files["upload"], null));
+$bucket = $this->server->getBucket($obj->get("bucket"));
+$ctx = new Websom_BucketObjectContext($bucket, $obj->get("filename"));
+if ($bucket->afterWrite != null) {
+
+
+						$bucket->afterWrite($ctx);
+					}
 $this->coreModule->objects->update()->where("id", "==", $obj->get("id"))->set("uploaded", true)->run();
 $req->endWithSuccess("Uploaded");}else{
 $req->endWithError("Invalid payload");}}else{
@@ -1118,6 +1187,16 @@ return $this->server->apiHost . "/objects/upload/" . $token;}
 function deleteObject($bucket, $filename) {
 $bucketPath = $this->server->config->devBuckets . "/" . $bucket->name;
 Oxygen_FileSystem::unlink($bucketPath . "/" . $filename);}
+
+function writeObject($bucket, $destination, $localPath) {
+$bucketPath = $this->server->config->devBuckets . "/" . $bucket->name;
+Oxygen_FileSystem::writeSync($bucketPath . "/" . $destination, Oxygen_FileSystem::readSync($localPath, null));
+$ctx = new Websom_BucketObjectContext($bucket, $destination);
+if ($bucket->afterWrite != null) {
+
+
+				$bucket->afterWrite($ctx);
+			}}
 
 function createDirectory($bucket, $path) {
 $bucketPath = $this->server->config->devBuckets . "/" . $bucket->name;
@@ -1133,6 +1212,9 @@ Oxygen_FileSystem::makeDir($this->server->config->devBuckets . "/" . $bucket->na
 
 function serve($bucket, $filename) {
 return $this->server->apiHost . "/buckets/" . $bucket->name . "/" . $filename;}
+
+function readToLocalSystemPath($bucket, $filename) {
+return $this->server->config->devBuckets . "/" . $bucket->name . "/" . $filename;}
 
 function shutdown() {
 }
@@ -1179,9 +1261,11 @@ function insertDocument($document) {
 }
 
 function updateDocuments($documents, $keys) {
+if (count($documents) == 0) {
+return null;}
 }
 
-function deleteDocuments($ids) {
+function deleteDocuments($collection, $ids) {
 }
 
 function search($collection, $query) {
