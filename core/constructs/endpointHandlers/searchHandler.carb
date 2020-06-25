@@ -6,11 +6,16 @@ class Websom.SearchHandler inherits Websom.SelectHandler {
 			let q = new Websom.Adapters.Search.Query("");
 			let docs = this.server.database.search.search(cir.collection.collection, q);
 
-			res["status"] = "success";
-			res["message"] = "Query successful!";
-			let mp = new map();
-			mp["*"] = true;
-			res["documents"] = this.exposeDocuments(cir, req, mp, docs.unsafeDocuments);
+			if (docs.error) {
+				res["status"] = "error";
+				res["message"] = docs.message;
+			}else{
+				res["status"] = "success";
+				res["message"] = "Query successful!";
+				let mp = new map();
+				mp["*"] = true;
+				res["documents"] = this.exposeDocuments(cir, req, mp, docs.unsafeDocuments);
+			}
 
 			req.header("Content-Type", "application/json");
 			req.end(Websom.Json.encode(res));
