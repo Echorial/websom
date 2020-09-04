@@ -1120,7 +1120,7 @@ Websom.Services.API.prototype.generateAdminEndpoints = function (collection, bas
 			return Websom.Time.now();
 			}).beforeUpdate(function (req, query) {
 			query.increment("revisions", 1);
-			}).beforeWrite(cacheHandler).filter("default").field("id", "==").route("/get").auth(perm).executes("select").read("*").filter("default").field("id", "==").route("/list").auth(perm).executes("select").read("*").filter("default").order("*", "dsc");}
+			}).beforeWrite(cacheHandler).filter("default").field("id", "==").route("/delete").auth(perm).executes("delete").filter("default").field("id", "in").route("/get").auth(perm).executes("select").read("*").filter("default").field("id", "==").route("/list").auth(perm).executes("select").read("*").filter("default").order("*", "dsc");}
 
 Websom.Services.API.prototype.interface = function (collection, baseRoute) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var ci = new Websom.CollectionInterface(collection, baseRoute);
@@ -12693,11 +12693,12 @@ Websom.InsertHandler = function (server) {var _c_this = this;
 			
 			
 			}
-		(await query.run/* async call */());
+		var qResponse = (await query.run/* async call */());
 		var res = {};
 		cir.trigger("success", req, []);
 		res["status"] = "success";
 		res["message"] = "Document inserted";
+		res["newId"] = qResponse.id;
 		req.header("Content-Type", "application/json");
 		req.header("Access-Control-Allow-Origin", "*");
 		(await req.end/* async call */(Websom.Json.encode(res)));}
@@ -16145,6 +16146,14 @@ Websom.DatabaseUpdate = function (field, value) {var _c_this = this;
 		_c_this.value = value;
 }
 
+Websom.Standard.BlogSystem = function () {var _c_this = this;
+
+
+}
+
+//Relative Module
+//Relative Post
+//Relative Archive
 Websom.Standard.UserSystem = function () {var _c_this = this;
 
 
