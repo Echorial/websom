@@ -119,7 +119,7 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 			}
 		}
 
-		query.run();
+		let qResponse = query.run();
 
 		let res = new map();
 
@@ -127,6 +127,7 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 
 		res["status"] = "success";
 		res["message"] = "Document inserted";
+		res["newId"] = qResponse.id;
 
 		req.header("Content-Type", "application/json");
 		req.header("Access-Control-Allow-Origin", "*");
