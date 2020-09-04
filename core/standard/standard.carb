@@ -2,6 +2,7 @@ namespace Websom.Standard {
 
 }
 
+#include "blogSystem.carb"
 #include "userSystem.carb"
 #include "commerceSystem.carb"
 #include "coreModule.carb"
@@ -12,7 +13,7 @@ header relative Websom.Standard.RichEntity {
 	field <string>array categories = new <string>array();
 	field <string>array categoriesCache = new <string>array();
 	field string slug = "";
-	field string displayTitle = "";
+	field string title = "";
 	field Websom.Time created = null;
 	field Websom.Time modified = null;
 	field string excerpt = "";
