@@ -19,11 +19,20 @@ template {
 					</div>
 				</div>
 
-				<rich-view :sortable="true" :bulk="true" :collection="collection" :route="route + '/list'" class="dashboard-products-block" ref="productView" :columns="columns">
-					<template v-slot:column-name="p">
+				<rich-view :sortable="true" :bulk="true" :collection="collection" :route="route" class="dashboard-products-block" ref="productView" :columns="columns">
+					<template v-slot:column-featuredImage="p">
+						<td><media-image :file="p.data" img-class="rich-thumbnail" /></td>
+					</template>
+					<template v-slot:column-title="p">
 						<td>
 							<router-link :to="'edit/' + p.entity.id" append>{{p.data}}</router-link>
 						</td>
+					</template>
+					<template v-slot:column-created="p">
+						<td><time-display :time="p.data" /></td>
+					</template>
+					<template v-slot:column-modified="p">
+						<td><time-display :time="p.data" /></td>
 					</template>
 				</rich-view>
 			</div>
@@ -62,7 +71,7 @@ template {
 									<card>
 										<g-h>
 											<g-v s="6">
-												<input-select :options="[{value: 'Draft', name: 'Draft', icon: 'send'}, {value: 'private', name: 'Private', icon: 'lock'}, {value: 'publish', name: 'Publish', icon: 'public'}]" v-model="editingData.displayStatus" />
+												<input-select :options="[{value: 'draft', name: 'Draft', icon: 'send'}, {value: 'private', name: 'Private', icon: 'lock'}, {value: 'public', name: 'Public', icon: 'public'}]" v-model="editingData.displayStatus" />
 											</g-v>
 											<g-v s="5" shift="1">
 												<button class="success" @click="create"><icon icon="add" left /> {{viewMode == "create" ? "Create" : "Update"}}</button>
@@ -112,7 +121,8 @@ script {
 			columns: {
 				type: Object,
 				default: () => ({
-					"name": true,
+					"featuredImage": true,
+					"title": true,
 					"displayStatus": true,
 					"authors": true,
 					"created": true,
@@ -145,9 +155,11 @@ script {
 		methods: {
 			async create() {
 				if (this.viewMode == "create") {
-					await this.$refs.editingForm.submit({
+					let res = await this.$refs.editingForm.submit({
 						document: this.websom.flattenDocument(this.editingData)
 					});
+
+					this.$router.push("./edit/" + res.newId);
 				}else if (this.viewMode == "edit") {
 					let changedFields = {};
 
@@ -173,7 +185,7 @@ script {
 				this.editingData = {
 					tags: [],
 					categories: [],
-					displayStatus: "Draft"
+					displayStatus: "public"
 				};
 
 				for (let k in this.schema.schema) {
@@ -193,6 +205,8 @@ script {
 
 					this.$set(this.editingData, k, v);
 				}
+
+				this.editingData.displayStatus = "public";
 			},
 			async loadEditingData() {
 				let id = this.entityId;
@@ -258,6 +272,11 @@ script {
 }
 
 style {
+	.rich-thumbnail {
+		max-width: 48px;
+		max-height: 48px;
+	}
+
 	.dashboard-editor-main {
 		width: 100%;
 		margin: var(--base-size) auto !important;
