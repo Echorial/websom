@@ -172,6 +172,10 @@ script {
 				type: String,
 				default: "/delete"
 			},
+			listRoute: {
+				type: String,
+				default: "/list"
+			},
 			deleteFilter: {
 				type: String,
 				default: "default"
@@ -261,7 +265,7 @@ script {
 				this.message = "";
 				this.loading = true;
 
-				let res = await this.websom.fetch(this.route, {
+				let res = await this.websom.fetch(this.route + this.listRoute, {
 					filter: this.filter,
 					fields: {"*": true},
 					query: this.query,
@@ -363,7 +367,7 @@ script {
 				this.message = "";
 				this.loading = true;
 
-				let res = await this.websom.fetch(this.route, {
+				let res = await this.websom.fetch(this.route + this.listRoute, {
 					filter: this.filter,
 					fields: {"*": true},
 					query: this.query,
