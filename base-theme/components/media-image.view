@@ -7,7 +7,7 @@ template {
 	<picture>
 		<source :srcset="imageLocation('webp')" type="image/webp">
 		<source :srcset="imageLocation('png')" type="image/jpeg"> 
-		<img :src="imageLocation('png')" :alt="alt">
+		<img :src="imageLocation('png')" :alt="alt" :class="imgClass">
 	</picture>
 }
 
@@ -25,13 +25,23 @@ script {
 			type: {
 				type: String,
 				default: "thumbnail"
+			},
+			imgClass: {
+				type: String,
+				default: ""
 			}
 		},
 		computed: {
 			fileWithoutExtension() {
 				let x = this.file.split(".");
 				x.pop();
-				return x.join(".");
+				let f = x.join(".");
+
+				if (f.startsWith("https://") || f.startsWith("http://")) {
+					return f;
+				}else{
+					return this.websom.resolveMedia(f);
+				}
 			}
 		},
 		methods: {
