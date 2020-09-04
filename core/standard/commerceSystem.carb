@@ -55,7 +55,7 @@ header class Websom.Standard.CommerceSystem.OrderItem extends Websom.Serializabl
 }
 
 header relative Websom.Standard.CommerceSystem.Product inherits Websom.Standard.RichEntity {
-	field string name = "";
+	field string title = "";
 	field string description = "";
 	field string sku = "";
 	field string upc = "";
