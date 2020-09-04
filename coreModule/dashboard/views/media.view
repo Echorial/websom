@@ -5,7 +5,7 @@ info {
 
 template {
 	<div class="websom-media">
-		<rich-view :single-select="!multi" :sortable="true" :bulk="true" :full-select="fullSelect" :layout="layout" collection="/media" route="/media/view" class="dashboard-files-block" ref="mediaView" @input="catchSelections">
+		<rich-view :single-select="!multi" :sortable="true" :bulk="true" :full-select="fullSelect" :layout="layout" collection="media" route="/media" list-route="/view" class="dashboard-files-block" ref="mediaView" @input="catchSelections">
 			<template v-slot:grid="slotProps">
 				<card class="dashboard-file-item full-image hover-title" :key="slotProps.entity.id">
 					<img v-if="slotProps.entity.type.split('/')[0] == 'image'" slot="image" :src="slotProps.entity.file" />
