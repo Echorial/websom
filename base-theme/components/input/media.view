@@ -235,13 +235,17 @@ style {
 		flex-direction: row;
 		flex: 1;
 
+		transition: var(--transition);
+
 		.websom-media {
 			max-height: 90vh;
 			max-width: 70vw;
+
+			transition: var(--transition);
 		}
 
 		.modal-media-list {
-			max-height: calc(90vh - var(--base-height));
+			max-height: calc(100% - var(--base-height));
 			overflow: hidden;
 			height: 100%;
 		}
@@ -266,6 +270,14 @@ style {
 		&.media-selected .modal-media-info {
 			padding-left: var(--base-size);
 			max-width: 200px;
+		}
+
+		&.media-selected .websom-media {
+			margin-left: -100px
+		}
+
+		&.media-selected {
+			margin-right: -100px;
 		}
 	}
 }
