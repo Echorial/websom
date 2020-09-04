@@ -1,0 +1,16 @@
+namespace Websom.Standard.BlogSystem {}
+
+header relative Websom.Standard.BlogSystem.Module {
+	Websom.Adapters.Database.Collection posts = null;
+	Websom.Adapters.Database.Collection archives = null;
+}
+
+header relative Websom.Standard.BlogSystem.Post extends Websom.Standard.RichEntity {
+	string content = "";
+}
+
+header relative Websom.Standard.BlogSystem.Archive {
+	string year = "";
+	string month = "";
+	int count = 0;
+}
