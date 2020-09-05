@@ -1,13 +1,21 @@
 const fs = require("fs");
 const path = require("path");
-const pngToIco = require("png-to-ico");
-const CopyPlugin = require("copy-webpack-plugin");
+let pngToIco = null;
+let CopyPlugin;
+
+try {
+	pngToIco = require("png-to-ico");
+	CopyPlugin = require("copy-webpack-plugin");
+}catch (e) {
+
+}
+
 
 module.exports = async (context) => {
 	await Promise.all([new Promise((res) => {
 		let rIcon = context.server.configService.getString("theme.theme.app", "rasterIcon");
 
-		if (rIcon) {
+		if (rIcon && pngToIco) {
 			pngToIco(path.resolve(context.server.config.root, rIcon)).then(buf => {
 				fs.writeFileSync(path.resolve(path.dirname(path.resolve(context.server.config.root, rIcon)), "favicon.ico"), buf);
 				res();
@@ -28,7 +36,7 @@ module.exports = async (context) => {
 		res();
 	})]);
 
-	const CopyPlugin = require('copy-webpack-plugin');
+	//const CopyPlugin = require('copy-webpack-plugin');
 	let pats = [];
 	let rIcon = context.server.configService.getString("theme.theme.app", "rasterIcon");
 
@@ -48,7 +56,9 @@ module.exports = async (context) => {
 		});
 
 	if (pats.length > 0) {
-		let conf = {
+		let conf = {};
+		if (CopyPlugin)
+		conf = {
 			webpack: {
 				plugins: [
 					new CopyPlugin({
