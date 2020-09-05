@@ -39,15 +39,20 @@ export default (store, context) => {
 			}
 		};
 		
-		if (body instanceof FormData) {
-			fetchBody.body = body;
-		}else{
-			if (body.fields === "*")
-				body.fields = {
-					"*": true
-				};
+		if (body) {
+			if (body instanceof FormData) {
+				fetchBody.body = body;
+			}else{
+				if (body.fields === "*")
+					body.fields = {
+						"*": true
+					};
 
-			fetchBody.body = JSON.stringify(body);
+				fetchBody.body = JSON.stringify(body);
+				fetchBody.headers["Content-Type"] = "application/json";
+			}
+		}else{
+			fetchBody.body = "{}";
 			fetchBody.headers["Content-Type"] = "application/json";
 		}
 		
