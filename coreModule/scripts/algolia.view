@@ -1,6 +1,7 @@
 info {
 	"name": "algolia",
-	"type": "script"
+	"type": "script",
+	"if": "adapter search == algolia"
 }
 
 script {
