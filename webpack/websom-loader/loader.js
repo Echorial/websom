@@ -139,6 +139,24 @@ module.exports = function (source) {
 			if ((info.bundle || "default") != deployBundle && info.bundle !== "*")
 				continue;
 
+			if (info.if) {
+				let splits = info.if.split(" ");
+
+				if (splits[0] == "adapter") {
+					let adapterName = this.query.server.configService.getString("adapters", splits[1]);
+					let op = splits[2];
+					if (op == "==") {
+						if (adapterName != splits[3])
+							continue;
+					}else if (op == "!=") {
+						if (adapterName == splits[3])
+							continue;
+					}else{
+						console.log("Invalid if operator " + op);
+					}
+				}
+			}
+
 			if (info.name === viewName)
 				return `
 					import scriptInfo from "${file.file.replace(/\\/g, "\\\\")}?package=${file.package}&extract-info=true";
