@@ -179,7 +179,8 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 							options: {
 								type: "script",
 								files: gatherViews,
-								bundle: deployBundle
+								bundle: deployBundle,
+								server: websomServer()
 							}
 						}
 					]
