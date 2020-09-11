@@ -1,0 +1,53 @@
+class <class T>Websom.Event {
+	void @construct() {
+
+	}
+
+	#if platform.javascript
+		<<bool, T>function>array listeners = new <<bool, T>function>array();
+	#end if
+
+	#if platform.javascript
+	void do(<bool, T>function listener) {
+		native javascript {
+			this.listeners.push(listener);
+		}
+
+		native php {
+			array_push($this->listeners, $listener);
+		}
+	}
+
+	[ForceAsync]
+	bool invoke(T payload) {
+		let stop = false;
+		let output = false;
+
+		native javascript {
+			stop = true;
+
+			for (let l of this.listeners)
+				if (await l(payload))
+					output = true;
+		}
+
+		native php {
+			$stop = true;
+
+			foreach ($this->listeners as $l)
+				if ($l($payload))
+					$output = true;
+		}
+
+		return output;
+	}
+	#end if
+
+	#if platform.header
+		bool invoke(everything payload) {}
+	#end if
+
+	#if platform.header
+		void do(everything listener) {}
+	#end if
+}
