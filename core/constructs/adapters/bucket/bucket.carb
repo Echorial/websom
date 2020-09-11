@@ -22,6 +22,11 @@ header class Websom.Adapters.Bucket.Adapter extends Websom.Adapter {
 	}
 
 	[ForceAsync]
+	void writeObjectFromBuffer(Websom.Bucket bucket, string destination, void buf) {
+		
+	}
+
+	[ForceAsync]
 	void setObjectACL(Websom.Bucket bucket, string filename, string acl) {
 		
 	}

@@ -41,6 +41,11 @@ class Websom.Bucket {
 		this.server.bucket.writeObject(this, destination, localPath);
 	}
 
+	[ForceAsync]
+	void writeObjectFromBuffer(string destination, void buf) {
+		this.server.bucket.writeObjectFromBuffer(this, destination, buf);
+	}
+
 	Websom.BucketUpload uploadObject() {
 		return new Websom.BucketUpload(this);
 	}

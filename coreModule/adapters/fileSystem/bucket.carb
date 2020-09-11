@@ -111,6 +111,27 @@ class CoreModule.FileSystemBucket extends Websom.Adapters.Bucket.Adapter {
 		FileSystem.unlink(bucketPath + "/" + filename);
 	}
 
+	override void writeObjectFromBuffer(Websom.Bucket bucket, string destination, void buf) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+		
+		native javascript {
+			const fs = require("fs");
+			fs.writeFileSync(bucketPath + "/" + destination, buf);
+		}
+
+		let ctx = new Websom.BucketObjectContext(bucket, destination);
+
+		if (bucket.afterWrite != null) {
+			native javascript {
+				await bucket.afterWrite(ctx);
+			}
+
+			native php {
+				$bucket->afterWrite($ctx);
+			}
+		}
+	}
+
 	override void writeObject(Websom.Bucket bucket, string destination, string localPath) {
 		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
 
