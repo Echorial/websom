@@ -44,6 +44,12 @@ export default (store, packages, context) => ({
 			return null;
 		}
 	},
+	deleteEntity(collection, dataOrId) {
+		let id = dataOrId.id || dataOrId;
+		if (store.state.entities[collection] && store.state.entities[collection][id]) {
+			store.commit("deleteEntity", {collection, id});
+		}
+	},
 	makeEntity(collection, data) {
 		let e = new Entity(collection, data);
 
@@ -56,6 +62,33 @@ export default (store, packages, context) => ({
 		}
 
 		return e;
+	},
+	uploadFile(uploadURL, object, onProgress) {
+		return new Promise((resolve, rej) => {
+			let req = new XMLHttpRequest();
+
+			req.onreadystatechange = function () {
+				if (this.readyState == 4) {
+					if (this.status == 200) {
+						resolve();
+					}else{
+						rej(this.status);
+					}
+				}
+			};
+
+			req.upload.onprogress = (e) => {
+				if (onProgress)
+					onProgress(e.loaded / e.total);
+			};
+
+			req.open("POST", uploadURL);
+
+			let data = new FormData();
+			data.append("upload", object);
+
+			req.send(data);
+		});
 	},
 	resolveAsset(_package, assetName) {
 		return store.state.assets[_package][assetName];
@@ -72,6 +105,9 @@ export default (store, packages, context) => ({
 	},
 	resolveMedia(name) {
 		return store.state.websom.api + "/buckets/media/" + name;
+	},
+	resolveBucketObject(bucket, name) {
+		return store.state.websom.api + "/buckets/" + bucket + "/" + name;
 	},
 	plural(amount, base, append) {
 		append = append || "s";
