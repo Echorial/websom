@@ -111,7 +111,7 @@ script {
 			change() {
 				this.$emit("input", this.displayValues);
 			},
-			updateValue(e) {
+			updateValue(e, noEmit) {
 				let color = Color(e);
 				this.$set(this.hue, 0, color.hue());
 				this.$set(this.alpha, 0, color.valpha * 100);
@@ -130,7 +130,8 @@ script {
 				else
 					this.position.x = (max-min)/max;
 
-				this.change();
+				if (!noEmit)
+					this.change();
 			},
 			lerp: (a, b, c) => {
 				return (1 - c) * a + c * b;
@@ -178,7 +179,7 @@ script {
 			}
 		},
 		created() {
-			this.updateValue(this.myValue);
+			this.updateValue(this.myValue, true);
 		}
 	}
 }
