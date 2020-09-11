@@ -63,7 +63,9 @@ export async function createApp (api, context) {
 				validators: {}
 			},
 			userSystem: {
-				user: null
+				user: null,
+				loadingUser: false,
+				loginHooks: []
 			},
 			entities: {},
 			assets: {
@@ -131,11 +133,25 @@ export async function createApp (api, context) {
 			setUser(state, user) {
 				state.userSystem.user = user;
 			},
+			hookLogin(state, cb) {
+				state.userSystem.loginHooks.push(cb);
+			},
+			triggerLoginHooks(state, res) {
+				for (let hook of state.userSystem.loginHooks)
+					hook(res);
+
+				state.userSystem.loginHooks.splice(0, state.userSystem.loginHooks.length);
+			},
+			deleteEntity(state, {collection, id}) {
+				if (state.entities[collection] && state.entities[collection][id]) {
+					Vue.delete(state.entities[collection], id);
+				}
+			},
 			setEntity(state, entity) {
 				let collection = entity.$collection;
 
 				if (!state.entities[collection])
-					state.entities[collection] = {};
+					Vue.set(state.entities, collection, {});
 				
 				if (state.entities[collection][entity.id]) {
 					let oldEntity = state.entities[collection][entity.id];
@@ -144,7 +160,7 @@ export async function createApp (api, context) {
 						Vue.set(oldEntity, f, entity[f]);
 					}
 				}else{
-					state.entities[collection][entity.id] = entity;
+					Vue.set(state.entities[collection], entity.id, entity);
 				}
 
 				return state.entities[collection][entity.id];
