@@ -5001,6 +5001,10 @@ Websom.Bucket.make = function (server, name, type, raw) {var _c_this = this; var
 /*async*/
 		(await _c_this.server.bucket.writeObject/* async call */(_c_this, destination, localPath));}
 
+/*i async*/Websom.Bucket.prototype.writeObjectFromBuffer = async function (destination, buf) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.writeObjectFromBuffer/* async call */(_c_this, destination, buf));}
+
 Websom.Bucket.prototype.uploadObject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		return new Websom.BucketUpload(_c_this);}
 
@@ -5097,6 +5101,10 @@ Websom.Buckets.Local.make = function (server, name, type, raw) {var _c_this = th
 /*i async*/Websom.Buckets.Local.prototype.writeObject = async function (destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		(await _c_this.server.bucket.writeObject/* async call */(_c_this, destination, localPath));}
+
+/*i async*/Websom.Buckets.Local.prototype.writeObjectFromBuffer = async function (destination, buf) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		(await _c_this.server.bucket.writeObjectFromBuffer/* async call */(_c_this, destination, buf));}
 
 Websom.Buckets.Local.prototype.uploadObject = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		return new Websom.BucketUpload(_c_this);}
@@ -5352,6 +5360,10 @@ Websom.CollectionInterface.prototype.beforeWrite = function (func) {var _c_this 
 		_c_this.routes[_c_this.routes.length - 1].beforeWriteHandler = func;
 		return _c_this;}
 
+Websom.CollectionInterface.prototype.validateEachDocument = function (func) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.routes[_c_this.routes.length - 1].validateTouchesHandler = func;
+		return _c_this;}
+
 Websom.CollectionInterfaceRoute = function (collection, route) {var _c_this = this;
 	this.collection = null;
 
@@ -5372,6 +5384,8 @@ Websom.CollectionInterfaceRoute = function (collection, route) {var _c_this = th
 	this.beforeUpdateHandler = null;
 
 	this.beforeWriteHandler = null;
+
+	this.validateTouchesHandler = null;
 
 	this.route = "";
 
@@ -5689,7 +5703,10 @@ else 	if (arguments.length == 0) {
 /*i async*/Websom.FunctionAuthenticator.prototype.authenticate = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Request || (arguments[0] instanceof Websom.SinkRequest)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var req = arguments[0];
-		return _c_this.func(req);
+		
+			await this.func(req);
+		
+		
 	}
 else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Request || (arguments[0] instanceof Websom.SinkRequest)) || typeof arguments[0] == 'undefined' || arguments[0] === null)) {
 		var req = arguments[0];
@@ -7663,6 +7680,31 @@ Websom.Entity.prototype.getFieldsChanged = function () {var _c_this = this; var 
 			}
 		
 		}
+
+Websom.Event = function () {var _c_this = this;
+	this.listeners = [];
+
+
+}
+
+Websom.Event.prototype.do = function (listener) {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			this.listeners.push(listener);
+		
+		}
+
+/*i async*/Websom.Event.prototype.invoke = async function (payload) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var stop = false;
+		var output = false;
+		
+			stop = true;
+
+			for (let l of this.listeners)
+				if (await l(payload))
+					output = true;
+		
+		
+		return output;}
 
 Websom.Group = function () {var _c_this = this;
 	this.name = "";
@@ -12340,6 +12382,9 @@ Websom.Adapters.Bucket.Adapter = function (server) {var _c_this = this;
 /*i async*/Websom.Adapters.Bucket.Adapter.prototype.writeObject = async function (bucket, destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
+/*i async*/Websom.Adapters.Bucket.Adapter.prototype.writeObjectFromBuffer = async function (bucket, destination, buf) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
 /*i async*/Websom.Adapters.Bucket.Adapter.prototype.setObjectACL = async function (bucket, filename, acl) {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
@@ -12377,6 +12422,27 @@ Websom.DeleteHandler = function (server) {var _c_this = this;
 			return null;
 			}
 		var collection = cir.collection.collection;
+		if (cir.validateTouchesHandler != null) {
+/*async*/
+			var vQuery = collection.select();
+			var out2 = (await _c_this.buildQuery/* async call */(cir, filter, req, vQuery));
+			if (out2 == null) {
+				return null;
+				}
+			var sresults = (await vQuery.get/* async call */());
+			var tempCtx = new Websom.APIContext(req);
+			tempCtx.type = "delete";
+			for (var i = 0; i < sresults.documents.length; i++) {
+				var doc = sresults.documents[i];
+				
+					if (!await cir.validateTouchesHandler(tempCtx, doc)) {
+						req.endWithError("Invalid query");
+						return null;
+					}
+				
+				
+				}
+			}
 		var query = collection.delete();
 		var out = (await _c_this.buildQuery/* async call */(cir, filter, req, query));
 		if (out == null) {
@@ -13142,6 +13208,40 @@ Websom.UpdateHandler = function (server) {var _c_this = this;
 			(await req.endWithError/* async call */("Unknown filter provided"));
 			return null;
 			}
+		var clientValues = req.body["document"];
+		if (("document" in req.body) == false) {
+/*async*/
+			(await req.endWithError/* async call */("No document provided"));
+			return null;
+			}
+		if ((typeof clientValues == 'object' ? (Array.isArray(clientValues) ? 'array' : 'map') : (typeof clientValues == 'number' ? 'float' : typeof clientValues)) != "map") {
+/*async*/
+			(await req.endWithError/* async call */("Document must be an object"));
+			return null;
+			}
+		if (cir.validateTouchesHandler != null) {
+/*async*/
+			var vQuery = collection.select();
+			var out2 = (await _c_this.buildQuery/* async call */(cir, filter, req, vQuery));
+			if (out2 == null) {
+				return null;
+				}
+			var sresults = (await vQuery.get/* async call */());
+			var tempCtx = new Websom.APIContext(req);
+			tempCtx.type = "update";
+			tempCtx.updateQuery = null;
+			tempCtx.inputs = clientValues;
+			for (var i = 0; i < sresults.documents.length; i++) {
+				var doc = sresults.documents[i];
+				
+					if (!await cir.validateTouchesHandler(tempCtx, doc)) {
+						req.endWithError("Invalid query");
+						return null;
+					}
+				
+				
+				}
+			}
 		var query = collection.update();
 		var out = (await _c_this.buildQuery/* async call */(cir, filter, req, query));
 		if (out == null) {
@@ -13150,17 +13250,6 @@ Websom.UpdateHandler = function (server) {var _c_this = this;
 		if (collection.appliedSchema == null) {
 /*async*/
 			(await req.endWithError/* async call */("This collection has no schema applied"));
-			return null;
-			}
-		if (("document" in req.body) == false) {
-/*async*/
-			(await req.endWithError/* async call */("No document provided"));
-			return null;
-			}
-		var clientValues = req.body["document"];
-		if ((typeof clientValues == 'object' ? (Array.isArray(clientValues) ? 'array' : 'map') : (typeof clientValues == 'number' ? 'float' : typeof clientValues)) != "map") {
-/*async*/
-			(await req.endWithError/* async call */("Document must be an object"));
 			return null;
 			}
 		for (var i = 0; i < cir.sets.length; i++) {
@@ -16160,6 +16249,16 @@ Websom.Standard.UserSystem = function () {var _c_this = this;
 }
 
 //Relative Module
+Websom.Standard.UserSystem.LoginEventData = function () {var _c_this = this;
+	this.user = null;
+
+	this.responseData = null;
+
+	this.request = null;
+
+
+}
+
 //Relative User
 //Relative Login
 //Relative Connection
