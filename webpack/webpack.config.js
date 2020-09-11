@@ -278,7 +278,8 @@ module.exports = (websomServer, deployBundle, production, isServerBundle) => {
 		resolve: {
 			modules: [
 				path.resolve(__dirname, "../node_modules"),
-				path.resolve(websomServer().config.root, "../node_modules")
+				path.resolve(websomServer().config.root, "../node_modules"),
+				...websomServer().module.modules.filter(m => fs.existsSync(m.root + "/node_modules")).map(m => path.resolve(m.root + "/node_modules"))
 			],
 			alias: {
 				Util: path.resolve(__dirname, './')
