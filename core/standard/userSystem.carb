@@ -4,8 +4,18 @@ header relative Websom.Standard.UserSystem.Module {
 	Websom.Adapters.Database.Collection users = null;
 	Websom.Adapters.Database.Collection logins = null;
 
+	<Websom.Standard.UserSystem.LoginEventData>Websom.Event afterLogin = new <Websom.Standard.UserSystem.LoginEventData>Websom.Event();
+
 	[ForceAsync]
 	Websom.Standard.UserSystem.User getUserFromRequest(Websom.Request req) {}
+}
+
+class Websom.Standard.UserSystem.LoginEventData {
+	Websom.Standard.UserSystem.User user = null;
+	map responseData = null;
+	Websom.Request request = null;
+
+	void @construct() {}
 }
 
 header relative Websom.Standard.UserSystem.User extends Websom.Entity {
@@ -37,6 +47,8 @@ header relative Websom.Standard.UserSystem.User extends Websom.Entity {
 
 	field bool banned = false;
 	field bool verified = false;
+	field bool anonymous = false;
+	field string anonymousToken = "";
 
 	`Is this account's authentication passed onto an external OAuth system. e.g. Google, Facebook ...`
 	field bool connected = false;
