@@ -100,6 +100,8 @@ export default (Vue, options) => {
 			};
 
 			let downListener = (e) => {
+				if (config.direct && e.target != el)
+					return;
 				e.preventDefault();
 				el.classList.add("websom-dragging");
 				el.setAttribute("websom-dragging", "true");
