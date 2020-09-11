@@ -9,3 +9,5 @@ exports = "Websom"
 type = "header"
 
 useOldTemplates = true
+
+asyncAwait = true
