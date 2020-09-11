@@ -15,6 +15,50 @@ class Websom.UpdateHandler inherits Websom.SelectHandler {
 			return null;
 		}
 
+		let map clientValues = req.body["document"];
+
+		if (req.body.hasKey("document") == false) {
+			req.endWithError("No document provided");
+			return null;
+		}
+
+		if (clientValues.typeAsString() != "map") {
+			req.endWithError("Document must be an object");
+			return null;
+		}
+
+		if (cir.validateTouchesHandler != null) {
+			let vQuery = collection.select();
+			let out2 = this.buildQuery(cir, filter, req, vQuery);
+
+			if (out2 == null)
+				return null;
+
+			let sresults = vQuery.get();
+
+			let tempCtx = new Websom.APIContext(req);
+			tempCtx.type = "update";
+			tempCtx.updateQuery = null;
+			tempCtx.inputs = clientValues;
+
+			for (let int i in sresults.documents) {
+				let doc = sresults.documents[i];
+				native javascript {
+					if (!await cir.validateTouchesHandler(tempCtx, doc)) {
+						req.endWithError("Invalid query");
+						return null;
+					}
+				}
+
+				native php {
+					if (!$cir->validateTouchesHandler($tempCtx, $doc)) {
+						$req->endWithError("Invalid query");
+						return null;
+					}
+				}
+			}
+		}
+
 		let query = collection.update();
 
 		let out = this.buildQuery(cir, filter, req, query);
@@ -26,18 +70,6 @@ class Websom.UpdateHandler inherits Websom.SelectHandler {
 
 		if (collection.appliedSchema == null) {
 			req.endWithError("This collection has no schema applied");
-			return null;
-		}
-
-		if (req.body.hasKey("document") == false) {
-			req.endWithError("No document provided");
-			return null;
-		}
-
-		let map clientValues = req.body["document"];
-
-		if (clientValues.typeAsString() != "map") {
-			req.endWithError("Document must be an object");
 			return null;
 		}
 

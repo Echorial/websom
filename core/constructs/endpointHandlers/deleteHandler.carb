@@ -14,6 +14,37 @@ class Websom.DeleteHandler inherits Websom.SelectHandler {
 		}
 
 		let collection = cir.collection.collection;
+
+		if (cir.validateTouchesHandler != null) {
+			let vQuery = collection.select();
+			let out2 = this.buildQuery(cir, filter, req, vQuery);
+
+			if (out2 == null)
+				return null;
+
+			let sresults = vQuery.get();
+
+			let tempCtx = new Websom.APIContext(req);
+			tempCtx.type = "delete";
+
+			for (let int i in sresults.documents) {
+				let doc = sresults.documents[i];
+				native javascript {
+					if (!await cir.validateTouchesHandler(tempCtx, doc)) {
+						req.endWithError("Invalid query");
+						return null;
+					}
+				}
+
+				native php {
+					if (!$cir->validateTouchesHandler($tempCtx, $doc)) {
+						$req->endWithError("Invalid query");
+						return null;
+					}
+				}
+			}
+		}
+
 		let query = collection.delete();
 
 		let out = this.buildQuery(cir, filter, req, query);

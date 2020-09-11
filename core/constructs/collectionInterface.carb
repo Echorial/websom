@@ -191,6 +191,11 @@ class Websom.CollectionInterface {
 		this.routes[this.routes.length - 1].beforeWriteHandler = func;
 		return this;
 	}
+
+	Websom.CollectionInterface validateEachDocument(<bool, Websom.APIContext, Websom.Adapters.Database.Document>function func) {
+		this.routes[this.routes.length - 1].validateTouchesHandler = func;
+		return this;
+	}
 }
 
 class Websom.CollectionInterfaceRoute {
@@ -206,6 +211,7 @@ class Websom.CollectionInterfaceRoute {
 
 	<void, Websom.Request, Websom.Adapters.Database.UpdateQuery>function beforeUpdateHandler = null;
 	<void, Websom.APIContext>function beforeWriteHandler = null;
+	<void, Websom.APIContext, Websom.Adapters.Database.Document>function validateTouchesHandler = null;
 
 	string route = "";
 
@@ -473,7 +479,13 @@ class Websom.FunctionAuthenticator inherits Websom.Authenticator {
 
 	[ForceAsync]
 	bool authenticate(Websom.Request req) {
-		return this.func(req);
+		native javascript {
+			await this.func(req);
+		}
+
+		native php {
+			return $this->func($req);
+		}
 	}
 }
 
