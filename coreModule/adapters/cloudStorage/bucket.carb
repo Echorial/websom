@@ -1,0 +1,117 @@
+class CoreModule.CloudStorageBucket extends Websom.Adapters.Bucket.Adapter {
+	CoreModule.Module coreModule = null;
+
+	string route = "adapter.database.firestore";
+
+	void cloudStorage = null;
+
+	override void initialize() {
+		this.coreModule = this.server.module.getModule("coreModule");
+	}
+
+	void loadClient() {
+		native javascript {
+			if (!this.cloudStorage) {
+				const { Storage } = require("@google-cloud/storage");
+				
+				if (!!process.env.GCP_PROJECT) {
+					this.cloudStorage = new Storage({});
+				}else{
+					let serviceAccount = require(path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials")));
+					
+					this.cloudStorage = new Storage({
+						projectId: this.server.getConfigString(this.route, "project"),
+						keyFilename: serviceAccount
+					});
+				}
+			}
+		}
+	}
+
+	override string generateUploadURL(Websom.BucketUpload upload) {
+		this.loadClient();
+
+		native javascript {
+			let [url] = await storage.bucket(upload.bucket.name).file(upload.filename).getSignedUrl({
+				version: "v4",
+				action: "write",
+				expires: Date.now() + 15 * 60 * 1000
+			});
+
+			return url;
+		}
+	}
+
+	override void deleteObject(Websom.Bucket bucket, string filename) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+
+		FileSystem.unlink(bucketPath + "/" + filename);
+	}
+
+	override void writeObjectFromBuffer(Websom.Bucket bucket, string destination, void buf) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+		
+		native javascript {
+			const fs = require("fs");
+			fs.writeFileSync(bucketPath + "/" + destination, buf);
+		}
+
+		let ctx = new Websom.BucketObjectContext(bucket, destination);
+
+		if (bucket.afterWrite != null) {
+			native javascript {
+				await bucket.afterWrite(ctx);
+			}
+
+			native php {
+				$bucket->afterWrite($ctx);
+			}
+		}
+	}
+
+	override void writeObject(Websom.Bucket bucket, string destination, string localPath) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+
+		FileSystem.writeSync(bucketPath + "/" + destination, FileSystem.readSync(localPath, null));
+
+		let ctx = new Websom.BucketObjectContext(bucket, destination);
+
+		if (bucket.afterWrite != null) {
+			native javascript {
+				await bucket.afterWrite(ctx);
+			}
+
+			native php {
+				$bucket->afterWrite($ctx);
+			}
+		}
+	}
+
+	override void createDirectory(Websom.Bucket bucket, string path) {
+		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+
+		if (FileSystem.exists(bucketPath + "/" + path) == false)
+			FileSystem.makeDir(bucketPath + "/" + path);
+	}
+
+	override void setObjectACL(Websom.Bucket bucket, string filename, string acl) {
+		this.coreModule.objects.update()
+			.where("filename", "==", filename)
+			.set("acl", acl)
+			.run();
+	}
+
+	override void registerBucket(Websom.Bucket bucket) {
+		if (FileSystem.exists(this.server.config.devBuckets + "/" + bucket.name) == false) {
+			FileSystem.makeDir(this.server.config.devBuckets + "/" + bucket.name);
+		}
+	}
+
+	override string serve(Websom.Bucket bucket, string filename) {
+		return this.server.apiHost + "/buckets/" + bucket.name + "/" + filename;
+	}
+
+	override string readToLocalSystemPath(Websom.Bucket bucket, string filename) {
+		return this.server.config.devBuckets + "/" + bucket.name + "/" + filename;
+	}
+}
