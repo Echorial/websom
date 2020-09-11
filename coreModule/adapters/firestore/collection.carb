@@ -19,6 +19,7 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 
 		native javascript {
 			doc = (await this.firestoreCollection.doc(id).get()).data();
+			// LOG console.log("Read");
 		}
 		
 		if (doc == null)
@@ -34,6 +35,7 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 
 		native javascript {
 			docs = (await this.firestoreCollection.getAll(...(ids.map(id => this.firestoreCollection.doc(id)))));
+			// LOG for (let d of docs) console.log("Read");
 		}
 		
 		let outputs = new <Websom.Adapters.Database.Document>array();
@@ -56,6 +58,7 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 
 		native javascript {
 			doc = (await this.firestoreCollection.doc(key).get()).data();
+			// LOG console.log("Read");
 		}
 		
 		if (doc == null) {
@@ -74,6 +77,7 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 				};
 
 				this.firestoreCollection.doc(key).set(doc);
+				// LOG Console.log("Write");
 			}
 		}
 	
@@ -165,11 +169,14 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 
 				if (this.searchable) {
 					await ctx.doc(doc.id).set(doc.rawData);
+					// LOG console.log("Write");
 					let newData = await ctx.doc(doc.id).get();
+					// LOG console.log("Read");
 
 					updates.push(this.documentFromRaw(doc.id, newData.data()));
 				}else{
 					ctx.doc(doc.id).set(doc.rawData);
+					// LOG console.log("Write");
 				}
 			}
 		}
@@ -231,6 +238,7 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 			let newDoc = ctx.doc();
 			id = newDoc.id;
 			newDoc.set(query.sets);
+			// LOG console.log("Write");
 		}
 
 		if (this.appliedSchema != null) {
@@ -299,6 +307,7 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 
 			rawResults.forEach(doc => 
 				res.documents.push(this.documentFromRaw(doc.id, doc.data())));
+			// LOG for (let d of res.documents) console.log("Read");
 		}
 
 		return res;
