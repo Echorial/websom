@@ -1,5 +1,8 @@
 //Relative RichEntity
 //Relative Module
+//Relative Post
+//Relative Archive
+//Relative Module
 //Relative User
 //Relative Login
 //Relative Connection
@@ -932,6 +935,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 		var doc = null;
 		
 			doc = (await this.firestoreCollection.doc(id).get()).data();
+			console.log("Read");
 		
 		if (doc == null) {
 			return null;
@@ -943,6 +947,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 		var docs = null;
 		
 			docs = (await this.firestoreCollection.getAll(...(ids.map(id => this.firestoreCollection.doc(id)))));
+			for (let d of docs) console.log("Read");
 		
 		var outputs = [];
 		for (var i = 0; i < docs.length; i++) {
@@ -958,6 +963,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 		var doc = null;
 		
 			doc = (await this.firestoreCollection.doc(key).get()).data();
+			console.log("Read");
 		
 		if (doc == null) {
 			
@@ -975,6 +981,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 				};
 
 				this.firestoreCollection.doc(key).set(doc);
+				Console.log("Write");
 			
 			}
 		var meta = new CoreModule.FirestoreMetaDocument(key);
@@ -1064,11 +1071,14 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 
 				if (this.searchable) {
 					await ctx.doc(doc.id).set(doc.rawData);
+					console.log("Write");
 					let newData = await ctx.doc(doc.id).get();
+					console.log("Read");
 
 					updates.push(this.documentFromRaw(doc.id, newData.data()));
 				}else{
 					ctx.doc(doc.id).set(doc.rawData);
+					console.log("Write");
 				}
 			}
 		
@@ -1119,6 +1129,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			let newDoc = ctx.doc();
 			id = newDoc.id;
 			newDoc.set(query.sets);
+			console.log("Write");
 		
 		if (_c_this.appliedSchema != null) {
 /*async*/
@@ -1180,6 +1191,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 
 			rawResults.forEach(doc => 
 				res.documents.push(this.documentFromRaw(doc.id, doc.data())));
+			for (let d of res.documents) console.log("Read");
 		
 		return res;}
 
@@ -1705,6 +1717,20 @@ CoreModule.FileSystemBucket = function (server) {var _c_this = this;
 /*i async*/CoreModule.FileSystemBucket.prototype.deleteObject = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;
 		Oxygen.FileSystem.unlink(bucketPath + "/" + filename);}
+
+/*i async*/CoreModule.FileSystemBucket.prototype.writeObjectFromBuffer = async function (bucket, destination, buf) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;
+		
+			const fs = require("fs");
+			fs.writeFileSync(bucketPath + "/" + destination, buf);
+		
+		var ctx = new Websom.BucketObjectContext(bucket, destination);
+		if (bucket.afterWrite != null) {
+			
+				await bucket.afterWrite(ctx);
+			
+			
+			}}
 
 /*i async*/CoreModule.FileSystemBucket.prototype.writeObject = async function (bucket, destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
 		var bucketPath = _c_this.server.config.devBuckets + "/" + bucket.name;

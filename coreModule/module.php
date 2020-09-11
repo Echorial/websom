@@ -1,6 +1,9 @@
 <?php
 //Relative RichEntity
 //Relative Module
+//Relative Post
+//Relative Archive
+//Relative Module
 //Relative User
 //Relative Login
 //Relative Connection
@@ -1187,6 +1190,16 @@ return $this->server->apiHost . "/objects/upload/" . $token;}
 function deleteObject($bucket, $filename) {
 $bucketPath = $this->server->config->devBuckets . "/" . $bucket->name;
 Oxygen_FileSystem::unlink($bucketPath . "/" . $filename);}
+
+function writeObjectFromBuffer($bucket, $destination, $buf) {
+$bucketPath = $this->server->config->devBuckets . "/" . $bucket->name;
+
+$ctx = new Websom_BucketObjectContext($bucket, $destination);
+if ($bucket->afterWrite != null) {
+
+
+				$bucket->afterWrite($ctx);
+			}}
 
 function writeObject($bucket, $destination, $localPath) {
 $bucketPath = $this->server->config->devBuckets . "/" . $bucket->name;
