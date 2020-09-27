@@ -40,7 +40,7 @@ module.exports = {
 					}
 
 					let type = packageJson.websom.type;
-					console.log(`Installing ${type} ${chalk.blueBright(package)} by ${packageJson.author || "<nobody?>"}`);
+					console.log(`Installing ${type} ${chalk.cyan(package)} by ${packageJson.author || "<nobody?>"}`);
 					console.log("----------------------------------");
 					
 					let bar = new progress.SingleBar({
