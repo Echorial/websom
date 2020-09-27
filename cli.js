@@ -14,9 +14,9 @@ let findWebsomWebsite = (dir) => {
 	
 	if (
 		isDir("website")
-		&& isDir("website/modules")
+		/*&& isDir("website/modules")
 		&& isDir("website/packs")
-		&& isDir("website/themes")
+		&& isDir("website/themes")*/
 	) {
 		return dir;
 	}
@@ -109,7 +109,7 @@ server.startDevelopmentServer().then(() => {
 
 	if (!website) {
 		console.log(chalk.red("[ERROR] No websom site found."));
-		console.log(chalk.blue("[TIP] Create one using ") + chalk.blueBright("$ websom init"));
+		console.log(chalk.blue("[TIP] Create one using ") + chalk.cyan("$ websom init"));
 		return;
 	}
 
