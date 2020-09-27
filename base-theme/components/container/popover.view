@@ -25,6 +25,10 @@ script {
 				type: String,
 				default: "bottom"
 			},
+			activateOnClick: {
+				type: Boolean,
+				default: true
+			},
 			activateOnHover: {
 				type: Boolean,
 				default: true
@@ -217,6 +221,7 @@ script {
 			};
 
 			document.addEventListener("click", this.documentEvent);
+			//document.addEventListener("contextmenu", this.documentEvent);
 
 			this.boundEvents.mouseenter = () => {
 				this.checkEnter();
@@ -228,7 +233,8 @@ script {
 
 			this.boundEvents.click = () => {
 				this.debounce = true;
-				this.toggle();
+				if (this.activateOnClick)
+					this.toggle();
 			};
 			
 			let target = this.getTarget();
@@ -247,6 +253,7 @@ script {
 			let target = this.getTarget();
 
 			document.removeEventListener("click", this.documentEvent);
+			//document.removeEventListener("contextmenu", this.documentEvent);
 
 			if (target)
 				for (let k in this.boundEvents)
