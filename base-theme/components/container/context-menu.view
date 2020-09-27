@@ -1,0 +1,36 @@
+info {
+	"name": "context-menu",
+	"type": "component"
+}
+
+template {
+	<popover ref="pop" :activate-on-hover="false" :activate-on-click="false">
+		<slot />
+	</popover>
+}
+
+script {
+	export default {
+		props: {
+			listenForContextMenu: {
+				type: Boolean,
+				default: true
+			}
+		},
+		data() {
+			return {
+			};
+		},
+		methods: {
+		},
+		mounted() {
+
+			// TODO: Watch this prop
+			if (this.listenForContextMenu)
+				this.$el.parentElement.addEventListener("contextmenu", (e) => {
+					this.$refs.pop.open();
+					return false;
+				});
+		}
+	}
+}
