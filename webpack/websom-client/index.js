@@ -14,13 +14,13 @@ export default (store, packages, context) => ({
 		link.type = "text/css";
 		link.rel = "stylesheet";
 		link.href = href;
-		document.head.appendChild(link);
+		document.body.appendChild(link);
 	},
 	loadScript(src, cb) {
 		let script = document.createElement("script");
 		script.onload = cb;
 		script.src = src;
-		document.head.appendChild(script);
+		document.body.appendChild(script);
 	},
 	fetch: websomFetch(store, context),
 	getConfig(route, key) {
