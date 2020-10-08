@@ -62,7 +62,7 @@ script {
 		methods: {
 			setStatus(raw) {
 				this.status = raw.status;
-				this.message = raw.message;
+				this.message = raw.message || (raw.data ? raw.data.message : raw.status);
 			},
 			async submit(data) {
 				let fields = this.$el.querySelectorAll(".form-field");
