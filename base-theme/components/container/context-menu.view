@@ -4,9 +4,9 @@ info {
 }
 
 template {
-	<popover ref="pop" :activate-on-hover="false" :activate-on-click="false">
+	<dropdown ref="pop" :activate-on-hover="false" :activate-on-click="false">
 		<slot />
-	</popover>
+	</dropdown>
 }
 
 script {
