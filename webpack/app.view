@@ -78,6 +78,9 @@ script {
 			}
 		},
 		computed: {
+			colorScheme() {
+				return this.$store.state.websom.colorScheme;
+			},
 			classes() {
 				let names = ["websom-main-wrap"];
 
@@ -130,6 +133,10 @@ script {
 			}
 		},
 		methods: {
+			updateBodyColor() {
+				document.body.classList.remove(this.colorScheme == "dark" ? "light" : "dark");
+				document.body.classList.add(this.colorScheme);
+			},
 			async computeBreadcrumbs() {
 				let crumbs = await Promise.all(this.$route.matched.map(async a => {
 					console.log(a.instances);
@@ -207,6 +214,16 @@ script {
 						href: "/favicon.svg"
 					}
 				});
+		},
+		watch: {
+			colorScheme(nv, ov) {
+				let printScheme = s => s == "dark" ? "🌒 dark" : "☀️ light";
+				console.log(`Color scheme changed from ${printScheme(ov)} to ${printScheme(nv)}`);
+				this.updateBodyColor();
+			}
+		},
+		mounted() {
+			this.updateBodyColor();
 		}
 	}
 }
