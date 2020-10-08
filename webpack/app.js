@@ -74,6 +74,7 @@ export async function createApp (api, context) {
 					logoRaster: WebsomLogoRaster
 				}
 			},
+			loadedScripts: {},
 			title: "Websom Page",
 			metaDescription: "",
 			breadcrumbs: []
@@ -100,6 +101,9 @@ export async function createApp (api, context) {
 			}
 		},
 		mutations: {
+			addLoadedScript(store, url) {
+				store.loadedScripts[url] = true;
+			},
 			clearBreadcrumbs(store) {
 				store.breadcrumbs.splice(0, store.breadcrumbs.length);
 			},
@@ -145,6 +149,12 @@ export async function createApp (api, context) {
 			deleteEntity(state, {collection, id}) {
 				if (state.entities[collection] && state.entities[collection][id]) {
 					Vue.delete(state.entities[collection], id);
+				}
+			},
+			clearEntities(state, collection) {
+				if (state.entities[collection]) {
+					for (let k of Object.keys(state.entities[collection]))
+						Vue.delete(state.entities[collection], k);
 				}
 			},
 			setEntity(state, entity) {
@@ -197,7 +207,7 @@ export async function createApp (api, context) {
 		let darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 		store.commit("setColorScheme", darkModeMediaQuery.matches ? "dark" : "light");
-		console.log(`Color scheme ${store.state.websom.colorScheme == "dark" ? "🌒 dark" : "☀️ light"}.`);
+		console.log(`Color scheme ${store.state.websom.colorScheme == "dark" ? "🌒 dark" : "☀️ light"}`);
 
 		darkModeMediaQuery.addListener((e) => {
 			store.commit("setColorScheme", e.matches ? "dark" : "light")
