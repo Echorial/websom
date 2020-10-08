@@ -72,6 +72,14 @@ style {
 		justify-content: center;
 	}
 
+	.center-content-vertical {
+		display: flex;
+
+		align-items: center;
+		justify-content: center;
+		flex-direction: column;
+	}
+
 	.right-align-content {
 		display: flex;
 
@@ -84,6 +92,18 @@ style {
 
 		align-items: center;
 		justify-content: flex-start;
+	}
+
+	.center-text {
+		text-align: center;
+	}
+
+	.right-align-text {
+		text-align: right;
+	}
+
+	.pad {
+		padding: var(--base-size);
 	}
 
 	#app.websom-dashboard-slides {
@@ -121,6 +141,14 @@ style {
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		display: block !important;
+	}
+
+	.truncate-line {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		display: block !important;
+		width: 100%;
 	}
 
 	html > body #app .pad-content {
