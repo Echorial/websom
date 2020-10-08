@@ -320,6 +320,10 @@ header class Websom.Restrictions.Unique inherits Websom.Restriction {
 
 		return mp;
 	}
+
+	override string message(string fieldName, primitive value) {
+		return fieldName + " already in use";
+	}
 }
 
 header class Websom.Restrictions.Format inherits Websom.Restriction {
