@@ -4,7 +4,29 @@ import websomFetch from "./fetch.js";
 
 import Entity from "./entity";
 
+let scriptsStillLoading = {};
+
+let listeners = {};
+
 export default (store, packages, context) => ({
+	on(event, cb) {
+		if (!listeners[event])
+			listeners[event] = [];
+
+		listeners[event].push(cb);
+	},
+	trigger(event, args) {
+		if (listeners[event])
+			for (let cb of listeners[event])
+				if (args)
+					cb(...args);
+				else
+					cb();
+	},
+	off(event, cb) {
+		if (listeners[event])
+			listeners[event].remove(cb);
+	},
 	getComponentForAdapter(name) {
 		return packages.find(p => p.info.adapt == name).vue;
 	},
@@ -17,10 +39,28 @@ export default (store, packages, context) => ({
 		document.body.appendChild(link);
 	},
 	loadScript(src, cb) {
-		let script = document.createElement("script");
-		script.onload = cb;
-		script.src = src;
-		document.body.appendChild(script);
+		if (store.state.loadedScripts[src]) {
+			if (scriptsStillLoading[src]) {
+				scriptsStillLoading[src].push(cb);
+			}else{
+				cb();
+			}
+		}else{
+			store.commit("addLoadedScript", src);
+
+			scriptsStillLoading[src] = [cb];
+			
+			let script = document.createElement("script");
+			script.onload = () => {
+				for (let callback of scriptsStillLoading[src]) {
+					callback();
+				}
+
+				delete scriptsStillLoading[src];
+			};
+			script.src = src;
+			document.body.appendChild(script);
+		}
 	},
 	fetch: websomFetch(store, context),
 	getConfig(route, key) {
