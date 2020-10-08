@@ -5496,11 +5496,11 @@ Websom.Restrictions.Unique.prototype.exposeToClient = function () {var _c_this =
 		mp["type"] = "unique";
 		return mp;}
 
+Websom.Restrictions.Unique.prototype.message = function (fieldName, value) {var _c_this = this; var _c_root_method_arguments = arguments;
+		return fieldName + " already in use";}
+
 Websom.Restrictions.Unique.prototype.testClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
-
-Websom.Restrictions.Unique.prototype.message = function (fieldName, value) {var _c_this = this; var _c_root_method_arguments = arguments;
-		return _c_this.name() + " failed on field " + fieldName + ".";}
 
 Websom.Restrictions.Format = function () {var _c_this = this;
 	this.format = "";
