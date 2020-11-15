@@ -7,7 +7,100 @@ const path = require("path");
 
 const chalk = require("chalk");
 
+const iq = require("inquirer");
+
+const cp = require("ncp");
+
 let cwd = process.cwd();
+
+const gatherSettings = (cb) => {
+	let data = {};
+
+	iq.prompt([
+		{
+			type: "list",
+			name: "language",
+			message: "Back-end language",
+			choices: [
+				"Javascript",
+				"PHP (coming soon)",
+				"Carbon (Not recommended for new users)"
+			]
+		},
+		{
+			type: "list",
+			name: "database",
+			message: "Database (use loki if in doubt)",
+			choices: [
+				"loki.js",
+				"Firebase",
+				"MySQL (coming soon)",
+				"Mongo DB (coming soon)",
+				"DynamoDB (coming soon)"
+			]
+		},
+		{
+			type: "list",
+			name: "mail",
+			message: "Mail Service",
+			choices: [
+				"SendGrid",
+				"SMTP Login",
+				"None"
+			]
+		},
+		/*{
+			type: "checkbox",
+			name: "modules",
+			message: "Pre-install commonly used modules",
+			choices: [
+				"UserManager (recommended)"
+			]
+		},*/
+		{
+			type: "list",
+			name: "theme",
+			message: "Front-end theme",
+			choices: [
+				"Material",
+				"Zero",
+				"Air",
+				"I'll build my own from scratch",
+				"None"
+			]
+		},
+		{
+			type: "list",
+			name: "template",
+			message: "Start with a template",
+			choices: [
+				"App",
+				"Blog",
+				"Single Page Experience",
+				"E-commerce",
+				"Membership",
+				"None"
+			]
+		},
+		{
+			type: "list",
+			name: "deploy",
+			message: "Environment",
+			choices: [
+				"Serverless GCP - Firebase - No SSR",
+				"Serverless GCP - Firebase - With SSR",
+				"Serverless AWS",
+				"Apache",
+				"Nginx",
+				"Express",
+				"Static",
+				"None"
+			]
+		}
+	]).then(async answers => {
+		cb(answers);
+	});
+};
 
 let findWebsomWebsite = (dir) => {
 	let isDir = f => fs.existsSync(path.resolve(dir, "./" + f)) && fs.lstatSync(fs.realpathSync(path.resolve(dir, "./" + f))).isDirectory();
@@ -33,47 +126,80 @@ let [,, ...args] = process.argv;
 
 if (args[0] == "init") {
 	let items = fs.readdirSync(cwd);
+	items = items.filter(i => i != "." && i != "..");
 
-	if (items.length > 2) {
+	if (items.length > 0) {
 		console.log(chalk.red("[ERROR] This folder must empty."));
 		return;
 	}
 
-	fs.mkdirSync(path.resolve(cwd, "./config"));
-
-	fs.writeFileSync(path.resolve(cwd, "./config/global.json"), JSON.stringify({
-		adapters: {
-			database: "loki"
-		},
-		"adapter.database.loki": {
-			persistence: "database.db"
-		}
-	}, null, "\t"));
-
-	fs.writeFileSync(path.resolve(cwd, "./config/deploy.json"), JSON.stringify({
-		deploys: []
-	}, null, "\t"));
-
-	fs.writeFileSync(path.resolve(cwd, "./package.json"), JSON.stringify({
-			"name": "websom-website",
-			"version": "1.0.0",
-			"description": "",
-			"main": "devServer.js",
-			"scripts": {
-				"dev": "node devServer.js"
-			},
-			"author": "",
-			"license": "ISC",
-			"dependencies": {
-				"websom": "*"
+	gatherSettings((settings) => {
+		fs.mkdirSync(path.resolve(cwd, "./config"));
+		
+		let globalConfig = {
+			"adapters": {},
+			"theme.theme.app": {
+				"rasterIcon": "icon/icon.png",
+				"vectorIcon": "icon/icon.svg"
 			}
-	}, null, "\t"));
+		};
 
-	fs.writeFileSync(path.resolve(cwd, "./composer.json"), JSON.stringify({
-		"require": {}
-	}, null, "\t"));
+		if (settings.database == "loki.js") {
+			globalConfig.adapters.database = "loki";
+			globalConfig["adapters.database.loki"] = {
+				persistence: "database.db"
+			};
+		}else if (settings.database == "Firebase") {
+			globalConfig.adapters.database = "firebase";
+			globalConfig["adapters.database.firebase"] = {
+				credentials: "./firestore.json"
+			};
 
-	let devServer = `const { Server } = require("websom");
+			fs.writeFileSync(path.resolve(cwd, "./config/firebase.json"), "{}");
+		}
+
+		if (settings.mail == "SendGrid") {
+			globalConfig.adapters.email = "sendGrid";
+			globalConfig["adapters.email.sendGrid"] = {
+				apiKey: "<sendgrid api key>"
+			};
+		}else if (settings.mail == "SMTP Login") {
+			globalConfig.adapters.email = "smtp";
+			globalConfig["adapters.email.smtp"] = {
+				host: "example.com",
+				port: "445",
+				ssl: true,
+				username: "no-reply@example.com",
+				password: "******"
+			};
+		}
+
+		fs.writeFileSync(path.resolve(cwd, "./config/global.json"), JSON.stringify(globalConfig, null, "\t"));
+
+		fs.writeFileSync(path.resolve(cwd, "./config/deploy.json"), JSON.stringify({
+			deploys: []
+		}, null, "\t"));
+
+		fs.writeFileSync(path.resolve(cwd, "./package.json"), JSON.stringify({
+				"name": "websom-website",
+				"version": "1.0.0",
+				"description": "",
+				"main": "devServer.js",
+				"scripts": {
+					"dev": "node devServer.js"
+				},
+				"author": "",
+				"license": "ISC",
+				"dependencies": {
+					"websom": "*"
+				}
+		}, null, "\t"));
+
+		fs.writeFileSync(path.resolve(cwd, "./composer.json"), JSON.stringify({
+			"require": {}
+		}, null, "\t"));
+
+		let devServer = `const { Server } = require("websom");
 
 let server = new Server({
 	dev: true,
@@ -91,19 +217,32 @@ server.startDevelopmentServer().then(() => {
 	// Server started
 });`;
 
-	fs.writeFileSync(path.resolve(cwd, "./devServer.js"), devServer, null, "\t");
+		fs.writeFileSync(path.resolve(cwd, "./devServer.js"), devServer, null, "\t");
 
-	fs.mkdirSync(path.resolve(cwd, "./website"));
-	fs.mkdirSync(path.resolve(cwd, "./website/packs"));
-	fs.mkdirSync(path.resolve(cwd, "./website/modules"));
-	fs.mkdirSync(path.resolve(cwd, "./website/themes"));
+		fs.mkdirSync(path.resolve(cwd, "./website"));
+		fs.mkdirSync(path.resolve(cwd, "./website/packs"));
+		fs.mkdirSync(path.resolve(cwd, "./website/modules"));
+		fs.mkdirSync(path.resolve(cwd, "./website/themes"));
 
-	fs.mkdirSync(path.resolve(cwd, "./buckets"));
+		fs.mkdirSync(path.resolve(cwd, "./buckets"));
 
-	console.log(chalk.green("[PROJECT] Initialized."));
-	console.log(chalk.blue("------- Execute -------"));
-	console.log("$" + chalk.green(" npm") + chalk.green(" run") + chalk.green(" dev"));
-	console.log(chalk.blue("--- To get started ---"));
+		let copDir = path.resolve(__dirname, "./templates/default") + "/";
+
+		if (settings.language == "Javascript") {
+			copDir += "javascript";
+		}else if (settings.language == "Carbon (Not recommended for new users)") {
+			copDir += "carbon";
+		}else if (settings.language == "PHP (coming soon)") {
+			copDir += "php";
+		}
+		
+		cp(copDir, path.resolve(cwd, "./website/modules/app"), () => {
+			console.log(chalk.green("[PROJECT] Initialized."));
+			console.log(chalk.blue("------- Execute -------"));
+			console.log("$" + chalk.green(" npm") + chalk.green(" run") + chalk.green(" dev"));
+			console.log(chalk.blue("--- To get started ---"));
+		});
+	});
 }else{
 	let website = findWebsomWebsite(cwd);
 
