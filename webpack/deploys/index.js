@@ -3,5 +3,6 @@ module.exports = {
 	gcp: require("./gcp"),
 	extension: require("./extension"),
 	node: require("./node"),
-	static: require("./static")
+	static: require("./static"),
+	api: require("./api")
 };
