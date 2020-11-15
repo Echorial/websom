@@ -178,11 +178,19 @@ class Websom.Server {
 				let deploy = this.getDeploy(this.devDeploy);
 
 				if (deploy != null and deploy["useApi"]) {
-					let data = Websom.Json.parse(FileSystem.readSync(FileSystem.resolve(this.config.configOverrides + "/" + deploy["useApi"]), "utf8"));
-					this.apiHost = data["api"];
+					//let data = Websom.Json.parse(FileSystem.readSync(FileSystem.resolve(this.config.configOverrides + "/" + deploy["useApi"]), "utf8"));
+					this.apiHost = deploy["useApi"];
 					this.apiDomain = this.apiHost.replace("https://", "").replace("http://", "");
 					let splits = this.apiDomain.split("/");
 					this.apiDomain = splits[0];
+				}
+
+				if (deploy != null and deploy["useClient"]) {
+					//let data = Websom.Json.parse(FileSystem.readSync(FileSystem.resolve(this.config.configOverrides + "/" + deploy["useClient"]), "utf8"));
+					this.clientHost = deploy["useClient"];
+					this.clientDomain = this.clientHost.replace("https://", "").replace("http://", "");
+					let splits = this.clientDomain.split("/");
+					this.clientDomain = splits[0];
 				}
 			}
 		}
