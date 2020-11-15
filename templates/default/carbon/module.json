@@ -1,0 +1,23 @@
+{
+	"name": "App",
+	"id": "app",
+	"key": "app",
+	"resources": [
+		{
+			"path": "./src/client/components"
+		},
+		{
+			"path": "./src/client/state"
+		},
+		{
+			"path": "./src/client/script"
+		},
+		{
+			"path": "./src/client/style"
+		}
+	],
+	"npm": {},
+	"composer": {},
+	"adapters": {},
+	"config": {}
+}

@@ -1,0 +1,27 @@
+class App extends Websom.Module {
+	override Websom.Status start() {
+		// Do some basic initialization here
+	}
+
+	override void permissions() {
+		// Register your module permissions here
+	}
+
+	override void collections() {
+		// Register your DB collections here
+	}
+
+	override void api() {
+		// Register some API endpoints here
+		
+		this.server.api.route("/example/endpoint")
+			.auth(bool (Websom.Request req) => {
+				return req.user() == null;
+			})
+			.executes(void (Websom.APIContext ctx) => {
+				let response = new map();
+				response["message"] = "Hello World!";
+				ctx.request.endWithData(response);
+			});
+	}
+}
