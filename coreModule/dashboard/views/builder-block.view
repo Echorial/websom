@@ -1,0 +1,34 @@
+info {
+	"name": "builder-block",
+	"type": "component"
+}
+
+template {
+	<div class="websom-builder-invalid-block" v-if="!blockTemplate">
+		
+	</div>
+	<component v-else :is="blockTemplate.element || blockTemplate.component" :block="block" v-bind="block.attr || []">
+		<template v-if="block.blocks">
+			<builder-block v-for="fblock in block.blocks" :key="block.key || Math.floor(Math.random() * 1000)" :block="fblock" />
+		</template>
+	</component>
+}
+
+script {
+	export default {
+		props: {
+			block: {
+				type: Object,
+				default: null
+			}
+		},
+		data: () => ({
+
+		}),
+		computed: {
+			blockTemplate() {
+				return this.$store.state.builder.blocks[this.block.type];
+			}
+		}
+	}
+}

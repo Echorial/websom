@@ -1,0 +1,25 @@
+info {
+	"name": "builder",
+	"type": "state"
+}
+
+script {
+	export default websom => ({
+		client(store) {
+			
+		},
+		state: () => ({
+			blocks: {}
+		}),
+		mutations: {
+			registerBlock(state, data) {
+				if (state.blocks[data.name]) {
+					console.warn("Block already registered", data.name);
+					return false;
+				}
+				
+				state.blocks[data.name] = data;
+			}
+		}
+	})
+}

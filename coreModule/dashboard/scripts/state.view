@@ -12,7 +12,8 @@ script {
 			tabs: [],
 			advanced: websom.getPreference("dashboardAdvancedMode", false),
 			authenticated: false,
-			data: {}
+			data: {},
+			open: true
 		}),
 		mutations: {
 			registerDashboardTab(state, tab) {
@@ -30,6 +31,9 @@ script {
 			},
 			loadDashboardMode(state) {
 				state.advanced = websom.getPreference("dashboardAdvancedMode", false);
+			},
+			setDashboardSidebar(state, open) {
+				state.open = open;
 			}
 		}
 	})

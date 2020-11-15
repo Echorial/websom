@@ -1,0 +1,23 @@
+info {
+	"name": "websom-blocks",
+	"type": "script"
+}
+
+script {
+	export default ctx => {
+		const blocks = [
+			{
+				name: "g-h",
+				component: "g-h"
+			},
+			{
+				name: "g-v",
+				component: "g-v"
+			}
+		];
+
+		if (ctx.fillState)
+			for (let block of blocks)
+				ctx.store.commit("registerBlock", block);
+	}
+}

@@ -1,0 +1,250 @@
+info {
+	"name": "websom-dashboard-builder",
+	"type": "page",
+	"route": "builder",
+	"nested": "/websom.dashboard"
+}
+
+
+template {
+	<div class="websom-builder">
+		<div class="websom-builder-loading center-content" v-if="loading">
+			<img class="websom-builder-loading-logo" :src="BuilderLogo" />
+		</div>
+		<div class="websom-builder-app" v-else>
+			<div class="websom-builder-tab-bar">
+				<list-reorder :horizontal="true" @input="reorderTabs" handle="> * > .websom-builder-tab-name">
+					<div v-for="tab in tabs" :key="tab.key" @click="activeTab = tab.key" class="websom-builder-tab" :class="{'websom-tab-active': activeTab == tab.key}">
+						<span class="websom-builder-tab-name">{{tab.name}}</span>
+						<icon v-if="!(tab.type == 'welcome' && tabs.length == 1)" @click.native="closeTab(tab)" icon="close" class="websom-builder-tab-close"/>
+					</div>
+				</list-reorder>
+				<button @click="createOpenPage()" class="websom-builder-tab-add success"><icon icon="add" /></button>
+			</div>
+			<div class="websom-builder-main">
+				<template v-if="activeTabValue.type == 'welcome'">
+					<img :src="BuilderLogo" class="websom-builder-open-logo" />
+					<div class="websom-builder-page-selector flex-column">
+						<vertical-list>
+							<div>
+								Abc
+								<action-bar>
+									<button @click="openPage('abc')" class="mute">Open</button>
+								</action-bar>
+							</div>
+						</vertical-list>
+						<button class="success"><icon left icon="add" /> Create New Page</button>
+					</div>
+				</template>
+				<template v-else>
+					<builder-editor />
+				</template>
+			</div>
+		</div>
+	</div>
+}
+
+script {
+	import BuilderLogo from "../assets/builder-logo.svg";
+	
+	export default {
+		props: {
+			
+		},
+		data: () => ({
+			BuilderLogo,
+			loading: true,
+			tabs: [
+				{
+					type: "welcome",
+					name: "Open",
+					key: "open"
+				}
+			],
+			activeTab: "open"
+		}),
+		methods: {
+			createOpenPage() {
+				this.tabs.push({
+					type: "welcome",
+					name: "Open",
+					key: "open"
+				});
+			},
+			closeTab(tab) {
+				let index = this.tabs.findIndex(t => t.key == tab.key);
+				if (tab.key == this.activeTab) {
+					if (this.tabs.length > 1)
+						if (index > 0)
+							this.activeTab = this.tabs[index - 1].key;
+						else
+							this.activeTab = this.tabs[1].key;
+					else {
+						this.createOpenPage();
+						this.activeTab = "open";
+					}
+				}
+				this.tabs.splice(index, 1);
+			},
+			reorderTabs(e) {
+				e.reorder(this.tabs);
+			},
+			async loadPages() {
+				
+			},
+			async openPage(page) {
+				let aTabI = this.tabs.findIndex(t => t.key == this.activeTab);
+				let aTab = this.tabs[aTabI];
+				if (aTab.type == "welcome") {
+					this.tabs.splice(aTabI, 1);
+					this.activeTab = page;
+				}
+
+				this.tabs.push({
+					type: "page",
+					name: page,
+					key: page
+				});
+			}
+		},
+		computed: {
+			activeTabValue() {
+				return this.tabs.find(t => t.key == this.activeTab);
+			}	
+		},
+		async mounted() {
+			this.$store.commit("setDashboardSidebar", false);
+			await this.loadPages();
+			this.loading = false;
+		}
+	}
+}
+
+style {
+	.websom-builder {
+		height: 100%;
+		display: flex;
+
+		> * {
+			flex: 1;
+		}
+	}
+
+	.websom-builder-loading-logo {
+		animation: websom-builder-loading-logo 5s infinite;
+		max-width: 300px;
+		transition: var(--transition);
+	}
+
+	@keyframes websom-builder-loading-logo {
+		0% {
+			filter: saturate(0) blur(10px);
+			transform: scale(0.7);
+		}
+
+		50% {
+			filter: saturate(1) blur(0px);
+			transform: scale(1);
+		}
+
+		100% {
+			filter: saturate(0) blur(10px);
+			transform: scale(0.7);
+		}
+	}
+
+	.websom-builder-app {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.websom-builder-tab-bar {
+		height: 45px;
+		background: var(--background-overlay);
+
+		display: flex;
+		flex-direction: row;
+
+		& > .list-reorder {
+			display: flex;
+			flex-direction: row;
+		}
+	}
+
+	.websom-builder-main {
+		flex: 1;
+	}
+
+	.websom-builder-tab {
+		width: 200px;
+		height: 45px;
+		display: flex;
+		align-items: center;
+		background: var(--background-tint);
+
+		cursor: pointer;
+		user-select: none;
+
+		&:hover {
+			background: var(--background-overlay);
+		}
+
+		&:not(:last-child) {
+			border-right: 2px solid var(--background);
+		}
+
+		&.websom-tab-active {
+			color: var(--primary);
+			background: var(--background-overlay);
+		}
+	}
+
+	.websom-builder-tab-name {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		padding-left: var(--base-size);
+		height: 45px;
+	}
+
+	.websom-builder-tab-close {
+		color: var(--danger) !important;
+		cursor: pointer;
+		height: 45px !important;
+		width: 45px !important;
+		display: flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+
+		&:hover {
+			background: var(--background);
+		}
+	}
+
+	.websom-builder-tab-add {
+		min-width: 45px;
+		width: 45px;
+		height: 45px;
+		padding: 0;
+	}
+
+	.websom-builder-open-logo {
+		filter: saturate(0);
+		max-width: 300px;
+		margin-top: 100px;
+	}
+
+	.websom-builder-main {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.websom-builder-page-selector {
+		padding-top: 20px;
+		height: 60vh;
+		width: 40%;
+		overflow: auto;
+	}
+}

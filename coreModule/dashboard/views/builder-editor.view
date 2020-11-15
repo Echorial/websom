@@ -1,0 +1,232 @@
+info {
+	"name": "builder-editor",
+	"type": "component"
+}
+
+template {
+	<g-l class="websom-builder-editor">
+		<g-h>
+			<g-v purpose="navigation" class="websom-builder-editor-sidebar">
+				<input-text placeholder="Search" type="search" />
+				<div class="websom-builder-category">General</div>
+				<card>Test</card>
+			</g-v>
+			<g-v purpose="full" class="websom-builder-editor-canvas">
+				<g-l @mousemove.native="mouseMove" >
+					<builder-block v-for="block in blocks" :key="block.key || Math.floor(Math.random() * 1000)" :block="block" />
+				</g-l>
+			</g-v>
+		</g-h>
+
+		<div class="websom-builder-bounding-box" ref="bounding">
+			<div class="websom-builder-bubble-h" @mouseup="splitUp(false)"></div>
+			<div class="websom-builder-bubble-v" @mouseup="splitUp(true)"></div>
+		</div>
+	</g-l>
+}
+
+script {
+	export default {
+		props: {},
+		data: () => ({
+			hoverEl: null,
+			destroy: false,
+			currentRect: {top: 0, left: 0, width: 0, height: 0},
+			uidCounter: 0,
+			uidMapping: {},
+			blocks: [
+				{
+					type: "g-h",
+					blocks: [
+						{
+							type: "g-v",
+							attr: {
+								s: 6
+							}
+						},
+						{
+							type: "g-v",
+							attr: {
+								s: 6
+							},
+							blocks: [
+								{
+									type: "g-h"
+								},
+								{
+									type: "g-h"
+								}
+							]
+						}
+					]
+				}
+			]
+		}),
+		methods: {
+			splitUp(vertical) {
+				if (this.hoverEl) {
+					let el = this.hoverEl;
+					let block = this.uidMapping[el.dataset.uid];
+					let gType = "column";
+					let bType = "h";
+					if (vertical) {
+						gType = "row";
+						bType = "v";
+					}
+					if (el.classList.contains("grid-" + gType)) {
+						if (!block.blocks) this.$set(block, "blocks", []);
+						let b1 = {
+							type: "g-" + bType,
+							attr: {s: 6}
+						};
+						let b2 = {
+							type: "g-" + bType,
+							attr: {s: 6}
+						};
+						this.initBlock(b1, block);
+						this.initBlock(b2, block);
+						block.blocks.push(b1);
+						block.blocks.push(b2);
+					}else{
+						block.attr.s /= 2;
+						let i = block.$parent.blocks.findIndex(b => b.attr.uid == block.attr.uid);
+						let newBlock = {type: "g-" + bType, attr: {s: block.attr.s}};
+						this.initBlock(newBlock, block.$parent);
+						block.$parent.blocks.splice(i + 1, 0, newBlock);
+					}
+				}
+			},
+			initBlock(b, parent) {
+				b.$parent = parent;
+				if (!b.attr) this.$set(b, "attr", {});
+				let uid = this.uidCounter++;
+				this.$set(b.attr, "data-uid", uid);
+				this.uidMapping[uid] = b;
+			},
+			generateUIDs(block) {
+				if (!block.attr) this.$set(block, "attr", {});
+				let uid = this.uidCounter++;
+				this.$set(block.attr, "data-uid", uid);
+				this.uidMapping[uid] = block;
+				
+				if (block.blocks) for (let b of block.blocks) {b.$parent = block; this.generateUIDs(b)};
+			},
+			mouseMove(e) {
+				if (e.target.closest(".websom-builder-bubble-v, .websom-builder-bubble-h"))
+					return;
+
+				this.hoverEl = e.target.closest(".grid-row,.grid-column");
+			},
+			frame() {
+				if (this.destroy)
+					return;
+
+				requestAnimationFrame(() => this.frame());
+
+				if (this.hoverEl) {
+					let rect = this.hoverEl.getBoundingClientRect();
+					let b = this.$refs.bounding;
+
+					this.currentRect.left += Math.floor((rect.left - this.currentRect.left)/2);
+					this.currentRect.top += Math.floor((rect.top - this.currentRect.top)/2);
+					this.currentRect.width += Math.floor((rect.width - this.currentRect.width)/2);
+					this.currentRect.height += Math.floor((rect.height - this.currentRect.height)/2);
+					
+					b.style.left = this.currentRect.left + "px";
+					b.style.top = this.currentRect.top + "px";
+					b.style.width = (this.currentRect.width - 2) + "px";
+					b.style.height = (this.currentRect.height - 2) + "px";
+				}else{
+					let b = this.$refs.bounding;
+
+					b.style.left = (window.innerWidth * 2) + "px";
+					b.style.top = (window.innerHeight * 2) + "px";
+				}
+			}
+		},
+		created() {
+			for (let b of this.blocks) this.generateUIDs(b);
+		},
+		mounted() {
+			requestAnimationFrame(() => this.frame());
+		},
+		unmounted() {
+			this.destroy = true;
+		}
+	}
+}
+
+style {
+	.websom-builder-editor-sidebar {
+		background: var(--background-overlay);
+	}
+
+	.websom-builder-editor {
+		flex: 1;
+		width: 100%;
+	}
+
+	.websom-builder-category {
+		opacity: 0.2;
+		margin: var(--base-size);
+	}
+	
+	.websom-builder-bounding-box {
+		position: fixed;
+		background: rgba(50, 10, 40, 0.1);
+		border: 1px dotted pink;
+		pointer-events: none;
+		
+	}
+
+	.websom-builder-bubble-v, .websom-builder-bubble-h {
+		width: 12px;
+		height: 12px;
+		border: 1px solid pink;
+		border-radius: 50%;
+		position: absolute;
+
+		pointer-events: all;
+		transition: .1s;
+
+		&:hover {
+			background: pink;
+		}
+
+		&::after {
+			position: absolute;
+			left: 5px;
+			top: 5px;
+			border-radius: 50%;
+			content: "";
+			padding: 1px;
+			background: pink;
+		}
+	}
+
+	.websom-builder-bubble-v {
+		left: calc(50% - 6px);
+		top: 6px;
+
+		&:active {
+			height: 100%;
+			top: 0px;
+			border-radius: 0px;
+		}
+	}
+
+	.websom-builder-bubble-h {
+		top: calc(50% - 6px);
+		left: 6px;
+
+		&:active {
+			width: 100%;
+			left: 0px;
+			border-radius: 0px;
+		}
+	}
+
+	.websom-builder-editor-canvas .grid-row, .websom-builder-editor-canvas .grid-column {
+		box-shadow: 0px 0px 0px 1px pink inset;
+	}
+}
