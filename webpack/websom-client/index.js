@@ -39,6 +39,15 @@ export default (store, packages, context) => ({
 		document.body.appendChild(link);
 	},
 	loadScript(src, cb) {
+		if (Array.isArray(src)) {
+			Promise.all(src.map((s) => {
+				return new Promise((res) => {
+					this.loadScript(s, res);
+				});
+			})).then(cb);
+			return;
+		}
+
 		if (store.state.loadedScripts[src]) {
 			if (scriptsStillLoading[src]) {
 				scriptsStillLoading[src].push(cb);
