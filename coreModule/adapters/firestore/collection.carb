@@ -237,6 +237,7 @@ class CoreModule.FirestoreCollection inherits Websom.Adapters.Database.Collectio
 		native javascript {
 			let newDoc = ctx.doc();
 			id = newDoc.id;
+			for (let k in query.sets) if (typeof query.sets[k] === "undefined") query.sets[k] = null;
 			newDoc.set(query.sets);
 			// LOG console.log("Write");
 		}
