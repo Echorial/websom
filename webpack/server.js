@@ -234,7 +234,7 @@ module.exports = async (websomServer, apiServer) => {
 				metaDescription: "",
 				breadcrumbs: [],
 				headElements: "",
-				canonicalURL: req.protocol + '://' + req.get("host") + req.baseUrl + req.path,
+				canonicalURL: req.protocol + '://' + req.get("host") + req.baseUrl + req.path.replace(/\/$/g, ""),
 				renderHeadElements() {
 					return `
 						
