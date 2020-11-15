@@ -17,19 +17,19 @@ script {
 				default: "general"
 			},
 			s: {
-				type: String,
+				type: [String, Number],
 				default: "unset"
 			},
 			m: {
-				type: String,
+				type: [String, Number],
 				default: "unset"
 			},
 			l: {
-				type: String,
+				type: [String, Number],
 				default: "unset"
 			},
 			shift: {
-				type: String,
+				type: [String, Number],
 				default: "0"
 			},
 			fluid: {
