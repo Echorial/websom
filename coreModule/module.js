@@ -1128,6 +1128,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 		
 			let newDoc = ctx.doc();
 			id = newDoc.id;
+			for (let k in query.sets) if (typeof query.sets[k] === "undefined") query.sets[k] = null;
 			newDoc.set(query.sets);
 			console.log("Write");
 		
