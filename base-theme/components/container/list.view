@@ -11,6 +11,9 @@ template {
 
 style {
 	.vertical-list {
+		border: 1px solid var(--background-center);
+		border-radius: 4px;
+
 		& > * {
 			display: flex;
 
@@ -22,6 +25,12 @@ style {
 			//background: var(--background-tint);
 
 			margin: 2px 0px;
+
+			& > .action-bar {
+				margin-left: auto !important;
+				flex: unset !important;
+				margin-right: calc((var(--padding-h) - 2px) * -1);
+			}
 
 			& > .flex-right, & > .websom-icon.flex-right {
 				margin-left: auto;
