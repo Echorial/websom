@@ -1,0 +1,33 @@
+{
+	"adapters": {
+		"database": "firestore",
+		"email": "sendGrid"
+	},
+	"adapter.database.loki": {
+		"persistence": "database.db"
+	},
+	"adapter.database.firestore": {
+		"credentials": "./firestore.json"
+	},
+	"adapter.email.sendGrid": {
+		"apiKey": "<sendgrid api key>"
+	},
+	"adapter.connection.google": {
+		"clientID": "<your id>",
+		"clientSecret": "<your secret>"
+	},
+	"adapter.core.confirmation": {
+		"fromEmail": "no-reply@example.com"
+	},
+	"theme.theme.icon": {
+		"useCDN": false
+	},
+	"module.userSystem": {
+		"signInConnections": ["google"],
+		"requireVerification": false
+	},
+	"theme.theme.app": {
+		"rasterIcon": "icon/icon.png",
+		"vectorIcon": "icon/icon.svg"
+	}
+}
