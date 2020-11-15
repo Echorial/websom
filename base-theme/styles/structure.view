@@ -65,6 +65,15 @@ style {
 		overflow: auto;
 	}
 
+	.flex-column {
+		display: flex;
+		flex-direction: column;
+
+		& > * {
+			margin-bottom: var(--base-size);
+		}
+	}
+
 	.center-content {
 		display: flex;
 
@@ -100,6 +109,14 @@ style {
 
 	.right-align-text {
 		text-align: right;
+	}
+
+	.flex-start {
+		justify-content: flex-start;
+	}
+
+	.flex-end {
+		justify-content: flex-end;
 	}
 
 	.pad {
