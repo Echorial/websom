@@ -166,11 +166,16 @@ else 	if (arguments.length == 1 && (typeof arguments[0] == 'object' || typeof ar
 			if (_c_this.devDeploy != "development") {
 				var deploy = _c_this.getDeploy(_c_this.devDeploy);
 				if (deploy != null && deploy["useApi"]) {
-					var data = Websom.Json.parse(Oxygen.FileSystem.readSync(Oxygen.FileSystem.resolve(_c_this.config.configOverrides + "/" + deploy["useApi"]), "utf8"));
-					_c_this.apiHost = data["api"];
+					_c_this.apiHost = deploy["useApi"];
 					_c_this.apiDomain = _c_this.apiHost.replace(new RegExp("https://".replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'g'), "").replace(new RegExp("http://".replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'g'), "");
 					var splits = _c_this.apiDomain.split("/");
 					_c_this.apiDomain = splits[0];
+					}
+				if (deploy != null && deploy["useClient"]) {
+					_c_this.clientHost = deploy["useClient"];
+					_c_this.clientDomain = _c_this.clientHost.replace(new RegExp("https://".replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'g'), "").replace(new RegExp("http://".replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&'), 'g'), "");
+					var splits = _c_this.clientDomain.split("/");
+					_c_this.clientDomain = splits[0];
 					}
 				}
 			}
@@ -2836,10 +2841,9 @@ Websom.Services.Pack.prototype.include = function () {var _c_this = this; var _c
 
 Websom.Services.Pack.prototype.start = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 		var dir = _c_this.server.config.root + "/packs/";
-		if (Oxygen.FileSystem.exists(dir) == false) {
-			Oxygen.FileSystem.makeDir(dir);
-			}
-		return _c_this.reload(dir);}
+		if (Oxygen.FileSystem.exists(dir)) {
+			return _c_this.reload(dir);
+			}}
 
 Websom.Services.Pack.prototype.preStart = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
