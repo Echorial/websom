@@ -34,6 +34,10 @@ style {
 			max-height: calc(var(--base-size) * 4);
 		}
 
+		&.purpose-comparison {
+			min-width: 80%;
+		}
+
 		//height: 100%;
 
 		&.reverse-on-small {
