@@ -114,6 +114,7 @@ module.exports = async (websomServer, deploy) => {
 		}
 	}
 
+	if (compiler)
 	compiler.hooks.done.tap("renderWatcher", stats => {
 		stats = stats.toJson();
 		stats.errors.forEach(err => console.error(err));
@@ -144,6 +145,10 @@ module.exports = async (websomServer, deploy) => {
 		new Promise((res, rej) => {
 			if (serverCompiler)
 				serverCompiler.run((err, stats) => {
+					if (err) {
+						console.log(err);
+						return;
+					}
 					console.log(stats.errors);
 					res();
 				});
@@ -154,6 +159,10 @@ module.exports = async (websomServer, deploy) => {
 		new Promise((res, rej) => {
 			if (compiler)
 				compiler.run((err, stats) => {
+					if (err) {
+						console.log(err);
+						return;
+					}
 					console.log(stats.errors);
 					res();
 				});
