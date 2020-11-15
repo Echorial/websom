@@ -5,7 +5,7 @@ info {
 }
 
 template {
-	<div class="websom-dashboard" :class="{'websom-dashboard-advanced': advanced}" v-if="authenticated">
+	<div class="websom-dashboard" :class="{'websom-dashboard-advanced': advanced, 'websom-dashboard-nav-open': open}" v-if="authenticated">
 		<div class="websom-dashboard-nav">
 			<div class="websom-dashboard-nav-banner">
 				<img class="websom-dashboard-logo" :src="logo"></img>
@@ -68,6 +68,9 @@ script {
 			accessCode: ""
 		}),
 		computed: {
+			open() {
+				return this.$store.state.dashboard.open;
+			},
 			logo() {
 				return this.websom.resolveAsset("websom", "logo");
 			},
@@ -125,6 +128,11 @@ script {
 			if (!this.authenticated) {
 				this.checkAuthentication();
 			}
+		},
+		watch: {
+			"$route"() {
+				this.$store.commit("setDashboardSidebar", true);
+			}
 		}
 	}
 }
@@ -161,6 +169,13 @@ style {
 				.websom-dashboard-tab-name {
 					
 				}
+			}
+		}
+
+		&:not(.websom-dashboard-nav-open) {
+			.websom-dashboard-nav {
+				max-width: 0px;
+				min-width: 0px;
 			}
 		}
 	}
