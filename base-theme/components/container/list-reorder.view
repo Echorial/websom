@@ -15,6 +15,10 @@ script {
 			horizontal: {
 				type: Boolean,
 				default: false
+			},
+			handle: {
+				type: String,
+				default: "> *"
 			}
 		},
 		data: () => ({
@@ -91,6 +95,9 @@ script {
 			};
 
 			this.$el.addEventListener("mousedown", (e) => {
+				if (!e.target.closest(".list-reorder " + this.handle))
+					return;
+
 				draggingEl = e.target.closest(".list-reorder > *");
 				startPosition.x = e.clientX;
 				startPosition.y = e.clientY;
@@ -101,6 +108,9 @@ script {
 			});
 
 			this.$el.addEventListener("touchstart", (e) => {
+				if (!e.target.closest(".list-reorder " + this.handle))
+					return;
+					
 				draggingEl = e.target.closest(".list-reorder > *");
 				let touch = e.touches[0];
 				startPosition.x = touch.clientX;
