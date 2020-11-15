@@ -14,6 +14,14 @@
 @medium-and-over: ~"(min-width: 791px)";
 @large-and-over: ~"(min-width: 991px)";
 
+@small-and-down: @small;
+@medium-and-down: ~"(max-width: 990px)";
+@large-and-down: ~"(min-width: 1px)";
+
+@small-and-up: ~"(min-width: 1px)";
+@medium-and-up: ~"(min-width: 791px)";
+@large-and-up: ~"(min-width: 991px)";
+
 .small(@rules) {
 	@media @small {
 		@rules();
