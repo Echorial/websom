@@ -79,6 +79,10 @@ header class Websom.Module {
 
 	}
 
+	void api() {
+		
+	}
+
 	trust void registerCollection(Websom.Adapters.Database.Collection collection) {
 		this.registeredCollections.push(collection);
 

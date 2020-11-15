@@ -324,6 +324,7 @@ class Websom.Services.Module inherits Websom.Service {
 			
 			module.permissions();
 			module.collections();
+			module.api();
 			var status = module.start();
 			if (status != null)
 				return status;
