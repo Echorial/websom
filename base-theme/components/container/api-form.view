@@ -57,7 +57,8 @@ script {
 			status: "",
 			message: "",
 			component: null,
-			componentContext: {}
+			componentContext: {},
+			captchaRequested: 0
 		}),
 		methods: {
 			setStatus(raw) {
@@ -86,18 +87,37 @@ script {
 					return;
 				}
 
+				let captchaData = {};
+
+				if (this.captchaRequested) {
+					let captcha = this.$store.state.websom.data.adapters.captcha;
+					if (captcha) {
+						let adapter = this.$store.state.websom.registeredAdapters[captcha];
+
+						captchaData = await adapter.prompt(this.$el, this.$el.querySelector("button,input[type=submit]"));
+					}
+				}
+
 				this.loading = true;
 				
 				try {
-					let res = await this.websom.fetch(this.route, data, {useLocalStorage: this.useLocalStorage, ...this.request});
+					let res = await this.websom.fetch(this.route, {...captchaData, ...data}, {useLocalStorage: this.useLocalStorage, ...this.request});
 
 					if (res.status == "success") {
-						this.status = "success";
-						this.message = res.message;
+						this.setStatus(res);
 						this.$emit("success", res);
 					}else if (res.status == "error") {
-						this.status = "error";
-						this.message = res.message;
+						if (res.captcha) {
+							if (this.captchaRequested >= 3) {
+								this.captchaRequested = 1;
+							}else{
+								this.captchaRequested++;
+								this.loading = false;
+								return await this.submit(data);
+							}
+						}
+
+						this.setStatus(res);
 						this.$emit("error", res);
 					}else if (res.status == "component") {
 						this.status = "component";
