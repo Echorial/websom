@@ -395,6 +395,8 @@ class CoreModule.Module inherits Websom.Module, Websom.Standard.CoreModule {
 #include "adapters/loki"
 #include "adapters/firestore"
 #include "adapters/sendGrid"
+#include "adapters/reCaptcha"
 #include "adapters/confirmation"
 #include "adapters/fileSystem"
 #include "adapters/algolia"
+#include "adapters/cloudStorage"
