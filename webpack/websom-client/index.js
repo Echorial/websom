@@ -39,6 +39,11 @@ export default (store, packages, context) => ({
 		document.body.appendChild(link);
 	},
 	loadScript(src, cb) {
+		if (typeof document === "undefined")
+			return;
+			
+		cb = cb || (() => {});
+
 		if (Array.isArray(src)) {
 			Promise.all(src.map((s) => {
 				return new Promise((res) => {
@@ -112,7 +117,14 @@ export default (store, packages, context) => ({
 
 		return e;
 	},
-	uploadFile(uploadURL, object, onProgress) {
+	uploadFile(uploadURL, object, conf) {
+		let adapter = store.state.websom.data.adapters.bucket;
+		if (adapter) {
+			let b = store.state.websom.registeredAdapters[adapter];
+
+			return b.uploadFile(uploadURL, object, conf);
+		}
+
 		return new Promise((resolve, rej) => {
 			let req = new XMLHttpRequest();
 
@@ -127,11 +139,13 @@ export default (store, packages, context) => ({
 			};
 
 			req.upload.onprogress = (e) => {
-				if (onProgress)
-					onProgress(e.loaded / e.total);
+				if (conf.progress)
+					conf.progress(e.loaded / e.total);
 			};
 
 			req.open("POST", uploadURL);
+
+			req.setRequestHeader("Content-Type", conf.contentType || "application/octet-stream");
 
 			let data = new FormData();
 			data.append("upload", object);
@@ -153,10 +167,17 @@ export default (store, packages, context) => ({
 			return this.resolveAsset(val.$from, val.$resolve);
 	},
 	resolveMedia(name) {
-		return store.state.websom.api + "/buckets/media/" + name;
+		return this.resolveBucketObject("media", name);
 	},
 	resolveBucketObject(bucket, name) {
-		return store.state.websom.api + "/buckets/" + bucket + "/" + name;
+		let adapter = store.state.websom.data.adapters.bucket;
+		if (adapter) {
+			let b = store.state.websom.registeredAdapters[adapter];
+
+			return b.resolveBucketObject(bucket, name);
+		}else{
+			return store.state.websom.api + "/buckets/" + bucket + "/" + name;
+		}
 	},
 	plural(amount, base, append) {
 		append = append || "s";
