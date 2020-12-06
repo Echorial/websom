@@ -5,12 +5,28 @@ info {
 
 script {
 	export default ctx => {
-		if (!ctx.websom.getConfig("security.captcha", "background"))
-			return;
+		//if (!ctx.websom.getConfig("security.captcha", "background"))
+		//	return;
 
 		let clientKey = ctx.websom.getConfig("adapter.captcha.reCaptcha", "clientKey");
 
 		if (typeof grecaptcha === "undefined")
-				ctx.websom.loadScript(`https://www.google.com/recaptcha/api.js?render=${clientKey}`);
+				ctx.websom.loadScript(`https://www.google.com/recaptcha/api.js?render=${clientKey}`, () => {});
+
+		ctx.registerAdapter("reCaptcha", {
+			prompt(form, button) {
+				button.setAttribute("id", "recaptcha");
+				button.classList.add("g-recaptcha");
+				button.setAttribute("data-sitekey", clientKey);
+				button.setAttribute("data-size", "invisible");
+				return new Promise((res) => {
+					grecaptcha.ready(() => {
+						grecaptcha.execute(clientKey, {action: "submit"}).then((tkn) => {
+							res({ $cap_tkn: tkn });
+						});
+					});
+				});
+			}
+		});
 	}
 }
