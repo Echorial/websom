@@ -20,6 +20,7 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 		}
 
 		let query = collection.insert();
+		let ctx = new Websom.APIContext(req);
 
 		for (let int i in cir.sets) {
 			let set = cir.sets[i];
@@ -30,7 +31,10 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 		for (let int i in cir.computedSets) {
 			let set = cir.computedSets[i];
 
-			query.set(set.field, set.compute(req));
+			let computedValue = set.compute(req);
+
+			query.set(set.field, computedValue);
+			ctx.setComputed(set.field, computedValue);
 		}
 
 		// Wildcard write
@@ -95,7 +99,8 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 							return null;
 						}
 					}
-					
+
+					ctx.setMutated(write.field, clientValue);
 					query.set(write.field, clientValue);
 				}else{
 					req.endWithError("'" + write.field + "' is of an invalid type");
@@ -104,7 +109,6 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 			}
 		}
 
-		let ctx = new Websom.APIContext(req);
 		ctx.type = "insert";
 		ctx.insertQuery = query;
 		ctx.inputs = clientValues;
@@ -119,19 +123,21 @@ class Websom.InsertHandler inherits Websom.EndpointHandler {
 			}
 		}
 
-		let qResponse = query.run();
+		if (req.sent == false) {
+			let qResponse = query.run();
 
-		let res = new map();
+			let res = new map();
 
-		cir.trigger("success", req, new <Websom.Adapters.Database.Document>array());
+			cir.trigger("success", req, new <Websom.Adapters.Database.Document>array());
 
-		res["status"] = "success";
-		res["message"] = "Document inserted";
-		res["newId"] = qResponse.id;
+			res["status"] = "success";
+			res["message"] = "Document inserted";
+			res["newId"] = qResponse.id;
 
-		req.header("Content-Type", "application/json");
-		req.header("Access-Control-Allow-Origin", "*");
-		req.end(Websom.Json.encode(res));
+			req.header("Content-Type", "application/json");
+			req.header("Access-Control-Allow-Origin", "*");
+			req.end(Websom.Json.encode(res));
+		}
 	}
 
 	bool typeCheck(primitive value, Websom.Adapters.Database.Field schemaField) {
