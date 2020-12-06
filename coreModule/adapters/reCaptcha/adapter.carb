@@ -13,7 +13,7 @@ class CoreModule.reCaptcha inherits Websom.Adapters.Captcha.Adapter {
 	
 	[ForceAsync]
 	override Websom.Adapters.Captcha.Report verify(Websom.Request req, map payload) {
-		let token = payload["token"];
+		let token = payload["$cap_tkn"];
 
 		let body = new map();
 
@@ -22,7 +22,7 @@ class CoreModule.reCaptcha inherits Websom.Adapters.Captcha.Adapter {
 
 		let results = this.server.request(this.reCaptchaAPI)
 			.parseJson()
-			.json(body)
+			.form(body)
 			.execute("post");
 
 		let map data = results.data;
