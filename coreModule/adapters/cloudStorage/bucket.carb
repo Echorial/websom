@@ -1,7 +1,7 @@
 class CoreModule.CloudStorageBucket extends Websom.Adapters.Bucket.Adapter {
 	CoreModule.Module coreModule = null;
 
-	string route = "adapter.database.firestore";
+	string route = "adapter.bucket.cloudStorage";
 
 	void cloudStorage = null;
 
@@ -12,12 +12,17 @@ class CoreModule.CloudStorageBucket extends Websom.Adapters.Bucket.Adapter {
 	void loadClient() {
 		native javascript {
 			if (!this.cloudStorage) {
-				const { Storage } = require("@google-cloud/storage");
+				const path = require("path");
+				const { Storage } = require(require.resolve("@google-cloud/storage", {
+					paths: [
+						this.server.config.configOverrides
+					]
+				}));
 				
 				if (!!process.env.GCP_PROJECT) {
 					this.cloudStorage = new Storage({});
 				}else{
-					let serviceAccount = require(path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials")));
+					let serviceAccount = path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials"));
 					
 					this.cloudStorage = new Storage({
 						projectId: this.server.getConfigString(this.route, "project"),
@@ -32,28 +37,41 @@ class CoreModule.CloudStorageBucket extends Websom.Adapters.Bucket.Adapter {
 		this.loadClient();
 
 		native javascript {
-			let [url] = await storage.bucket(upload.bucket.name).file(upload.filename).getSignedUrl({
+			let [url] = await this.cloudStorage.bucket(upload.bucket.uniqueName).file(upload.filename).getSignedUrl({
 				version: "v4",
 				action: "write",
-				expires: Date.now() + 15 * 60 * 1000
+				expires: Date.now() + 15 * 60 * 1000,
+				contentType: upload.httpContentType,
+				queryParams: upload.acl == "public" ? {
+					"X-Goog-Acl": "public-read"
+				} : {}
 			});
+
+			if (upload.acl == "public") {
+				await this.cloudStorage.bucket(upload.bucket.uniqueName).file(upload.filename).save("");
+				await this.cloudStorage.bucket(upload.bucket.uniqueName).file(upload.filename).makePublic();
+			}
 
 			return url;
 		}
 	}
 
 	override void deleteObject(Websom.Bucket bucket, string filename) {
-		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+		this.loadClient();
 
-		FileSystem.unlink(bucketPath + "/" + filename);
+		native javascript {
+			let res = await this.cloudStorage.bucket(bucket.uniqueName).deleteFiles({
+				prefix: filename
+			});
+		}
 	}
 
 	override void writeObjectFromBuffer(Websom.Bucket bucket, string destination, void buf) {
-		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
-		
+		this.loadClient();
+
 		native javascript {
-			const fs = require("fs");
-			fs.writeFileSync(bucketPath + "/" + destination, buf);
+			let file = this.cloudStorage.bucket(bucket.uniqueName).file(destination);
+			await file.save(buf);
 		}
 
 		let ctx = new Websom.BucketObjectContext(bucket, destination);
@@ -70,9 +88,13 @@ class CoreModule.CloudStorageBucket extends Websom.Adapters.Bucket.Adapter {
 	}
 
 	override void writeObject(Websom.Bucket bucket, string destination, string localPath) {
-		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
+		this.loadClient();
 
-		FileSystem.writeSync(bucketPath + "/" + destination, FileSystem.readSync(localPath, null));
+		native javascript {
+			let res = await this.cloudStorage.bucket(bucket.uniqueName).upload(localPath, {
+				destination: destination
+			});
+		}
 
 		let ctx = new Websom.BucketObjectContext(bucket, destination);
 
@@ -88,30 +110,103 @@ class CoreModule.CloudStorageBucket extends Websom.Adapters.Bucket.Adapter {
 	}
 
 	override void createDirectory(Websom.Bucket bucket, string path) {
-		let bucketPath = this.server.config.devBuckets + "/" + bucket.name;
-
-		if (FileSystem.exists(bucketPath + "/" + path) == false)
-			FileSystem.makeDir(bucketPath + "/" + path);
+		// "Directories" are created automatically in cloud storage
 	}
 
 	override void setObjectACL(Websom.Bucket bucket, string filename, string acl) {
-		this.coreModule.objects.update()
-			.where("filename", "==", filename)
-			.set("acl", acl)
-			.run();
+		this.loadClient();
+
+		if (acl == "public") {
+			native javascript {
+				await this.cloudStorage.bucket(bucket.uniqueName).file(filename).makePublic();
+			}
+		}else{
+			native javascript {
+				await this.cloudStorage.bucket(bucket.uniqueName).file(filename).makePrivate();
+			}
+		}
 	}
 
 	override void registerBucket(Websom.Bucket bucket) {
-		if (FileSystem.exists(this.server.config.devBuckets + "/" + bucket.name) == false) {
-			FileSystem.makeDir(this.server.config.devBuckets + "/" + bucket.name);
+		// We need to enable cors
+
+		if (this.server.config.dev) {
+			this.loadClient();
+
+			native javascript {
+				(async () => {
+					try {
+						if (!(await this.cloudStorage.bucket(bucket.uniqueName).exists())[0]) {
+							console.log("Creating bucket " + bucket.uniqueName);
+							await this.cloudStorage.bucket(bucket.uniqueName).create();
+						}else{
+							console.log("Bucket exists");
+						}
+					} catch (e) {
+						// Assuming it's not found
+						await this.cloudStorage.bucket(bucket.uniqueName).create();
+					}
+
+					try {
+						let b = this.cloudStorage.bucket(bucket.uniqueName);
+						await b.setCorsConfiguration([
+							{
+								"origin": ["*"],
+								"responseHeader": [
+									"Content-Type",
+									"Access-Control-Allow-Origin"
+								],
+								"method": ["POST", "PUT", "OPTIONS"],
+								"maxAgeSeconds": 3600
+							}
+						]);
+					} catch (e) {
+						console.log("Error while settings the cors config for bucket " + bucket.uniqueName);
+					}
+				})();
+
+				/*try {
+					this.cloudStorage.createBucket(bucket.uniqueName).then((d) => {
+						console.log("Bucket created");
+					}).catch((d) => {
+						if (d.errors && d.errors.length > 0 && d.errors[0].reason == "conflict") {
+							console.log("Bucket name '" + bucket.uniqueName + "' is already taken");
+							console.log(d.errors);
+						}else{
+							console.log("Error while creating bucket " + bucket.uniqueName);
+							console.log(d.errors);
+						}
+					});
+				}catch(e) {
+					console.log("Error while creating bucket: " + bucket.uniqueName);
+					console.log("Try creating it manually");
+					console.log(e);
+				}*/
+			}
 		}
 	}
 
 	override string serve(Websom.Bucket bucket, string filename) {
-		return this.server.apiHost + "/buckets/" + bucket.name + "/" + filename;
+		this.loadClient();
+
+		native javascript {
+			return this.cloudStorage.bucket(bucket.uniqueName).file(filename).publicUrl();
+		}
 	}
 
 	override string readToLocalSystemPath(Websom.Bucket bucket, string filename) {
-		return this.server.config.devBuckets + "/" + bucket.name + "/" + filename;
+		this.loadClient();
+
+		native javascript {
+			let ext = filename.split(".");
+			ext = ext[ext.length - 1];
+			let rng = this.server.tmp + "/" + Date.now().toString() + Math.floor(Math.random() * 9581205) + "." + ext;
+
+			await this.cloudStorage.bucket(bucket.uniqueName).file(filename).download({
+				destination: rng
+			});
+
+			return rng;
+		}
 	}
 }
