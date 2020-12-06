@@ -182,7 +182,9 @@ export default {
 						sun: "wb_sunny",
 						day: "wb_sunny",
 						moon: "brightness_3",
-						night: "brightness_3"
+						night: "brightness_3",
+						download: "get_app",
+						play: "play_arrow"
 					},
 					styles: {
 						all: {
