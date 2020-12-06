@@ -2,6 +2,7 @@ class Websom.Bucket {
 	Websom.Server server = null;
 	map raw = null;
 	string name = "";
+	string uniqueName = "";
 	string owner = "";
 
 	<void, Websom.BucketObjectContext>function afterWrite = null;
@@ -10,6 +11,7 @@ class Websom.Bucket {
 		this.server = server;
 		this.raw = raw;
 		this.name = name;
+		this.uniqueName = server.config.bucketPrefix.replace(" ", "-").toLower() + "-" + name.toLower();
 		this.created();
 	}
 
@@ -17,6 +19,7 @@ class Websom.Bucket {
 		this.server = server;
 		this.owner = ownerModule;
 		this.name = name;
+		this.uniqueName = server.config.bucketPrefix.replace(" ", "-").toLower() + "-" + name.toLower();
 		this.created();
 	}
 
@@ -117,6 +120,7 @@ class Websom.BucketUpload {
 	string acl = "";
 	int fileSizeLimit = 0;
 	string filename = "";
+	string httpContentType = "application/octet-stream";
 
 	void @construct(Websom.Bucket bucket) {
 		this.bucket = bucket;
@@ -134,6 +138,11 @@ class Websom.BucketUpload {
 
 	Websom.BucketUpload name(string filename) {
 		this.filename = filename;
+		return this;
+	}
+
+	Websom.BucketUpload contentType(string contentType) {
+		this.httpContentType = contentType;
 		return this;
 	}
 
