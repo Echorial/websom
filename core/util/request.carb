@@ -113,6 +113,7 @@ class Websom.RequestChain {
 	Websom.RequestChain json(map data) {
 		this.jsonencode = true;
 		this.data = data;
+		return this;
 	}
 
 	Websom.RequestChain form(map data) {
@@ -237,11 +238,10 @@ class Websom.RequestChain {
 				}
 			}
 
-			request(data, (err, res) => {
-				let body = res.body;
-
+			request(data, (err, res, body) => {
 				if (this.doParse) {
-					body = JSON.parse(body);
+					if (typeof body == "string")
+						body = JSON.parse(body);
 				}
 				
 				let wres = new Websom.Result(err, body);
