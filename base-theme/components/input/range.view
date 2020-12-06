@@ -7,7 +7,7 @@ template {
 	<div :class="'input-range input-range-orientation-' + orientation">
 		<div class="input-range-rail" :class="railClass" ref="rail">
 			<div v-for="(val, i) in snaps" class="input-range-snap" :style="getStyleForSnap(i, val)"></diV>
-			<div class="input-range-gap" v-if="myValue.length == 2" :style="getStyleForGap()"></div>
+			<div class="input-range-gap" v-if="myValue.length == 2 || fillGap" :style="getStyleForGap()"></div>
 			<div v-for="(val, i) in myValue" :ref="`handle-${i}`" v-draggable="getDraggableForHandle(i)" :style="getStyleForHandle(i, val)" :data-value="val" :key="i" class="input-range-handle">
 				<div class="input-range-value">{{format(rounding >= 1 ? parseInt(transformOutput(val)).toString() : transformOutput(val))}}</div>
 			</div>
@@ -35,6 +35,11 @@ script {
 					return (v != "horizontal" || v != "vertical");
 				},
 				description: `"horizontal" or "vertical"`
+			},
+			fillGap: {
+				type: Boolean,
+				default: false,
+				description: `Display the gap on single-slider ranges`
 			},
 			rounding: {
 				type: Number,
@@ -244,6 +249,11 @@ script {
 				let low = this.myValue[0];
 				let high = this.myValue[1];
 
+				if (this.myValue.length == 1) {
+					low = 0;
+					high = this.myValue[0];
+				}
+
 				return `
 					--input-range-gap-start-percentage: ${((low - this.min) / (this.max - this.min)) * 100}%;
 					--input-range-gap-end-percentage: ${((high - this.min) / (this.max - this.min)) * 100}%;
@@ -265,6 +275,7 @@ style {
 
 		.input-range-rail {
 			height: calc(var(--base-size) * 0.5);
+			z-index: 0;
 
 			.input-range-gap {
 				left: var(--input-range-gap-start-percentage);
@@ -324,6 +335,7 @@ style {
 			}
 
 			.input-range-handle {
+				z-index: 1;
 				width: calc(var(--base-size) * 2);
 				height: calc(var(--base-size) * var(--input-range-value-multiply));
 
