@@ -198,7 +198,13 @@ class Websom.Server {
 		if ("name" in config) {
 			this.config.name = config["name"];
 		}else{
-			this.config.name = "Unnamed dev server";
+			this.config.name = "Websom Website";
+		}
+
+		this.config.bucketPrefix = this.config.name.replace(" ", "-").toLower();
+
+		if ("bucketPrefix" in config) {
+			this.config.bucketPrefix = config["bucketPrefix"];
 		}
 
 		// Check if the config dirs exist, and create them if not.
@@ -302,6 +308,7 @@ class Websom.Server {
 		this.confirmation = new Websom.Services.Confirmation(this);
 
 		this.bucketAdapter = this.adapt("bucket");
+		this.bucketAdapter.exposeToClient = true;
 
 		this.status.inherit(this.confirmation.start());
 
@@ -318,6 +325,7 @@ class Websom.Server {
 		this.bucket = this.bucketAdapter.adapter;
 
 		this.database.loadAdapter();
+		this.security.loadAdapter();
 
 		this.status.inherit(this.database.start());
 		this.configService.loadFromDatabase();
@@ -507,7 +515,10 @@ class Websom.Server {
 			
 			//server.use(bodyParser.json());
 			busboy.extend(server, {
-				upload: true
+				upload: true,
+				limits: {
+					fieldSize: 1024 * 1024 * 10 // 10mb (gcp max is 10mb, aws max is 6mb)
+				}
 			});
 
 			server.use(cookieParser());
