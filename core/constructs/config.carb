@@ -6,6 +6,9 @@ class Websom.Config {
 	`Website name`
 	string name = "";
 
+	`Defaults to the website name`
+	string bucketPrefix = "";
+
 	`This is for the theme-color meta tag`
 	string brandColor = "white";
 
