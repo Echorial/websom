@@ -358,6 +358,8 @@ class Websom.Services.Config inherits Websom.Service {
 		}
 
 		mp["config"] = this.publicValues;
+		mp["name"] = this.server.config.name;
+		mp["bucketPrefix"] = this.server.config.bucketPrefix;
 
 		mp["routes"] = new map();
 		mp["endpoints"] = this.server.api.gatherEndpoints(req);
