@@ -16,7 +16,8 @@
 		"firestore-admin": "*",
 		"firebase-functions": "*",
 		"instantsearch.js": "*",
-		"algoliasearch": "*"
+		"algoliasearch": "*",
+		"@google-cloud/storage": "*"
 	},
 	"composer": {
 		
@@ -80,11 +81,38 @@
 				"php": true
 			},
 			"class": "CoreModule.FileSystemBucket"
+		},
+		"cloudStorage": {
+			"type": "bucket",
+			"supports": {
+				"javascript": true,
+				"php": false
+			},
+			"class": "CoreModule.CloudStorageBucket"
 		}
 	},
 	"config": {
 		"root": {
 
+		},
+		"adapter.bucket.cloudStorage": {
+			"project": {
+				"name": "GCP Project Name",
+				"type": "string",
+				"default": ""
+			},
+			"credentials": {
+				"name": "GCP Credentials Key File",
+				"type": "string",
+				"default": "./cloud-storage.json"
+			}
+		},
+		"adapter.bucket.cloudStorage": {
+			"credentials": {
+				"name": "GCP Credentials Key File",
+				"type": "string",
+				"default": "./firestore.json"
+			}
 		},
 		"adapter.database.loki": {
 			"persistence": {
