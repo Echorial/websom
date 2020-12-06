@@ -283,6 +283,9 @@ CoreModule.Module.prototype.stop = function () {var _c_this = this; var _c_root_
 CoreModule.Module.prototype.configure = function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
+CoreModule.Module.prototype.api = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
 /*i async*/CoreModule.Module.prototype.registerCollection = async function (collection) {var _c_this = this; var _c_root_method_arguments = arguments;
 /*async*/
 		_c_this.registeredCollections.push(collection);
@@ -935,7 +938,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 		var doc = null;
 		
 			doc = (await this.firestoreCollection.doc(id).get()).data();
-			console.log("Read");
+			                           
 		
 		if (doc == null) {
 			return null;
@@ -947,7 +950,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 		var docs = null;
 		
 			docs = (await this.firestoreCollection.getAll(...(ids.map(id => this.firestoreCollection.doc(id)))));
-			for (let d of docs) console.log("Read");
+			                                               
 		
 		var outputs = [];
 		for (var i = 0; i < docs.length; i++) {
@@ -963,7 +966,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 		var doc = null;
 		
 			doc = (await this.firestoreCollection.doc(key).get()).data();
-			console.log("Read");
+			                           
 		
 		if (doc == null) {
 			
@@ -981,7 +984,7 @@ CoreModule.FirestoreCollection.prototype.makeDocumentFromMap = function (id, dat
 				};
 
 				this.firestoreCollection.doc(key).set(doc);
-				Console.log("Write");
+				                            
 			
 			}
 		var meta = new CoreModule.FirestoreMetaDocument(key);
@@ -1071,14 +1074,14 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 
 				if (this.searchable) {
 					await ctx.doc(doc.id).set(doc.rawData);
-					console.log("Write");
+					                            
 					let newData = await ctx.doc(doc.id).get();
-					console.log("Read");
+					                           
 
 					updates.push(this.documentFromRaw(doc.id, newData.data()));
 				}else{
 					ctx.doc(doc.id).set(doc.rawData);
-					console.log("Write");
+					                            
 				}
 			}
 		
@@ -1130,7 +1133,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			id = newDoc.id;
 			for (let k in query.sets) if (typeof query.sets[k] === "undefined") query.sets[k] = null;
 			newDoc.set(query.sets);
-			console.log("Write");
+			                            
 		
 		if (_c_this.appliedSchema != null) {
 /*async*/
@@ -1192,7 +1195,7 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 
 			rawResults.forEach(doc => 
 				res.documents.push(this.documentFromRaw(doc.id, doc.data())));
-			for (let d of res.documents) console.log("Read");
+			                                                        
 		
 		return res;}
 
@@ -1519,6 +1522,54 @@ CoreModule.SendGrid.prototype.template = function (title) {var _c_this = this; v
 		return new Websom.Adapters.Email.EmailTemplate(_c_this, title);}
 
 /*i async*/CoreModule.SendGrid.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+CoreModule.reCaptcha = function (server) {var _c_this = this;
+	this.route = "adapter.captcha.reCaptcha";
+
+	this.reCaptchaAPI = "https://www.google.com/recaptcha/api/siteverify";
+
+	this.server = null;
+
+	this.adapterKey = "";
+
+		_c_this.server = server;
+}
+
+/*i async*/CoreModule.reCaptcha.prototype.clientInitialization = async function (req, action) {var _c_this = this; var _c_root_method_arguments = arguments;
+		var mp = {};
+		mp["component"] = "reCaptcha";
+		mp["action"] = action;
+		return mp;}
+
+/*i async*/CoreModule.reCaptcha.prototype.verify = async function (req, payload) {var _c_this = this; var _c_root_method_arguments = arguments;
+/*async*/
+		var token = payload["$cap_tkn"];
+		var body = {};
+		body["response"] = token;
+		body["secret"] = _c_this.server.getConfigString(_c_this.route, "secretKey");
+		var results = (await _c_this.server.request(_c_this.reCaptchaAPI).parseJson().form(body).execute/* async call */("post"));
+		var data = results.data;
+		var success = data["success"];
+		var hostname = data["hostname"];
+		var report = new Websom.Adapters.Captcha.Report();
+		report.token = token;
+		if (success) {
+			report.status = "success";
+			report.message = "Success";
+			}else{
+				report.status = "error";
+				report.message = "reCaptcha error";
+			}
+		report.hostname = hostname;
+		report.action = data["action"];
+		report.score = data["score"];
+		return report;}
+
+/*i async*/CoreModule.reCaptcha.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/CoreModule.reCaptcha.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
 }
 
 CoreModule.Confirmation = function (server) {var _c_this = this;
@@ -1875,6 +1926,197 @@ else 	if (arguments.length == 1 && ((arguments[0] instanceof Websom.Adapters.Dat
 			}
 		
 		return qr;}
+
+CoreModule.CloudStorageBucket = function (server) {var _c_this = this;
+	this.coreModule = null;
+
+	this.route = "adapter.bucket.cloudStorage";
+
+	this.cloudStorage = null;
+
+	this.server = null;
+
+	this.adapterKey = "";
+
+		_c_this.server = server;
+}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.initialize = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.coreModule = _c_this.server.module.getModule("coreModule");}
+
+CoreModule.CloudStorageBucket.prototype.loadClient = function () {var _c_this = this; var _c_root_method_arguments = arguments;
+		
+			if (!this.cloudStorage) {
+				const path = require("path");
+				const { Storage } = require(require.resolve("@google-cloud/storage", {
+					paths: [
+						this.server.config.configOverrides
+					]
+				}));
+				
+				if (!!process.env.GCP_PROJECT) {
+					this.cloudStorage = new Storage({});
+				}else{
+					let serviceAccount = path.resolve(this.server.config.configOverrides, this.server.getConfigString(this.route, "credentials"));
+					
+					this.cloudStorage = new Storage({
+						projectId: this.server.getConfigString(this.route, "project"),
+						keyFilename: serviceAccount
+					});
+				}
+			}
+		}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.generateUploadURL = async function (upload) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.loadClient();
+		
+			let [url] = await this.cloudStorage.bucket(upload.bucket.uniqueName).file(upload.filename).getSignedUrl({
+				version: "v4",
+				action: "write",
+				expires: Date.now() + 15 * 60 * 1000,
+				contentType: upload.httpContentType,
+				queryParams: upload.acl == "public" ? {
+					"X-Goog-Acl": "public-read"
+				} : {}
+			});
+
+			if (upload.acl == "public") {
+				await this.cloudStorage.bucket(upload.bucket.uniqueName).file(upload.filename).save("");
+				await this.cloudStorage.bucket(upload.bucket.uniqueName).file(upload.filename).makePublic();
+			}
+
+			return url;
+		}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.deleteObject = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.loadClient();
+		
+			let res = await this.cloudStorage.bucket(bucket.uniqueName).deleteFiles({
+				prefix: filename
+			});
+		}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.writeObjectFromBuffer = async function (bucket, destination, buf) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.loadClient();
+		
+			let file = this.cloudStorage.bucket(bucket.uniqueName).file(destination);
+			await file.save(buf);
+		
+		var ctx = new Websom.BucketObjectContext(bucket, destination);
+		if (bucket.afterWrite != null) {
+			
+				await bucket.afterWrite(ctx);
+			
+			
+			}}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.writeObject = async function (bucket, destination, localPath) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.loadClient();
+		
+			let res = await this.cloudStorage.bucket(bucket.uniqueName).upload(localPath, {
+				destination: destination
+			});
+		
+		var ctx = new Websom.BucketObjectContext(bucket, destination);
+		if (bucket.afterWrite != null) {
+			
+				await bucket.afterWrite(ctx);
+			
+			
+			}}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.createDirectory = async function (bucket, path) {var _c_this = this; var _c_root_method_arguments = arguments;
+}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.setObjectACL = async function (bucket, filename, acl) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.loadClient();
+		if (acl == "public") {
+			
+				await this.cloudStorage.bucket(bucket.uniqueName).file(filename).makePublic();
+			
+			}else{
+				
+				await this.cloudStorage.bucket(bucket.uniqueName).file(filename).makePrivate();
+			
+			}}
+
+CoreModule.CloudStorageBucket.prototype.registerBucket = function (bucket) {var _c_this = this; var _c_root_method_arguments = arguments;
+		if (_c_this.server.config.dev) {
+			_c_this.loadClient();
+			
+				(async () => {
+					try {
+						if (!(await this.cloudStorage.bucket(bucket.uniqueName).exists())[0]) {
+							console.log("Creating bucket " + bucket.uniqueName);
+							await this.cloudStorage.bucket(bucket.uniqueName).create();
+						}else{
+							console.log("Bucket exists");
+						}
+					} catch (e) {
+						                          
+						await this.cloudStorage.bucket(bucket.uniqueName).create();
+					}
+
+					try {
+						let b = this.cloudStorage.bucket(bucket.uniqueName);
+						await b.setCorsConfiguration([
+							{
+								"origin": ["*"],
+								"responseHeader": [
+									"Content-Type",
+									"Access-Control-Allow-Origin"
+								],
+								"method": ["POST", "PUT", "OPTIONS"],
+								"maxAgeSeconds": 3600
+							}
+						]);
+					} catch (e) {
+						console.log("Error while settings the cors config for bucket " + bucket.uniqueName);
+					}
+				})();
+
+				       
+                                                                     
+                                     
+                       
+                                                                                 
+                                                                                
+                              
+             
+                                                                        
+                              
+        
+         
+                
+                                                                       
+                                              
+                     
+       
+			
+			}}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.serve = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.loadClient();
+		
+			return this.cloudStorage.bucket(bucket.uniqueName).file(filename).publicUrl();
+		}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.readToLocalSystemPath = async function (bucket, filename) {var _c_this = this; var _c_root_method_arguments = arguments;
+		_c_this.loadClient();
+		
+			let ext = filename.split(".");
+			ext = ext[ext.length - 1];
+			let rng = this.server.tmp + "/" + Date.now().toString() + Math.floor(Math.random() * 9581205) + "." + ext;
+
+			await this.cloudStorage.bucket(bucket.uniqueName).file(filename).download({
+				destination: rng
+			});
+
+			return rng;
+		}
+
+/*i async*/CoreModule.CloudStorageBucket.prototype.shutdown = async function () {var _c_this = this; var _c_root_method_arguments = arguments;
+}
 
 
 module.exports = CoreModule.Module;

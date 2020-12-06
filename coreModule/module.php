@@ -235,6 +235,9 @@ function stop() {
 function configure() {
 }
 
+function api() {
+}
+
 function registerCollection($collection) {
 array_push($this->registeredCollections, $collection);
 if ($this->server->config->dev) {
@@ -1038,6 +1041,57 @@ function shutdown() {
 }
 
 
+}class CoreModule_reCaptcha {
+public $route;
+
+public $reCaptchaAPI;
+
+public $server;
+
+public $adapterKey;
+
+function __construct($server) {
+$this->route = "adapter.captcha.reCaptcha";
+$this->reCaptchaAPI = "https://www.google.com/recaptcha/api/siteverify";
+$this->server = null;
+$this->adapterKey = "";
+
+$this->server = $server;
+}
+function &clientInitialization($req, $action) {
+$mp = new _carb_map();
+$mp["component"] = "reCaptcha";
+$mp["action"] = $action;
+return $mp;}
+
+function verify($req, $payload) {
+$token = $payload["\$cap_tkn"];
+$body = new _carb_map();
+$body["response"] = $token;
+$body["secret"] = $this->server->getConfigString($this->route, "secretKey");
+$results = $this->server->request($this->reCaptchaAPI)->parseJson()->form($body)->execute("post");
+$data = &$results->data;
+$success = $data["success"];
+$hostname = $data["hostname"];
+$report = new Websom_Adapters_Captcha_Report();
+$report->token = $token;
+if ($success) {
+$report->status = "success";
+$report->message = "Success";}else{
+$report->status = "error";
+$report->message = "reCaptcha error";}
+$report->hostname = $hostname;
+$report->action = $data["action"];
+$report->score = $data["score"];
+return $report;}
+
+function initialize() {
+}
+
+function shutdown() {
+}
+
+
 }class CoreModule_Confirmation {
 public $route;
 
@@ -1285,6 +1339,86 @@ function search($collection, $query) {
 $qr = new Websom_Adapters_Search_QueryResult(false, "Success");
 
 return $qr;}
+
+
+}class CoreModule_CloudStorageBucket {
+public $coreModule;
+
+public $route;
+
+public $cloudStorage;
+
+public $server;
+
+public $adapterKey;
+
+function __construct($server) {
+$this->coreModule = null;
+$this->route = "adapter.bucket.cloudStorage";
+$this->cloudStorage = null;
+$this->server = null;
+$this->adapterKey = "";
+
+$this->server = $server;
+}
+function initialize() {
+$this->coreModule = $this->server->module->getModule("coreModule");}
+
+function loadClient() {
+}
+
+function generateUploadURL($upload) {
+$this->loadClient();
+}
+
+function deleteObject($bucket, $filename) {
+$this->loadClient();
+}
+
+function writeObjectFromBuffer($bucket, $destination, $buf) {
+$this->loadClient();
+
+$ctx = new Websom_BucketObjectContext($bucket, $destination);
+if ($bucket->afterWrite != null) {
+
+
+				$bucket->afterWrite($ctx);
+			}}
+
+function writeObject($bucket, $destination, $localPath) {
+$this->loadClient();
+
+$ctx = new Websom_BucketObjectContext($bucket, $destination);
+if ($bucket->afterWrite != null) {
+
+
+				$bucket->afterWrite($ctx);
+			}}
+
+function createDirectory($bucket, $path) {
+}
+
+function setObjectACL($bucket, $filename, $acl) {
+$this->loadClient();
+if ($acl == "public") {
+}else{
+}}
+
+function registerBucket($bucket) {
+if ($this->server->config->dev) {
+$this->loadClient();
+}}
+
+function serve($bucket, $filename) {
+$this->loadClient();
+}
+
+function readToLocalSystemPath($bucket, $filename) {
+$this->loadClient();
+}
+
+function shutdown() {
+}
 
 
 }
