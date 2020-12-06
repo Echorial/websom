@@ -1,0 +1,48 @@
+info {
+	"name": "cloudStorage",
+	"type": "script",
+	"if": "adapter bucket == cloudStorage"
+}
+
+script {
+	export default ctx => {
+		ctx.registerAdapter("cloudStorage", {
+			uploadFile(uploadURL, object, conf) {
+				return new Promise((resolve, rej) => {
+					let req = new XMLHttpRequest();
+
+					req.onreadystatechange = function () {
+						if (this.readyState == 4) {
+							if (this.status == 200) {
+								resolve();
+							}else{
+								rej(this.status);
+							}
+						}
+					};
+
+					req.upload.onprogress = (e) => {
+						if (conf.progress)
+							conf.progress(e.loaded / e.total);
+					};
+
+					req.open("PUT", uploadURL, true);
+
+					//if (uploadURL.includes("include-acl")) {
+						//req.setRequestHeader("x-goog-acl", "public-read");
+					//}
+
+					req.setRequestHeader("Content-Type", conf.contentType || "application/octet-stream");
+
+					let data = new FormData();
+					data.append("upload", object);
+
+					req.send(object);
+				});
+			},
+			resolveBucketObject(bucket, name) {
+				return "https://storage.googleapis.com/" + ctx.store.state.websom.data.bucketPrefix + "-" + bucket + "/" + name;
+			}
+		});
+	}
+}
