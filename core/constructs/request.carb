@@ -30,6 +30,10 @@ class Websom.Request {
 		this.session = new Websom.Session(this);
 	}
 
+	bool checkCaptcha() {
+		return this.server.security.checkRequestCaptcha(this, this.body);
+	}
+
 	void header(string name, primitive value) {
 		if (this.external) {
 			this.response.headers[name] = value;
@@ -80,6 +84,17 @@ class Websom.Request {
 		let res = new map();
 		res["status"] = "success";
 		res["data"] = data;
+
+		this.header("Content-Type", "application/json");
+
+		this.end(Websom.Json.encode(res));
+	}
+
+	void endWithCaptcha() {
+		let res = new map();
+		res["status"] = "error";
+		res["captcha"] = true;
+		res["message"] = "Please solve the captcha";
 
 		this.header("Content-Type", "application/json");
 
