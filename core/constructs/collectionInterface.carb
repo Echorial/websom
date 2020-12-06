@@ -484,7 +484,7 @@ class Websom.FunctionAuthenticator inherits Websom.Authenticator {
 	[ForceAsync]
 	bool authenticate(Websom.Request req) {
 		native javascript {
-			await this.func(req);
+			return await this.func(req);
 		}
 
 		native php {
