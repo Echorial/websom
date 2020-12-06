@@ -19,6 +19,7 @@ class Websom.Services.Security inherits Websom.Service {
 
 	void preStart() {
 		this.captchaAdapter = this.server.adapt("captcha");
+		this.captchaAdapter.exposeToClient = true;
 	}
 
 	void loadAdapter() {
@@ -173,6 +174,25 @@ class Websom.Services.Security inherits Websom.Service {
 		}
 
 		return false;
+	}
+
+	bool checkRequestCaptcha(Websom.Request req, map payload) {
+		if (this.captcha != null) {
+			let rep = this.captcha.verify(req, payload);
+			Console.log(rep.status);
+
+			if (rep.status == "success") {
+				if (rep.score > 0.2) {
+					return true;
+				}else{
+					return false;
+				}
+			}else{
+				return false;
+			}
+		}else{
+			Console.log("Warning! Captcha requested but no adapter is active");
+		}
 	}
 
 	bool typeCheck(primitive value, string type) {
