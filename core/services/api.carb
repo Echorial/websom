@@ -330,6 +330,8 @@ class Websom.Services.API inherits Websom.Service {
 class Websom.APIContext {
 	Websom.Request request = null;
 	map inputs = new map();
+	map computed = new map();
+	map mutated = new map();
 
 	string type = "";
 
@@ -348,6 +350,22 @@ class Websom.APIContext {
 
 	void set(string key, primitive value) {
 		this.inputs[key] = value;
+	}
+
+	primitive getComputed(string key) {
+		return this.computed[key];
+	}
+
+	void setComputed(string key, primitive value) {
+		this.computed[key] = value;
+	}
+
+	primitive getMutated(string key) {
+		return this.mutated[key];
+	}
+
+	void setMutated(string key, primitive value) {
+		this.mutated[key] = value;
 	}
 }
 
