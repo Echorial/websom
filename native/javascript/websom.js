@@ -2582,7 +2582,8 @@ Websom.Services.Module.prototype.load = function (modDir, config, single) {var _
 				}
 			}
 		
-			mod.bridges = mod.setupBridges();
+			if (module.setupBridges)
+				mod.bridges = mod.setupBridges();
 		
 		
 		return mod.spawn(config);}
@@ -2672,7 +2673,8 @@ Websom.Services.Module.prototype.checkContainers = function (module) {var _c_thi
 				module.containers = containers;
 				}
 			
-				module.bridges = module.setupBridges();
+				if (module.setupBridges)
+					module.bridges = module.setupBridges();
 			
 			
 			_c_this.checkContainers(module);

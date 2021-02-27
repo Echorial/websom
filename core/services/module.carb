@@ -202,7 +202,8 @@ class Websom.Services.Module inherits Websom.Service {
 		}
 
 		native javascript {
-			mod.bridges = mod.setupBridges();
+			if (module.setupBridges)
+				mod.bridges = mod.setupBridges();
 		}
 
 		native php {
@@ -313,7 +314,8 @@ class Websom.Services.Module inherits Websom.Service {
 				module.containers = containers;
 
 			native javascript {
-				module.bridges = module.setupBridges();
+				if (module.setupBridges)
+					module.bridges = module.setupBridges();
 			}
 
 			native php {

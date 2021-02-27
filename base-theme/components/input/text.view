@@ -8,7 +8,7 @@ template {
 		<div class="input-text-wrap">
 			<div class="input-text-before"></div>
 			<icon v-if="icon && side != 'right'" :icon="icon" class="input-text-icon start" />
-			<input :readonly="readonly" v-if="type != 'area'" type="text" class="input-text-input" @input="input" v-model="myValue" :type="type" ref="input"></input>
+			<input :readonly="readonly" v-if="type != 'area'" type="text" class="input-text-input" @input="input"  @keyup="input" v-model="myValue" :type="type" ref="input"></input>
 			<textarea v-else :readonly="readonly" class="input-text-input" @input="input" v-model="myValue" ref="input"></textarea>
 			<icon v-if="icon && side == 'right'" :icon="icon" class="input-text-icon end" />
 			<label class="input-text-placeholder">{{placeholder}}</label>
@@ -38,6 +38,11 @@ script {
 				type: String,
 				default: "Input your text",
 				description: "The placeholder text."
+			},
+			autofocus: {
+				type: Boolean,
+				default: false,
+				description: "Should the input be focused in on after the component is mounted"
 			},
 			icon: {
 				type: String,
@@ -174,6 +179,14 @@ script {
 					return this.myValue.split("\n").length;
 				
 				return 0;
+			}
+		},
+		mounted() {
+			if (this.autofocus) {
+				setTimeout(() => {
+					console.log("autofocus");
+					this.$refs.input.focus();
+				}, 50);
 			}
 		}
 	}

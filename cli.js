@@ -146,26 +146,26 @@ if (args[0] == "init") {
 
 		if (settings.database == "loki.js") {
 			globalConfig.adapters.database = "loki";
-			globalConfig["adapters.database.loki"] = {
+			globalConfig["adapter.database.loki"] = {
 				persistence: "database.db"
 			};
 		}else if (settings.database == "Firebase") {
-			globalConfig.adapters.database = "firebase";
-			globalConfig["adapters.database.firebase"] = {
+			globalConfig.adapters.database = "firestore";
+			globalConfig["adapter.database.firestore"] = {
 				credentials: "./firestore.json"
 			};
 
-			fs.writeFileSync(path.resolve(cwd, "./config/firebase.json"), "{}");
+			fs.writeFileSync(path.resolve(cwd, "./config/firestore.json"), "{}");
 		}
 
 		if (settings.mail == "SendGrid") {
-			globalConfig.adapters.email = "sendGrid";
-			globalConfig["adapters.email.sendGrid"] = {
+			globalConfig.adapter.email = "sendGrid";
+			globalConfig["adapter.email.sendGrid"] = {
 				apiKey: "<sendgrid api key>"
 			};
 		}else if (settings.mail == "SMTP Login") {
-			globalConfig.adapters.email = "smtp";
-			globalConfig["adapters.email.smtp"] = {
+			globalConfig.adapter.email = "smtp";
+			globalConfig["adapter.email.smtp"] = {
 				host: "example.com",
 				port: "445",
 				ssl: true,
@@ -223,6 +223,7 @@ server.startDevelopmentServer().then(() => {
 		fs.mkdirSync(path.resolve(cwd, "./website/packs"));
 		fs.mkdirSync(path.resolve(cwd, "./website/modules"));
 		fs.mkdirSync(path.resolve(cwd, "./website/themes"));
+		fs.mkdirSync(path.resolve(cwd, "./website/icon"));
 
 		fs.mkdirSync(path.resolve(cwd, "./buckets"));
 
@@ -236,11 +237,14 @@ server.startDevelopmentServer().then(() => {
 			copDir += "php";
 		}
 		
-		cp(copDir, path.resolve(cwd, "./website/modules/app"), () => {
-			console.log(chalk.green("[PROJECT] Initialized."));
-			console.log(chalk.blue("------- Execute -------"));
-			console.log("$" + chalk.green(" npm") + chalk.green(" run") + chalk.green(" dev"));
-			console.log(chalk.blue("--- To get started ---"));
+		cp(path.resolve(__dirname, "./icon"), path.resolve(cwd, "./website/icon"), () => {
+			cp(copDir, path.resolve(cwd, "./website/modules/app"), () => {
+				console.log(chalk.green("[PROJECT] Initialized."));
+				console.log(chalk.blue("------- Execute -------"));
+				console.log("$" + chalk.green(" npm") + chalk.green(" install"));
+				console.log("$" + chalk.green(" npm") + chalk.green(" run") + chalk.green(" dev"));
+				console.log(chalk.blue("--- To get started ---"));
+			});
 		});
 	});
 }else{

@@ -201,6 +201,7 @@ style {
 			--color: var(~"--@{name}");
 			--color-light: var(~"--@{name}-light");
 			--color-dark: var(~"--@{name}-dark");
+			--color-contrast: var(~"--@{name}-contrast");
 			--contrast: var(~"--@{name}-contrast");
 			--contrast-light: var(~"--@{name}-contrast-light");
 			--contrast-dark: var(~"--@{name}-contrast-dark");
@@ -211,6 +212,7 @@ style {
 		--color: var(~"--@{toName}");
 		--color-light: var(~"--@{toName}-light");
 		--color-dark: var(~"--@{toName}-dark");
+		--color-contrast: var(~"--@{toName}-contrast");
 		--contrast: var(~"--@{toName}-contrast");
 		--contrast-light: var(~"--@{toName}-contrast-light");
 		--contrast-dark: var(~"--@{toName}-contrast-dark");
