@@ -74,7 +74,7 @@
 		"npm-programmatic": "0.0.12",
 		"open": "^7.3.0",
 		"optimize-css-assets-webpack-plugin": "^5.0.4",
-		"postcss": "^7.0.35",
+		"postcss": "^8.2.10",
 		"postcss-less": "^3.1.4",
 		"raw-loader": "^4.0.2",
 		"remixicon": "^2.5.0",
