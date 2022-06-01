@@ -38,7 +38,7 @@
 		"quill-delta-markdown": "git+https://github.com/rdesmartin/quill-delta-markdown.git",
 		"request-promise": "^4.2.6",
 		"session-file-store": "^1.5.0",
-		"sharp": "^0.25.4",
+		"sharp": "^0.30.5",
 		"vue": "^2.6.12",
 		"vue-router": "^3.4.9",
 		"vue-server-renderer": "^2.6.12",
